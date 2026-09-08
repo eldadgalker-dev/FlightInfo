@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - MapScreen
+// FlightInfo - MapScreen
 // Version 1.1
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip

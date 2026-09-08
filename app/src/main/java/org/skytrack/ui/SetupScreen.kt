@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - SetupScreen
+// FlightInfo - SetupScreen
 // Version 1.5
 // Purpose : Flight plan entry: origin (auto-suggested from the last ground
 //           fix), destination search, optional flight number and scheduled

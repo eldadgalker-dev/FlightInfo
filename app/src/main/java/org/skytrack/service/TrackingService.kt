@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - TrackingService
+// FlightInfo - TrackingService
 // Version 1.1
 // Purpose : Foreground service (type location) that keeps GNSS, barometer
 //           and gyro flowing into the FlightEngine while the screen is off,

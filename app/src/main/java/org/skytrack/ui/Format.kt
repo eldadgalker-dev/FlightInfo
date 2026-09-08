@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - Format
+// FlightInfo - Format
 // Version 1.1
 // Purpose : Convert SI values to display units at the point of emission.
 //           Numbers are always rendered LTR with Latin digits.

@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - Parameters
+// FlightInfo - Parameters
 // Version 1.1
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.

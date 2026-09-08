@@ -15,5 +15,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "SkyTrack"
+rootProject.name = "FlightInfo"
 include(":app")

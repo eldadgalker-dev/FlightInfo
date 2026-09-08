@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - SkyTrackApp
+// FlightInfo - SkyTrackApp
 // Version 1.1
 // Purpose : Application entry point; owns the singletons (manual DI, no
 //           framework) and initialises MapLibre. Resumes the previous

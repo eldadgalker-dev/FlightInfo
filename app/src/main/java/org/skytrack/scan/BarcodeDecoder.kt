@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - BarcodeDecoder
+// FlightInfo - BarcodeDecoder
 // Version 1.5
 // Purpose : Thin wrapper around ZXing core (Apache-2.0, pure Java, no Play
 //           Services) that decodes boarding-pass barcodes from a camera

@@ -5,7 +5,7 @@
   See the LICENSE.txt file in the project root for full license information.
 -->
 <resources>
-    <string name="app_name">SkyTrack</string>
+    <string name="app_name">FlightInfo</string>
 
     <!-- Navigation / actions -->
     <string name="flight_setup">Flight setup</string>
@@ -82,7 +82,7 @@
     <string name="auto_follow">Follow aircraft automatically</string>
     <string name="track_up_default">Track-up by default</string>
     <string name="rotate_gestures">Two-finger rotate gesture</string>
-    <string name="about_copyright">SkyTrack \u00A9 1986\u20112026 Eldad Galker, eldad@galker.com</string>
+    <string name="about_copyright">FlightInfo \u00A9 1986\u20112026 Eldad Galker, eldad@galker.com</string>
     <string name="about_license">Free software released under the BSD 3-Clause License.</string>
     <string name="about_data">Map data: Natural Earth (public domain). Airports: OurAirports (public domain). Fonts: Noto Sans (OFL).</string>
     <string name="about_offline">Works fully offline. No network, accounts or servers.</string>

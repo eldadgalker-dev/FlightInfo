@@ -1,10 +1,9 @@
 # Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
 # This software is released under the BSD 3-Clause License.
 # See the LICENSE.txt file in the project root for full license information.
-# SkyTrack CI - Version 1.2
-# Builds debug and unsigned release APKs on every push and attaches them to
-# a GitHub Release when a tag starting with "v" is pushed. Zero cost on a
-# public repository.
+# FlightInfo CI - Version 1.7
+# Runs the JVM tests and publishes one installable APK (debug-signed) as a
+# workflow artifact on every push, and as a GitHub Release asset on v* tags.
 name: build
 
 on:
@@ -37,19 +36,20 @@ jobs:
         run: ./gradlew test --no-daemon
 
       - name: Assemble
-        run: ./gradlew assembleDebug assembleRelease --no-daemon
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Name the APK
+        run: |
+          VER=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          mkdir -p dist && cp app/build/outputs/apk/debug/app-debug.apk "dist/FlightInfo-$VER.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: skytrack-apks
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
+          name: FlightInfo-apk
+          path: dist/*.apk
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
+          files: dist/*.apk

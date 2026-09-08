@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - Bcbp
+// FlightInfo - Bcbp
 // Version 1.5
 // Purpose : Parser for the IATA Bar Coded Boarding Pass (BCBP, Resolution
 //           792) mandatory block. Every boarding pass barcode (PDF417 on

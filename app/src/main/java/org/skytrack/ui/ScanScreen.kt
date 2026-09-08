@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - ScanScreen
+// FlightInfo - ScanScreen
 // Version 1.5
 // Purpose : Boarding-pass scanner. Live camera (CameraX) analysed frame by
 //           frame with ZXing, plus an "from image" path for passes stored as

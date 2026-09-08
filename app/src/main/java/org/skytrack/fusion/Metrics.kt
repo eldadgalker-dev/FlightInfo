@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - Metrics
+// FlightInfo - Metrics
 // Version 1.1
 // Purpose : Derive every displayed value (origin / now / destination
 //           columns) from a PositionEstimate, the Route and the airports.

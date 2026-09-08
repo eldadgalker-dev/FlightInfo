@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - Estimator
+// FlightInfo - Estimator
 // Version 1.1
 // Purpose : Position estimator with four modes:
 //             GNSS_TRACKING    - scalar Kalman updates on along/cross track

@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - Geodesy
+// FlightInfo - Geodesy
 // Version 1.1
 // Purpose : Spherical great-circle mathematics. A sphere is used
 //           deliberately: the ~0.3 % error versus WGS84 is far below

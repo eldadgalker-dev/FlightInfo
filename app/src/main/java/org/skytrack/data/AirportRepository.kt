@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - AirportRepository
+// FlightInfo - AirportRepository
 // Version 1.3
 // Purpose : Load the bundled airports.csv (OurAirports subset with
 //           IANA timezones) into memory and provide search and

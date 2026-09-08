@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - GnssSource
+// FlightInfo - GnssSource
 // Version 1.1
 // Purpose : Wrap android.location.LocationManager (GPS_PROVIDER) and
 //           GnssStatus into a cold Flow of classified GNSS samples.

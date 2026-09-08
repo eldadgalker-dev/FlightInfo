@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - InertialSources
+// FlightInfo - InertialSources
 // Version 1.1
 // Purpose : Barometer (cabin pressure and its rate), gyroscope yaw rate,
 //           and the flight-phase state machine that consumes them.

@@ -1,4 +1,4 @@
-# SkyTrack
+# FlightInfo
 
 Offline in-flight position tracker for Android. Shows your aircraft on a map using GNSS when the phone can see satellites and a route-constrained estimate when it cannot. No network, no accounts, no API keys, no servers. Free software under the BSD-3-Clause licence.
 
@@ -32,13 +32,16 @@ All tunables are in `app/src/main/java/org/skytrack/Parameters.kt`.
 Requirements: JDK 17, Android SDK (API 34). Android Studio Koala or newer opens the project directly.
 
 ```
-./gradlew test             # JVM unit tests (geodesy, route, estimator)
+./gradlew test             # JVM unit tests (geodesy, route, estimator, BCBP)
 ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
-./gradlew assembleRelease  # unsigned release APK
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The GitHub Actions workflow in `.github/workflows/build.yml` builds and tests on every push and attaches APKs to a release when a `v*` tag is pushed. This is the intended zero-cost distribution path (GitHub Releases, F-Droid, or Obtainium).
+`.github/workflows/build.yml` runs the tests on every push and publishes one file, `FlightInfo-<version>.apk`, as a workflow artifact; pushing a tag `v*` attaches it to a GitHub Release. The APK is signed with the standard Android debug key, which is sufficient for direct installation and for updating an existing installation built by the same workflow. No unsigned APK is produced.
+
+### Publishing a new version from Windows (no Git knowledge needed)
+
+`tools/update_github.bat` takes a project zip, mirrors it into a local clone (including `.github` and deleted files), commits and pushes; GitHub Actions then builds the APK. Requirements: Git for Windows (the tool opens the download page if it is missing). Usage: drag the zip onto `update_github.bat`, or double-click it and pick the zip. Append `tag` (`update_github.bat x.zip tag`) to also create a `v<version>` tag, which produces a GitHub Release with the APK attached. Repository URL and author are Parameters at the top of `update_github.ps1`.
 
 ### Regenerating bundled data
 

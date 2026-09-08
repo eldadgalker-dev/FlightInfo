@@ -2,7 +2,7 @@
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
-// SkyTrack - CoreTests
+// FlightInfo - CoreTests
 // Version 1.5
 // Purpose : JVM unit tests for Geodesy, Route projection and the
 //           Estimator (GNSS gap behaviour, reacquisition, off-route).

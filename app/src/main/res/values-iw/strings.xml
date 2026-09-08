@@ -5,7 +5,7 @@
   See the LICENSE.txt file in the project root for full license information.
 -->
 <resources>
-    <string name="app_name">SkyTrack</string>
+    <string name="app_name">FlightInfo</string>
 
     <string name="flight_setup">הגדרת טיסה</string>
     <string name="metrics">נתונים</string>
@@ -77,7 +77,7 @@
     <string name="auto_follow">עקוב אחרי המטוס אוטומטית</string>
     <string name="track_up_default">כיוון טיסה למעלה כברירת מחדל</string>
     <string name="rotate_gestures">סיבוב מפה בשתי אצבעות</string>
-    <string name="about_copyright">\u2066SkyTrack\u2069 \u00A9 \u20661986\u20112026\u2069 \u2066Eldad Galker\u2069, \u2066eldad@galker.com\u2069</string>
+    <string name="about_copyright">\u2066FlightInfo\u2069 \u00A9 \u20661986\u20112026\u2069 \u2066Eldad Galker\u2069, \u2066eldad@galker.com\u2069</string>
     <string name="about_license">תוכנה חופשית ברישיון \u2066BSD 3\u2011Clause\u2069.</string>
     <string name="about_data">נתוני מפה: \u2066Natural Earth\u2069 (נחלת הכלל). שדות תעופה: \u2066OurAirports\u2069 (נחלת הכלל). גופנים: \u2066Noto Sans\u2069 (\u2066OFL\u2069).</string>
     <string name="about_offline">פועלת ללא רשת. ללא חשבונות וללא שרתים.</string>

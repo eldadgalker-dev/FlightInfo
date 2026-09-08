@@ -3,7 +3,7 @@
 # This software is released under the BSD 3-Clause License.
 # See the LICENSE.txt file in the project root for full license information.
 # =============================================================
-# SkyTrack - bundled asset builder
+# FlightInfo - bundled asset builder
 # Version 1.1
 # Purpose : Generate the offline data files shipped inside the APK
 #           (airports table with timezones, slimmed Natural Earth
