@@ -1,0 +1,55 @@
+# Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
+# This software is released under the BSD 3-Clause License.
+# See the LICENSE.txt file in the project root for full license information.
+# SkyTrack CI - Version 1.2
+# Builds debug and unsigned release APKs on every push and attaches them to
+# a GitHub Release when a tag starting with "v" is pushed. Zero cost on a
+# public repository.
+name: build
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Files uploaded through the GitHub web interface lose the execute bit.
+      - name: Make wrapper executable
+        run: chmod +x gradlew
+
+      - name: Unit tests
+        run: ./gradlew test --no-daemon
+
+      - name: Assemble
+        run: ./gradlew assembleDebug assembleRelease --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skytrack-apks
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release-unsigned.apk
