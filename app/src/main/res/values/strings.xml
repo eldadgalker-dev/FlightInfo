@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
+  This software is released under the BSD 3-Clause License.
+  See the LICENSE.txt file in the project root for full license information.
+-->
+<resources>
+    <string name="app_name">SkyTrack</string>
+
+    <!-- Navigation / actions -->
+    <string name="flight_setup">Flight setup</string>
+    <string name="metrics">Metrics</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="start_flight">Start flight</string>
+    <string name="update_flight">Update flight</string>
+    <string name="end_flight">End flight</string>
+    <string name="zoom_in">Zoom in</string>
+    <string name="zoom_out">Zoom out</string>
+    <string name="fit_route">Show whole route</string>
+    <string name="recenter">Center on aircraft</string>
+    <string name="orientation">North up / track up</string>
+
+    <!-- Setup -->
+    <string name="origin">Origin</string>
+    <string name="destination">Destination</string>
+    <string name="flight_number">Flight number (optional)</string>
+    <string name="scheduled_departure">Scheduled departure (optional)</string>
+    <string name="scheduled_departure_hint">HH:MM, origin local time, today. Used only when no GNSS fix is available.</string>
+    <string name="airport_search_hint">Type an IATA code (TLV) or a city / airport name in English</string>
+    <string name="airport_no_results">No match. Search works in English only: IATA code, city or airport name.</string>
+    <string name="error_time_format">Time must be HH:MM</string>
+    <string name="setup_note">Position is estimated from GNSS when available and from the planned route otherwise. For best reception hold the phone near a window. No network is required.</string>
+
+    <!-- Status -->
+    <string name="no_flight">No active flight</string>
+    <string name="no_flight_hint">Enter a flight to begin tracking.</string>
+    <string name="gnss_good">GNSS %1$d sats</string>
+    <string name="gnss_degraded">GNSS weak (%1$d)</string>
+    <string name="gnss_none">No GNSS</string>
+    <string name="mode_tracking">Tracking</string>
+    <string name="mode_constrained">Route estimate</string>
+    <string name="mode_predicted">Predicted only</string>
+    <string name="mode_off_route">OFF ROUTE</string>
+    <string name="fix_age">fix %1$s ago</string>
+
+    <!-- Values -->
+    <string name="remaining">Remaining</string>
+    <string name="flown">Flown</string>
+    <string name="ete">Time to go</string>
+    <string name="eta">Arrival (ETA)</string>
+    <string name="eta_local">ETA %1$s</string>
+    <string name="ground_speed">Ground speed</string>
+    <string name="altitude">Altitude</string>
+    <string name="track">Track</string>
+    <string name="vertical_rate">Vertical rate</string>
+    <string name="elapsed">Elapsed</string>
+    <string name="time_at">Time at %1$s</string>
+    <string name="local_time">Local time</string>
+    <string name="utc_time">UTC</string>
+    <string name="takeoff_time">Takeoff</string>
+    <string name="total_flight_time">Total flight time</string>
+    <string name="progress">Progress</string>
+    <string name="route_length">Route length</string>
+    <string name="now">Now</string>
+    <string name="estimator">Estimator</string>
+    <string name="mode">Mode</string>
+    <string name="phase">Phase</string>
+    <string name="satellites">Satellites</string>
+    <string name="fix_age_label">Last fix</string>
+    <string name="uncertainty_along">Along-track uncertainty</string>
+    <string name="uncertainty_cross">Cross-track uncertainty</string>
+    <string name="position">Position</string>
+    <string name="legend">Legend: \u25CF measured  \u25D0 fused  \u25CB predicted  \u25CC stale. Altitude comes from GNSS only; the barometer reads cabin pressure and is used solely to detect climb and descent.</string>
+
+    <!-- Settings -->
+    <string name="distance_unit">Distance</string>
+    <string name="altitude_unit">Altitude</string>
+    <string name="speed_unit">Speed</string>
+    <string name="theme">Theme</string>
+    <string name="clock_24h">24-hour clock</string>
+    <string name="auto_follow">Follow aircraft automatically</string>
+    <string name="track_up_default">Track-up by default</string>
+    <string name="rotate_gestures">Two-finger rotate gesture</string>
+    <string name="about_copyright">SkyTrack \u00A9 1986\u20112026 Eldad Galker, eldad@galker.com</string>
+    <string name="about_license">Free software released under the BSD 3-Clause License.</string>
+    <string name="about_data">Map data: Natural Earth (public domain). Airports: OurAirports (public domain). Fonts: Noto Sans (OFL).</string>
+    <string name="about_offline">Works fully offline. No network, accounts or servers.</string>
+
+    <!-- Boarding pass scan -->
+    <string name="scan_boarding_pass">Scan boarding pass</string>
+    <string name="scan_title">Scan boarding pass</string>
+    <string name="scan_hint">Point the camera at the barcode (paper PDF417 or mobile QR/Aztec), or choose a screenshot of the pass. Origin, destination and flight number are read from the barcode; the departure time is not stored in it.</string>
+    <string name="scan_from_image">Choose image / screenshot</string>
+    <string name="scan_camera_denied">Camera permission not granted. You can still scan from an image.</string>
+    <string name="scan_grant_camera">Allow camera</string>
+    <string name="scan_no_barcode">No barcode found in the image.</string>
+    <string name="scan_not_boarding_pass">Barcode read, but it is not a boarding pass.</string>
+    <string name="scan_unknown_airport">Boarding pass read (%1$s \u2192 %2$s) but an airport is missing from the database. Select it manually.</string>
+
+    <!-- Notification -->
+    <string name="notif_channel">Flight tracking</string>
+    <string name="notif_starting">Starting sensors\u2026</string>
+    <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>
+</resources>

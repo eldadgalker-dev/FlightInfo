@@ -1,0 +1,11 @@
+<!--
+  Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
+  This software is released under the BSD 3-Clause License.
+  See the LICENSE.txt file in the project root for full license information.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="64" android:viewportHeight="64">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M32,4 L36,10 L36,26 L60,40 L60,45 L36,38 L35,52 L43,57 L43,60 L32,58 L21,60 L21,57 L29,52 L28,38 L4,45 L4,40 L28,26 L28,10 Z" />
+</vector>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
+  This software is released under the BSD 3-Clause License.
+  See the LICENSE.txt file in the project root for full license information.
+-->
+<resources>
+    <string name="app_name">SkyTrack</string>
+
+    <string name="flight_setup">הגדרת טיסה</string>
+    <string name="metrics">נתונים</string>
+    <string name="settings">הגדרות</string>
+    <string name="back">חזרה</string>
+    <string name="start_flight">התחל טיסה</string>
+    <string name="update_flight">עדכן טיסה</string>
+    <string name="end_flight">סיים טיסה</string>
+    <string name="zoom_in">הגדל</string>
+    <string name="zoom_out">הקטן</string>
+    <string name="fit_route">הצג את כל המסלול</string>
+    <string name="recenter">מרכז על המטוס</string>
+    <string name="orientation">צפון למעלה / כיוון טיסה למעלה</string>
+
+    <string name="origin">מוצא</string>
+    <string name="destination">יעד</string>
+    <string name="flight_number">מספר טיסה (אופציונלי)</string>
+    <string name="scheduled_departure">שעת יציאה מתוכננת (אופציונלי)</string>
+    <string name="scheduled_departure_hint">HH:MM, שעון מקומי במוצא, היום. בשימוש רק כשאין קליטת GNSS.</string>
+    <string name="airport_search_hint">הקלד קוד IATA (TLV) או שם עיר / שדה באנגלית</string>
+    <string name="airport_no_results">אין תוצאה. החיפוש באנגלית בלבד: קוד IATA, עיר או שם שדה.</string>
+    <string name="error_time_format">פורמט שעה: HH:MM</string>
+    <string name="setup_note">המיקום מוערך מ־GNSS כשקיים, ומהמסלול המתוכנן כשאין. לקליטה טובה החזק את הטלפון ליד החלון. לא נדרשת רשת.</string>
+
+    <string name="no_flight">אין טיסה פעילה</string>
+    <string name="no_flight_hint">הזן טיסה כדי להתחיל מעקב.</string>
+    <string name="gnss_good">GNSS %1$d לוויינים</string>
+    <string name="gnss_degraded">GNSS חלש (%1$d)</string>
+    <string name="gnss_none">אין GNSS</string>
+    <string name="mode_tracking">מעקב</string>
+    <string name="mode_constrained">הערכה לפי מסלול</string>
+    <string name="mode_predicted">חיזוי בלבד</string>
+    <string name="mode_off_route">חריגה ממסלול</string>
+    <string name="fix_age">תיקון לפני %1$s</string>
+
+    <string name="remaining">נותר</string>
+    <string name="flown">נטוס</string>
+    <string name="ete">זמן ליעד</string>
+    <string name="eta">הגעה משוערת</string>
+    <string name="eta_local">הגעה %1$s</string>
+    <string name="ground_speed">מהירות קרקע</string>
+    <string name="altitude">גובה</string>
+    <string name="track">כיוון</string>
+    <string name="vertical_rate">קצב אנכי</string>
+    <string name="elapsed">זמן מההמראה</string>
+    <string name="time_at">שעה ב־%1$s</string>
+    <string name="local_time">שעה מקומית</string>
+    <string name="utc_time">UTC</string>
+    <string name="takeoff_time">המראה</string>
+    <string name="total_flight_time">זמן טיסה כולל</string>
+    <string name="progress">התקדמות</string>
+    <string name="route_length">אורך מסלול</string>
+    <string name="now">עכשיו</string>
+    <string name="estimator">מנוע הערכה</string>
+    <string name="mode">מצב</string>
+    <string name="phase">שלב טיסה</string>
+    <string name="satellites">לוויינים</string>
+    <string name="fix_age_label">תיקון אחרון</string>
+    <string name="uncertainty_along">אי־ודאות לאורך המסלול</string>
+    <string name="uncertainty_cross">אי־ודאות רוחבית</string>
+    <string name="position">מיקום</string>
+    <string name="legend">מקרא: \u25CF נמדד  \u25D0 ממוזג  \u25CB חיזוי  \u25CC לא מעודכן. הגובה מ־GNSS בלבד; הברומטר מודד לחץ תא ומשמש רק לזיהוי נסיקה והנמכה.</string>
+
+    <string name="distance_unit">מרחק</string>
+    <string name="altitude_unit">גובה</string>
+    <string name="speed_unit">מהירות</string>
+    <string name="theme">ערכת נושא</string>
+    <string name="clock_24h">שעון 24 שעות</string>
+    <string name="auto_follow">עקוב אחרי המטוס אוטומטית</string>
+    <string name="track_up_default">כיוון טיסה למעלה כברירת מחדל</string>
+    <string name="rotate_gestures">סיבוב מפה בשתי אצבעות</string>
+    <string name="about_copyright">\u2066SkyTrack\u2069 \u00A9 \u20661986\u20112026\u2069 \u2066Eldad Galker\u2069, \u2066eldad@galker.com\u2069</string>
+    <string name="about_license">תוכנה חופשית ברישיון \u2066BSD 3\u2011Clause\u2069.</string>
+    <string name="about_data">נתוני מפה: \u2066Natural Earth\u2069 (נחלת הכלל). שדות תעופה: \u2066OurAirports\u2069 (נחלת הכלל). גופנים: \u2066Noto Sans\u2069 (\u2066OFL\u2069).</string>
+    <string name="about_offline">פועלת ללא רשת. ללא חשבונות וללא שרתים.</string>
+
+    <string name="scan_boarding_pass">סרוק כרטיס עלייה למטוס</string>
+    <string name="scan_title">סריקת כרטיס עלייה</string>
+    <string name="scan_hint">כוון את המצלמה לברקוד (PDF417 על נייר או QR/Aztec בטלפון), או בחר צילום מסך של הכרטיס. מוצא, יעד ומספר טיסה נקראים מהברקוד; שעת היציאה אינה שמורה בו.</string>
+    <string name="scan_from_image">בחר תמונה / צילום מסך</string>
+    <string name="scan_camera_denied">לא ניתנה הרשאת מצלמה. עדיין ניתן לסרוק מתמונה.</string>
+    <string name="scan_grant_camera">אפשר מצלמה</string>
+    <string name="scan_no_barcode">לא נמצא ברקוד בתמונה.</string>
+    <string name="scan_not_boarding_pass">הברקוד נקרא, אך אינו כרטיס עלייה למטוס.</string>
+    <string name="scan_unknown_airport">הכרטיס נקרא (%1$s \u2192 %2$s) אך שדה תעופה חסר במאגר. בחר אותו ידנית.</string>
+
+    <string name="notif_channel">מעקב טיסה</string>
+    <string name="notif_starting">מפעיל חיישנים\u2026</string>
+    <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>
+</resources>
