@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 2.0
+// Version 2.3
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -45,6 +45,20 @@ object Parameters {
     const val TERMINAL_REANCHOR_MIN_M   = 2_000.0   // m, lateral offset that triggers a terminal re-anchor
     const val ORIGIN_MISMATCH_M         = 50_000.0  // m, ground fix farther than this from origin => warning
     const val TRACK_DECIMATION_M        = 5_000.0   // m, spacing of stored actual-track points
+
+    // -- Manual visual fix (user identifies a landmark out of the window) --
+    const val VISUAL_FIX_SEARCH_RADIUS_M = 200_000.0 // m, landmarks offered around the current estimate
+    const val VISUAL_FIX_MAX_CANDIDATES  = 10
+    const val VISUAL_DIST_NEAR_M         = 20_000.0  // m, "close" landmark
+    const val VISUAL_DIST_MID_M          = 55_000.0  // m, "some distance"
+    const val VISUAL_DIST_FAR_M          = 100_000.0 // m, "far, near the horizon"
+    const val VISUAL_FIX_SIGMA_M         = 15_000.0  // m, 1-sigma of a visual fix (bearing +-10 deg, angle +-1 deg)
+    const val VISUAL_FIX_SIGMA_BELOW_M   = 8_000.0   // m, landmark straight below
+
+    // -- Aerial imagery pack (NASA Blue Marble, public domain), downloaded once from GitHub Releases --
+    const val AERIAL_PACK_URL  = "https://github.com/eldadgalker-dev/FlightInfo/releases/download/data-v1/bluemarble_z0-6.mbtiles"
+    const val AERIAL_PACK_FILE = "bluemarble_z0-6.mbtiles"
+    const val AERIAL_MAX_ZOOM  = 6
 
     // -- Estimate-only mode --
     const val TAXI_ALLOWANCE_S          = 900.0     // s, scheduled departure -> assumed takeoff

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 2.1
+// Version 2.3
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -29,6 +29,7 @@ import org.skytrack.Parameters
 import org.skytrack.data.Airport
 import org.skytrack.data.AirportRepository
 import org.skytrack.data.FlightPlan
+import org.skytrack.data.GeoData
 import org.skytrack.data.GroundFix
 import org.skytrack.data.SavedEstimate
 import org.skytrack.data.Stores
@@ -44,7 +45,8 @@ import org.skytrack.sensors.GnssQuality
 import org.skytrack.sensors.GnssSample
 import org.skytrack.sensors.GyroSample
 
-class FlightEngine(private val airports: AirportRepository, private val stores: Stores, val logger: FlightLogger) {
+class FlightEngine(private val airports: AirportRepository, private val stores: Stores, val logger: FlightLogger,
+                   val geo: GeoData, private val hebrew: Boolean) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var tickJob: Job? = null
@@ -54,6 +56,13 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
 
     private val _active = MutableStateFlow(false)
     val active: StateFlow<Boolean> = _active
+
+    /** null = unknown yet; set by TrackingService from the sensor manager. */
+    val baroAvailable = MutableStateFlow<Boolean?>(null)
+
+    private var geoReady = false
+    private var lastCountryCheckMs = 0L
+    private var lastCountry: String? = null
 
     var origin: Airport? = null
         private set
@@ -96,6 +105,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
             stores.clearEstimate()
         }
         stores.savePlan(p)
+        if (!geoReady) scope.launch { geo.warmUp(); geoReady = true }
         logger.enabled = stores.settings.value.logFlights
         if (!p.estimateOnly) logger.start(p.originIata, p.destinationIata, p.flightNumber) else logger.stop()
         _active.value = true
@@ -152,6 +162,30 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         captureTakeoff()
     }
 
+    /**
+     * Manual visual fix from the UI. distanceCategory: 0 = below, 1 = near, 2 = mid, 3 = far.
+     */
+    fun applyVisualFix(landmark: GeoPoint, sideRight: Boolean?, distanceCategory: Int) {
+        val est = estimator ?: return
+        if (!sensorsLive) return
+        val (d, sigma) = when (distanceCategory) {
+            0 -> Pair(0.0, Parameters.VISUAL_FIX_SIGMA_BELOW_M)
+            1 -> Pair(Parameters.VISUAL_DIST_NEAR_M, Parameters.VISUAL_FIX_SIGMA_M)
+            2 -> Pair(Parameters.VISUAL_DIST_MID_M, Parameters.VISUAL_FIX_SIGMA_M)
+            else -> Pair(Parameters.VISUAL_DIST_FAR_M, Parameters.VISUAL_FIX_SIGMA_M * 1.5)
+        }
+        val side = if (distanceCategory == 0) null else sideRight
+        est.onVisualFix(landmark, side, d, sigma, System.currentTimeMillis(), phaseDetector.phase)
+        publish(System.currentTimeMillis())
+    }
+
+    /** Candidate landmarks around the current estimate for the visual-fix dialog. */
+    fun visualFixCandidates(): List<Pair<GeoData.Place, Double>> {
+        val m = _metrics.value ?: return emptyList()
+        if (!geoReady) return emptyList()
+        return geo.nearbyPlaces(GeoPoint(m.estimate.lat, m.estimate.lon), Parameters.VISUAL_FIX_SEARCH_RADIUS_M, Parameters.VISUAL_FIX_MAX_CANDIDATES)
+    }
+
     fun onBaro(b: BaroSample) { lastBaro = b; if (sensorsLive) { phaseDetector.onBaro(b); captureTakeoff() } }
 
     fun onGyro(g: GyroSample) { lastGyro = g; if (sensorsLive) estimator?.onGyro(g) }
@@ -187,7 +221,12 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         val phase = if (live) phaseDetector.phase else est.predictedPhase(now, takeoffRef)
         val e = est.tick(now, phase, takeoffRef, live)
         val takeoffForMetrics = if (live) p.takeoffMs ?: takeoffRef?.takeIf { now > it } else takeoffRef?.takeIf { now > it }
-        val fm = Metrics.compute(e, est.route, est.plannedRoute, est.actualTrack.toList(), !live, o, dst, takeoffForMetrics)
+        // Country under the aircraft: cheap point-in-polygon, refreshed every 5 s once the data is parsed.
+        if (geoReady && now - lastCountryCheckMs > 5_000) {
+            lastCountryCheckMs = now
+            lastCountry = geo.countryAt(GeoPoint(e.lat, e.lon))?.label(hebrew)
+        }
+        val fm = Metrics.compute(e, est.route, est.plannedRoute, est.actualTrack.toList(), !live, o, dst, takeoffForMetrics, lastCountry)
         _metrics.value = fm
         if (live) logger.log(fm, lastGnss, lastBaro, lastGyro)
         if (live && now - lastPersistMs > Parameters.PERSIST_INTERVAL_MS) {

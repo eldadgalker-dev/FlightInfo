@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - CoreTests
-// Version 2.0
+// Version 2.3
 // Purpose : JVM unit tests for Geodesy, Route projection and the
 //           Estimator (GNSS gap behaviour, reacquisition, off-route).
 //           These run without an emulator: ./gradlew test
@@ -232,5 +232,26 @@ class CoreTests {
         // Scanned on 30 Dec for a flight on day 2 -> next year.
         val d = Bcbp.resolveDayOfYear(2, java.time.LocalDate.of(2026, 12, 30))
         assertEquals(java.time.LocalDate.of(2027, 1, 2), d)
+    }
+
+    @Test
+    fun visualFixMovesAlongRouteOnlyAndLeavesPredictedMode() {
+        val r = Route(tlv, lhr)
+        val est = Estimator(r)
+        val takeoff = 1_000_000L
+        val now = takeoff + 2 * 3600_000L
+        // Predicted-only puts the aircraft far along; the passenger sees a landmark that is
+        // actually abeam s = 1,000 km, 50 km to the right of track.
+        val truthS = 1_000_000.0
+        val landmark = r.pointAtWithOffset(truthS, 50_000.0)
+        val before = est.tick(now, FlightPhase.CRUISE, takeoff)
+        assertEquals(FusionMode.PREDICTED_ONLY, before.mode)
+        est.onVisualFix(landmark, sideRight = true, distanceM = 50_000.0, sigmaM = 15_000.0, now = now, phase = FlightPhase.CRUISE)
+        val after = est.tick(now + 1000, FlightPhase.CRUISE, takeoff)
+        assertEquals(FusionMode.ROUTE_CONSTRAINED, after.mode)
+        assertTrue("along=${after.alongTrackM}", abs(after.alongTrackM - truthS) < 15_000.0)  // within the fix sigma
+        assertTrue(abs(r.project(GeoPoint(after.lat, after.lon)).crossM) < 200.0)   // still drawn on the route
+        assertTrue(after.groundSpeedMps > 200.0)                                       // keeps moving at cruise speed
+        assertEquals(1, after.visualFixCount)
     }
 }

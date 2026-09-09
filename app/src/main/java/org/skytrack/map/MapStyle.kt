@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapStyle
-// Version 2.1
+// Version 2.3
 // Purpose : Offline map style. The style JSON holds only the background
 //           and the bundled glyph endpoint; all sources and layers are
 //           added programmatically from the bundled Natural Earth GeoJSON
@@ -24,8 +24,11 @@ import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.android.style.sources.RasterSource
+import org.maplibre.android.style.sources.TileSet
 
 /** Colour palette for a theme. Hex strings are consumed by MapLibre. */
 data class Palette(
@@ -105,7 +108,14 @@ object MapStyle {
      * Add all sources and layers. `base` holds the four Natural Earth GeoJSON
      * strings keyed by source id, read beforehand on a background thread.
      */
-    fun install(style: Style, p: Palette, base: Map<String, String>, hebrew: Boolean) {
+    const val SRC_AERIAL = "aerial"
+
+    /**
+     * @param aerialTileUrl  mbtiles:// URL of the Blue Marble pack, or null for the vector-only map.
+     *                       With imagery the land / country fills are omitted; borders, water
+     *                       outlines and all labels stay on top.
+     */
+    fun install(style: Style, p: Palette, base: Map<String, String>, hebrew: Boolean, aerialTileUrl: String? = null) {
         // Label text: localised name when available, else the English name.
         val nameExpr: Expression = if (hebrew) Expression.coalesce(Expression.get("name_he"), Expression.get("name")) else Expression.get("name")
 
@@ -117,16 +127,28 @@ object MapStyle {
         style.addSource(GeoJsonSource(SRC_PLACES, base.getValue(SRC_PLACES)))
         style.addSource(GeoJsonSource(SRC_COUNTRY_LABELS, base.getValue(SRC_COUNTRY_LABELS)))
 
-        style.addLayer(FillLayer("land", SRC_LAND).withProperties(
-            PropertyFactory.fillColor(p.land), PropertyFactory.fillAntialias(true)))
-        // Country tint: seven tones chosen by Natural Earth so neighbours never share a colour.
-        val colorStops = p.countryFills.mapIndexed { i, c -> Expression.stop(i + 1, Expression.color(android.graphics.Color.parseColor(c))) }.toTypedArray()
-        style.addLayer(FillLayer("countries", SRC_COUNTRIES).withProperties(
-            PropertyFactory.fillColor(Expression.match(Expression.toNumber(Expression.get("color")),
-                Expression.color(android.graphics.Color.parseColor(p.land)), *colorStops)),
-            PropertyFactory.fillAntialias(true)))
-        style.addLayer(FillLayer("lakes", SRC_LAKES).withProperties(
-            PropertyFactory.fillColor(p.lake)))
+        if (aerialTileUrl != null) {
+            style.addSource(RasterSource(SRC_AERIAL, TileSet("2.2.0", aerialTileUrl).apply {
+                minZoom = 0f; maxZoom = org.skytrack.Parameters.AERIAL_MAX_ZOOM.toFloat()
+            }, 256))
+            style.addLayer(RasterLayer("aerial", SRC_AERIAL).withProperties(
+                PropertyFactory.rasterOpacity(1.0f),
+                PropertyFactory.rasterBrightnessMax(if (p === NIGHT) 0.75f else 1.0f)))
+            // Coastline hint over imagery so water and land stay readable at low zoom.
+            style.addLayer(LineLayer("land-outline", SRC_LAND).withProperties(
+                PropertyFactory.lineColor(p.placeHalo), PropertyFactory.lineWidth(0.4f), PropertyFactory.lineOpacity(0.5f)))
+        } else {
+            style.addLayer(FillLayer("land", SRC_LAND).withProperties(
+                PropertyFactory.fillColor(p.land), PropertyFactory.fillAntialias(true)))
+            // Country tint: seven tones chosen by Natural Earth so neighbours never share a colour.
+            val colorStops = p.countryFills.mapIndexed { i, c -> Expression.stop(i + 1, Expression.color(android.graphics.Color.parseColor(c))) }.toTypedArray()
+            style.addLayer(FillLayer("countries", SRC_COUNTRIES).withProperties(
+                PropertyFactory.fillColor(Expression.match(Expression.toNumber(Expression.get("color")),
+                    Expression.color(android.graphics.Color.parseColor(p.land)), *colorStops)),
+                PropertyFactory.fillAntialias(true)))
+            style.addLayer(FillLayer("lakes", SRC_LAKES).withProperties(
+                PropertyFactory.fillColor(p.lake)))
+        }
         style.addLayer(LineLayer("borders", SRC_BORDERS).withProperties(
             PropertyFactory.lineColor(p.border), PropertyFactory.lineWidth(0.9f)))
 

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Stores
-// Version 2.1
+// Version 2.3
 // Purpose : SharedPreferences-backed persistence for the flight plan,
 //           the last position estimate (instant restore on relaunch),
 //           the last ground fix (origin auto-detection) and user settings.
@@ -78,7 +78,8 @@ data class Settings(
     val autoFollow: Boolean = true,
     val trackUp: Boolean = false,
     val rotateGestures: Boolean = false,
-    val logFlights: Boolean = true      // write CSV flight logs for offline calibration
+    val logFlights: Boolean = true,     // write CSV flight logs for offline calibration
+    val aerial: Boolean = false         // show the downloaded Blue Marble imagery when available
 )
 
 class Stores(context: Context) {
@@ -117,7 +118,7 @@ class Stores(context: Context) {
             .putString("du", s.distanceUnit.name).putString("au", s.altitudeUnit.name).putString("su", s.speedUnit.name)
             .putBoolean("h24", s.use24h).putString("theme", s.theme.name)
             .putBoolean("follow", s.autoFollow).putBoolean("trackup", s.trackUp).putBoolean("rotate", s.rotateGestures)
-            .putBoolean("log", s.logFlights)
+            .putBoolean("log", s.logFlights).putBoolean("aerial", s.aerial)
             .apply()
         _settings.value = s
     }
@@ -133,7 +134,8 @@ class Stores(context: Context) {
             autoFollow = prefs.getBoolean("follow", d.autoFollow),
             trackUp = prefs.getBoolean("trackup", d.trackUp),
             rotateGestures = prefs.getBoolean("rotate", d.rotateGestures),
-            logFlights = prefs.getBoolean("log", d.logFlights)
+            logFlights = prefs.getBoolean("log", d.logFlights),
+            aerial = prefs.getBoolean("aerial", d.aerial)
         )
     }
 

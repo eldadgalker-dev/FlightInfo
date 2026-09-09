@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 2.1
+// Version 2.3
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -11,6 +11,8 @@
 package org.skytrack.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Info
@@ -61,7 +64,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.maplibre.android.maps.MapView
 import org.skytrack.R
+import org.skytrack.data.GeoData
 import org.skytrack.data.Settings
+import org.skytrack.map.AerialPack
 import org.skytrack.fusion.FlightMetrics
 import org.skytrack.fusion.FusionMode
 import org.skytrack.map.MapController
@@ -77,9 +82,15 @@ fun MapScreen(
     onOpenSettings: () -> Unit,
     onOpenSetup: () -> Unit,
     onOpenHelp: () -> Unit,
-    onToggleEstimateOnly: () -> Unit
+    onToggleEstimateOnly: () -> Unit,
+    visualFixCandidates: () -> List<Pair<GeoData.Place, Double>>,
+    onVisualFix: (GeoData.Place, Boolean?, Int) -> Unit,
+    hebrew: Boolean
 ) {
     val mapView = rememberMapViewWithLifecycle()
+    val context = LocalContext.current
+    val aerial = remember { AerialPack(context) }
+    var showVisualFix by remember { mutableStateOf(false) }
     var controller by remember { mutableStateOf<MapController?>(null) }
     var trackUp by rememberSaveable { mutableStateOf(settings.trackUp) }
     var panelExpanded by rememberSaveable { mutableStateOf(false) }
@@ -101,7 +112,8 @@ fun MapScreen(
             }
         )
 
-        LaunchedEffect(controller, night) { controller?.setPalette(if (night) MapStyle.NIGHT else MapStyle.DAY) }
+        val aerialUrl = if (settings.aerial && aerial.installed) aerial.tileUrl else null
+        LaunchedEffect(controller, night, aerialUrl) { controller?.setPalette(if (night) MapStyle.NIGHT else MapStyle.DAY, aerialUrl) }
         LaunchedEffect(controller, settings) {
             controller?.followEnabled = settings.autoFollow
             controller?.setRotateGestures(settings.rotateGestures)
@@ -139,7 +151,21 @@ fun MapScreen(
                 SmallFloatingActionButton(onClick = onToggleEstimateOnly) {
                     Icon(if (metrics.estimateOnly) Icons.Filled.GpsOff else Icons.Filled.GpsFixed, stringResource(R.string.toggle_mode))
                 }
+                if (!metrics.estimateOnly) {
+                    SmallFloatingActionButton(onClick = { showVisualFix = true }) {
+                        Icon(Icons.Filled.Visibility, stringResource(R.string.visual_fix))
+                    }
+                }
             }
+        }
+
+        if (showVisualFix) {
+            VisualFixDialog(
+                candidates = remember(showVisualFix) { visualFixCandidates() },
+                settings = settings, hebrew = hebrew,
+                onConfirm = { place, side, dist -> onVisualFix(place, side, dist); showVisualFix = false },
+                onDismiss = { showVisualFix = false }
+            )
         }
 
         // -- Metrics panel --
@@ -158,6 +184,7 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
             } else if (m.estimateOnly) {
                 Text(stringResource(R.string.mode_estimate_only), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 Text(stringResource(R.string.phase_label, phaseName(m.estimate.phase)), style = MaterialTheme.typography.labelMedium)
+                m.overflownCountry?.let { c -> Text(stringResource(R.string.over_country, c), style = MaterialTheme.typography.labelMedium) }
             } else {
                 val e = m.estimate
                 val gnss = when (e.gnssQuality) {
@@ -173,6 +200,9 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
                 Text(gnss, style = MaterialTheme.typography.labelMedium)
                 Text(mode, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 Text(stringResource(R.string.fix_age, Format.ageSeconds(e.lastFixAgeMs)), style = MaterialTheme.typography.labelMedium)
+            }
+            m?.overflownCountry?.let { c ->
+                Text(stringResource(R.string.over_country, c), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -265,3 +295,65 @@ fun phaseName(p: org.skytrack.sensors.FlightPhase): String = stringResource(when
     org.skytrack.sensors.FlightPhase.DESCENT -> R.string.phase_descent
     org.skytrack.sensors.FlightPhase.LANDED -> R.string.phase_landed
 })
+
+/**
+ * Manual visual fix: the user picks a landmark seen out of the window, the side,
+ * and a rough distance. Candidates come from the bundled populated places
+ * within VISUAL_FIX_SEARCH_RADIUS_M of the current estimate.
+ */
+@Composable
+private fun VisualFixDialog(
+    candidates: List<Pair<GeoData.Place, Double>>,
+    settings: Settings,
+    hebrew: Boolean,
+    onConfirm: (GeoData.Place, Boolean?, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selected by remember { mutableStateOf<GeoData.Place?>(candidates.firstOrNull()?.first) }
+    var side by remember { mutableStateOf(1) }       // 0 = left, 1 = below, 2 = right
+    var dist by remember { mutableStateOf(2) }       // 1 = near, 2 = mid, 3 = far (0 = below, implied by side)
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.visual_fix)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.visual_fix_hint), style = MaterialTheme.typography.bodySmall)
+                if (candidates.isEmpty()) {
+                    Text(stringResource(R.string.visual_fix_none), color = MaterialTheme.colorScheme.error)
+                } else {
+                    Column(Modifier.height(200.dp).verticalScroll(rememberScrollState())) {
+                        for ((place, d) in candidates) {
+                            Row(Modifier.fillMaxWidth().clickable { selected = place }.padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                androidx.compose.material3.RadioButton(selected = selected === place, onClick = { selected = place })
+                                Text(place.label(hebrew), Modifier.weight(1f), maxLines = 1)
+                                Text(Format.distance(d, settings.distanceUnit), style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+                Text(stringResource(R.string.visual_side), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    androidx.compose.material3.FilterChip(selected = side == 0, onClick = { side = 0 }, label = { Text(stringResource(R.string.side_left)) })
+                    androidx.compose.material3.FilterChip(selected = side == 1, onClick = { side = 1 }, label = { Text(stringResource(R.string.side_below)) })
+                    androidx.compose.material3.FilterChip(selected = side == 2, onClick = { side = 2 }, label = { Text(stringResource(R.string.side_right)) })
+                }
+                if (side != 1) {
+                    Text(stringResource(R.string.visual_distance), style = MaterialTheme.typography.labelLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        androidx.compose.material3.FilterChip(selected = dist == 1, onClick = { dist = 1 }, label = { Text(stringResource(R.string.dist_near)) })
+                        androidx.compose.material3.FilterChip(selected = dist == 2, onClick = { dist = 2 }, label = { Text(stringResource(R.string.dist_mid)) })
+                        androidx.compose.material3.FilterChip(selected = dist == 3, onClick = { dist = 3 }, label = { Text(stringResource(R.string.dist_far)) })
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                enabled = selected != null,
+                onClick = { selected?.let { onConfirm(it, if (side == 1) null else side == 2, if (side == 1) 0 else dist) } }
+            ) { Text(stringResource(R.string.apply_fix)) }
+        },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.back)) } }
+    )
+}

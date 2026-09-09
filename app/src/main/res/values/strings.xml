@@ -131,7 +131,9 @@
     <string name="help_setup_title">Entering a flight</string>
     <string name="help_setup_body">Choose origin and destination by IATA code (TLV, LHR) or by city / airport name in English. Fastest: tap "Scan boarding pass" and point the camera at the barcode, or pick a screenshot of the pass; origin, destination and flight number are read from it. The scheduled departure time is optional and is used only when no GPS fix is available. Tap "Start flight". Return here any time with the aircraft button to correct the plan or end the flight.</string>
     <string name="help_map_title">Map controls</string>
-    <string name="help_map_body">+ / \u2212 zoom (also pinch or double-tap). Frame button: show the whole route. Target button: centre on the aircraft. Compass / aircraft button: north-up or track-up. GPS button: switch between live tracking and estimate-only. Dragging the map pauses following for 20 seconds. The bottom panel expands on tap.</string>
+    <string name="help_map_body">Eye button: visual fix \u2014 pick a city or place you can see out of the window, the side and a rough distance; the aircraft is moved along the route accordingly (about 15 km accuracy, useful only without GPS). + / \u2212 zoom (also pinch or double-tap). Frame button: show the whole route. Target button: centre on the aircraft. Compass / aircraft button: north-up or track-up. GPS button: switch between live tracking and estimate-only. Dragging the map pauses following for 20 seconds. The bottom panel expands on tap.</string>
+    <string name="help_aerial_title">Aerial imagery</string>
+    <string name="help_aerial_body">In Settings you can download once (on Wi-Fi, about 60\u201380 MB) the NASA Blue Marble satellite mosaic (public domain) and show it under the lines and labels. Resolution is about 1 km per pixel, matching what is visible from cruise altitude: mountains, coasts, deserts, lakes. This is the only download the app ever makes; in flight everything is local.</string>
     <string name="help_lines_title">Lines on the map</string>
     <string name="help_lines_body">Dashed line: the remaining planned route. Solid orange line: the part already flown. Faint dotted line: the original plan, shown only after the route has been re-planned. Turquoise line: the actual measured track, shown only after a proven deviation. Shaded band: the along-route uncertainty of the position.</string>
     <string name="help_modes_title">Tracking modes</string>
@@ -150,6 +152,38 @@
     <string name="help_logs_body">When enabled in Settings, each live flight writes a CSV file on this phone (Android/data/com.galker.flightinfo/files/logs) with the estimate and the raw GPS, barometer and gyroscope readings, once per second. Nothing is uploaded. "Share latest log" sends the file through any app you choose; a real flight log is the best way to calibrate the estimator.</string>
     <string name="help_limits_title">Limitations</string>
     <string name="help_limits_body">Without GPS the aircraft follows the direct route; real routing may differ by hundreds of kilometres for weather or airspace, and the app cannot know until GPS returns. No flight-number lookup: there is no free offline schedule database, hence the boarding-pass scan. Local time at the current position is shown as UTC. The Earth is modelled as a sphere (0.3 % distance error).</string>
+
+    <!-- Visual fix, aerial imagery, takeoff time (v2.3) -->
+    <string name="visual_fix">Visual fix</string>
+    <string name="visual_fix_hint">Identify something you can see out of the window. Rough accuracy \u00B115 km; useful only when there is no GPS.</string>
+    <string name="visual_fix_none">No known places within 200 km of the estimated position.</string>
+    <string name="visual_side">Where is it?</string>
+    <string name="side_left">Left window</string>
+    <string name="side_below">Straight below</string>
+    <string name="side_right">Right window</string>
+    <string name="visual_distance">How far?</string>
+    <string name="dist_near">Close (~20 km)</string>
+    <string name="dist_mid">Mid (~55 km)</string>
+    <string name="dist_far">Horizon (~100 km)</string>
+    <string name="apply_fix">Apply</string>
+    <string name="over_country">Over: %1$s</string>
+    <string name="over_country_label">Country below</string>
+    <string name="visual_fixes">Visual fixes</string>
+    <string name="barometer">Barometer</string>
+    <string name="present">present</string>
+    <string name="absent">not in this phone</string>
+    <string name="no_barometer_note">This phone has no barometer: climb and descent are detected from GPS only, and takeoff time cannot be captured without a fix.</string>
+    <string name="aerial_title">Aerial imagery (NASA Blue Marble)</string>
+    <string name="aerial_installed">Installed, %1$d MB. Public-domain satellite mosaic, ~1 km per pixel.</string>
+    <string name="aerial_not_installed">Not installed. One-time download of about 60\u201380 MB on Wi-Fi; afterwards works fully offline.</string>
+    <string name="aerial_hint">Shows continents, mountains, deserts and coastlines as seen from cruise altitude. Cities and roads are not resolved at this scale.</string>
+    <string name="aerial_error">Download failed: %1$s</string>
+    <string name="aerial_download">Download</string>
+    <string name="aerial_redownload">Download again</string>
+    <string name="aerial_delete">Delete</string>
+    <string name="aerial_show">Show imagery on the map</string>
+    <string name="actual_takeoff">Actual takeoff time (optional)</string>
+    <string name="actual_takeoff_hint">HH:MM, origin local time. If you know it (airline app, watch), it replaces the scheduled time + 15 min assumption and greatly improves the estimate without GPS.</string>
 
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>

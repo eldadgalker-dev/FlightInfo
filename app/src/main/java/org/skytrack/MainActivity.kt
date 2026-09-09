@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MainActivity
-// Version 2.1
+// Version 2.3
 // Purpose : Single-activity host. Simple state-based navigation between
 //           Setup / Map / Metrics / Settings, runtime permission requests,
 //           and foreground-service start/stop tied to the active flight.
@@ -138,6 +138,9 @@ private fun Root(app: SkyTrackApp) {
                         onOpenSettings = { screen = Screen.SETTINGS },
                         onOpenSetup = { screen = Screen.SETUP },
                         onOpenHelp = { screen = Screen.HELP },
+                        visualFixCandidates = { app.engine.visualFixCandidates() },
+                        onVisualFix = { place, side, dist -> app.engine.applyVisualFix(place.point, side, dist) },
+                        hebrew = app.hebrew,
                         onToggleEstimateOnly = {
                             val nowEstimate = !(metrics?.estimateOnly ?: false)
                             app.engine.setEstimateOnly(nowEstimate)
@@ -148,7 +151,8 @@ private fun Root(app: SkyTrackApp) {
                 }
                 Screen.METRICS -> {
                     BackHandler { screen = Screen.MAP }
-                    MetricsScreen(metrics, settings) { screen = Screen.MAP }
+                    val baro by app.engine.baroAvailable.collectAsStateWithLifecycle()
+                    MetricsScreen(metrics, settings, baro) { screen = Screen.MAP }
                 }
                 Screen.SETTINGS -> {
                     BackHandler { screen = Screen.MAP }
@@ -160,7 +164,8 @@ private fun Root(app: SkyTrackApp) {
                         onHelp = { screen = Screen.HELP },
                         onShareLog = { shareLatestLog(context, app) },
                         onDeleteLogs = { app.engine.logger.deleteAll(); logCount = 0 },
-                        logCount = logCount
+                        logCount = logCount,
+                        aerial = remember { org.skytrack.map.AerialPack(context) }
                     )
                 }
                 Screen.HELP -> {

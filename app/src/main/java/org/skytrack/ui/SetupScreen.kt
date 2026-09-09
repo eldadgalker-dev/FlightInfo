@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - SetupScreen
-// Version 2.1
+// Version 2.3
 // Purpose : Flight plan entry: origin (auto-suggested from the last ground
 //           fix), destination search, optional flight number and scheduled
 //           departure. Starts or clears the active flight.
@@ -71,6 +71,7 @@ fun SetupScreen(
     var destination by remember { mutableStateOf(existing?.let { airports.byCode(it.destinationIata) }) }
     var flightNumber by rememberSaveable { mutableStateOf(existing?.flightNumber ?: "") }
     var estimateOnly by rememberSaveable { mutableStateOf(existing?.estimateOnly ?: false) }
+    var takeoffText by rememberSaveable { mutableStateOf("") }
     var departure by rememberSaveable { mutableStateOf(existing?.scheduledDepartureMs?.let { ms ->
         val zone = ZoneId.of(origin?.tz ?: "UTC")
         java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
@@ -119,6 +120,13 @@ fun SetupScreen(
             singleLine = true, modifier = Modifier.fillMaxWidth()
         )
 
+        OutlinedTextField(
+            value = takeoffText, onValueChange = { takeoffText = it.take(5) },
+            label = { Text(stringResource(R.string.actual_takeoff)) },
+            supportingText = { Text(stringResource(R.string.actual_takeoff_hint)) },
+            singleLine = true, modifier = Modifier.fillMaxWidth()
+        )
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.estimate_only), style = MaterialTheme.typography.bodyLarge)
@@ -139,10 +147,13 @@ fun SetupScreen(
                 val d = destination ?: return@Button
                 val depMs = parseDeparture(departure, o.tz)
                 if (departure.isNotBlank() && depMs == null) { error = errTime; return@Button }
-                if (estimateOnly && depMs == null) { error = errNeedTime; return@Button }
+                val manualTakeoff = parseDeparture(takeoffText, o.tz)
+                if (takeoffText.isNotBlank() && manualTakeoff == null) { error = errTime; return@Button }
+                if (estimateOnly && depMs == null && manualTakeoff == null) { error = errNeedTime; return@Button }
                 error = null
                 val keepTakeoff = existing?.let { ex -> ex.takeoffMs?.takeIf { ex.originIata == o.iata && ex.destinationIata == d.iata } }
-                onStart(FlightPlan(o.iata, d.iata, flightNumber.trim(), depMs, if (estimateOnly) null else keepTakeoff, estimateOnly))
+                val takeoff = manualTakeoff ?: (if (estimateOnly) null else keepTakeoff)
+                onStart(FlightPlan(o.iata, d.iata, flightNumber.trim(), depMs, takeoff, estimateOnly))
             },
             enabled = origin != null && destination != null && origin?.iata != destination?.iata,
             modifier = Modifier.fillMaxWidth()

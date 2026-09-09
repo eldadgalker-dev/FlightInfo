@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Metrics
-// Version 2.0
+// Version 2.3
 // Purpose : Derive every displayed value (origin / now / destination
 //           columns) from a PositionEstimate, the Route and the airports.
 //           Time zones come from the airport table (IANA); the current
@@ -31,6 +31,7 @@ data class FlightMetrics(
     val plannedRoute: Route,        // original great circle origin -> destination
     val actualTrack: List<GeoPoint>,// decimated GOOD fixes (drawn once a deviation is proven)
     val estimateOnly: Boolean,      // sensors deliberately ignored
+    val overflownCountry: String?,  // localised name of the country under the estimated position
     val routeLengthM: Double,
     val flownM: Double,
     val remainingM: Double,
@@ -54,7 +55,8 @@ data class FlightMetrics(
 object Metrics {
 
     fun compute(e: PositionEstimate, route: Route, plannedRoute: Route, actualTrack: List<GeoPoint>,
-                estimateOnly: Boolean, origin: Airport, destination: Airport, takeoffMs: Long?): FlightMetrics {
+                estimateOnly: Boolean, origin: Airport, destination: Airport, takeoffMs: Long?,
+                overflownCountry: String? = null): FlightMetrics {
         val remaining = (route.lengthM - e.alongTrackM).coerceAtLeast(0.0)
         val flown = e.totalFlownM.coerceAtLeast(0.0)
         val total = flown + remaining
@@ -85,7 +87,7 @@ object Metrics {
 
         return FlightMetrics(
             estimate = e, origin = origin, destination = destination, route = route,
-            plannedRoute = plannedRoute, actualTrack = actualTrack, estimateOnly = estimateOnly,
+            plannedRoute = plannedRoute, actualTrack = actualTrack, estimateOnly = estimateOnly, overflownCountry = overflownCountry,
             routeLengthM = total, flownM = flown, remainingM = remaining,
             percentComplete = if (total > 0) 100.0 * flown / total else 0.0,
             elapsedS = elapsed, eteS = eteS, etaUtc = eta,

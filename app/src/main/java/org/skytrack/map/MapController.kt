@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 2.2
+// Version 2.3
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -40,6 +40,7 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
 
     private var style: Style? = null
     private var palette: Palette = MapStyle.NIGHT
+    private var aerialUrl: String? = null
     private var ready = false
 
     // Marker animation state
@@ -76,8 +77,9 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
     fun setRotateGestures(enabled: Boolean) { map.uiSettings.isRotateGesturesEnabled = enabled }
 
     /** Load (or reload) the style for a palette. Base GeoJSON is read off the main thread once. */
-    fun setPalette(p: Palette) {
+    fun setPalette(p: Palette, aerialTileUrl: String? = aerialUrl) {
         palette = p
+        aerialUrl = aerialTileUrl
         ready = false
         lastRouteHash = 0
         map.setStyle(Style.Builder().fromJson(MapStyle.styleJson(p))) { st ->
@@ -86,7 +88,7 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
                 val base = baseData(context)
                 mainHandler.post {
                     if (style !== st) return@post
-                    MapStyle.install(st, p, base, isHebrewLocale())
+                    MapStyle.install(st, p, base, isHebrewLocale(), aerialTileUrl)
                     ready = true
                     pendingMetrics?.let { update(it) }
                 }

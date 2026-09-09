@@ -11,6 +11,9 @@ Offline in-flight position tracker for Android. Shows your aircraft on a map usi
 - Every value carries a confidence marker: measured / fused / predicted / stale
 - Zoom in/out, fit route, recenter, north-up / track-up, day/night themes
 - Runs in a foreground service so the estimate keeps updating with the screen off
+- **Visual fix**: pick a city you see out of the window (side + rough distance) to move the estimate along the route when there is no GPS (about 15 km accuracy)
+- **Aerial imagery** (optional): NASA Blue Marble mosaic, public domain, downloaded once (~60-80 MB) from the project's GitHub Release and shown under the vector layers
+- **Country below** the aircraft, from bundled polygons (point-in-polygon)
 - **Boarding-pass scan**: camera or screenshot; reads origin, destination and flight number from the IATA BCBP barcode (PDF417 / Aztec / QR), fully offline
 - English and Hebrew (full RTL)
 
@@ -52,6 +55,10 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 ### Publishing a new version from Windows (no Git knowledge needed)
 
 `tools/update_github.bat` takes a project zip, mirrors it into a local clone (including `.github` and deleted files), commits and pushes; GitHub Actions then builds the APK. Requirements: Git for Windows (the tool opens the download page if it is missing). Usage: drag the zip onto `update_github.bat`, or double-click it and pick the zip. Append `tag` (`update_github.bat x.zip tag`) to also create a `v<version>` tag, which produces a GitHub Release with the APK attached. Repository URL and author are Parameters at the top of `update_github.ps1`.
+
+### Aerial imagery pack
+
+`.github/workflows/bluemarble.yml` (run manually from the Actions tab) downloads a NASA Blue Marble Next Generation image, reprojects it with `tools/build_bluemarble.py` into `bluemarble_z0-6.mbtiles` (Web Mercator, zoom 0-6, ~60-80 MB estimated) and attaches it to the release `data-v1`. The app downloads that file on demand from Settings (`Parameters.AERIAL_PACK_URL`) and reads it locally through MapLibre's `mbtiles://` scheme. The default source URL is on NASA's Visible Earth image server; if NASA moves it, pass another equirectangular Blue Marble URL as the workflow input.
 
 ### Regenerating bundled data
 

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MetricsAndSettingsScreens
-// Version 2.1
+// Version 2.3
 // Purpose : Full-page metrics view (Origin / Now / Destination columns)
 //           and the settings page (units, clock, theme, follow, gestures).
 // =============================================================
@@ -24,12 +24,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -45,9 +51,11 @@ import org.skytrack.data.ThemeMode
 import org.skytrack.fusion.Confidence
 import org.skytrack.fusion.FlightMetrics
 import org.skytrack.fusion.FusionMode
+import org.skytrack.map.AerialPack
+import kotlinx.coroutines.launch
 
 @Composable
-fun MetricsScreen(m: FlightMetrics?, s: Settings, onBack: () -> Unit) {
+fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -102,8 +110,16 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, onBack: () -> Unit) {
                     if (cross == null) "--" else Format.distance(kotlin.math.abs(cross), s.distanceUnit), null),
                 Triple(stringResource(R.string.deviation_evidence), "${e.deviationEvidence}/${e.deviationRequired}", null),
                 Triple(stringResource(R.string.replans), "${e.replanCount}", null),
+                Triple(stringResource(R.string.visual_fixes), "${e.visualFixCount}", null),
+                Triple(stringResource(R.string.barometer), when (baroAvailable) {
+                    null -> "--"; true -> stringResource(R.string.present); false -> stringResource(R.string.absent) }, null),
+                Triple(stringResource(R.string.over_country_label), m.overflownCountry ?: "--", null),
                 Triple(stringResource(R.string.position), String.format(java.util.Locale.US, "%.3f, %.3f", e.lat, e.lon), e.positionConfidence)
             ))
+            if (baroAvailable == false) {
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.no_barometer_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
         }
         Text(stringResource(R.string.legend), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -135,7 +151,7 @@ private fun Grid(items: List<Triple<String, String, Confidence?>>) {
 
 @Composable
 fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit, onHelp: () -> Unit,
-                   onShareLog: () -> Unit, onDeleteLogs: () -> Unit, logCount: Int) {
+                   onShareLog: () -> Unit, onDeleteLogs: () -> Unit, logCount: Int, aerial: AerialPack) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -160,6 +176,8 @@ fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit
         ToggleRow(stringResource(R.string.auto_follow), s.autoFollow) { onChange(s.copy(autoFollow = it)) }
         ToggleRow(stringResource(R.string.track_up_default), s.trackUp) { onChange(s.copy(trackUp = it)) }
         ToggleRow(stringResource(R.string.rotate_gestures), s.rotateGestures) { onChange(s.copy(rotateGestures = it)) }
+        HorizontalDivider()
+        AerialSection(s, onChange, aerial)
         HorizontalDivider()
         ToggleRow(stringResource(R.string.log_flights), s.logFlights) { onChange(s.copy(logFlights = it)) }
         Text(stringResource(R.string.log_flights_hint, logCount), style = MaterialTheme.typography.bodySmall,
@@ -191,6 +209,44 @@ private fun AboutBlock() {
             Text(stringResource(id), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
         }
+    }
+}
+
+/** Optional Blue Marble imagery pack: status, download with progress, show/hide, delete. */
+@Composable
+private fun AerialSection(s: Settings, onChange: (Settings) -> Unit, aerial: AerialPack) {
+    val scope = rememberCoroutineScope()
+    var installed by remember { mutableStateOf(aerial.installed) }
+    var progress by remember { mutableStateOf<Int?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.aerial_title), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(if (installed) R.string.aerial_installed else R.string.aerial_not_installed, aerial.sizeMb),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.aerial_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val p = progress
+        if (p != null) {
+            if (p >= 0) LinearProgressIndicator(progress = { p / 100f }, modifier = Modifier.fillMaxWidth())
+            else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text(if (p >= 0) "$p%" else "...", style = MaterialTheme.typography.labelSmall)
+        }
+        error?.let { Text(stringResource(R.string.aerial_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = {
+                    error = null; progress = -1
+                    scope.launch {
+                        val err = aerial.download { pct -> progress = pct }
+                        progress = null
+                        if (err != null) error = err else { installed = true; onChange(s.copy(aerial = true)) }
+                    }
+                },
+                enabled = progress == null, modifier = Modifier.weight(1f)
+            ) { Text(stringResource(if (installed) R.string.aerial_redownload else R.string.aerial_download)) }
+            OutlinedButton(onClick = { aerial.delete(); installed = false; onChange(s.copy(aerial = false)) },
+                enabled = installed && progress == null, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.aerial_delete)) }
+        }
+        if (installed) ToggleRow(stringResource(R.string.aerial_show), s.aerial) { onChange(s.copy(aerial = it)) }
     }
 }
 

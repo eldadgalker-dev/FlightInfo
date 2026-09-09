@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Estimator
-// Version 2.0
+// Version 2.3
 // Purpose : Route-anchored position estimator.
 //
 //           Principle: the governing route is the strongest hypothesis. The
@@ -57,6 +57,7 @@ data class PositionEstimate(
     val deviationEvidence: Int,         // consistent fixes accumulated toward a proven deviation
     val deviationRequired: Int,
     val replanCount: Int,
+    val visualFixCount: Int,
     val originMismatchM: Double?,       // on ground: distance between fix and origin if beyond threshold
     val mode: FusionMode,
     val phase: FlightPhase,
@@ -80,6 +81,8 @@ class Estimator(val plannedRoute: Route) {
     val actualTrack: MutableList<GeoPoint> = ArrayList()
 
     var replanCount = 0
+        private set
+    var visualFixCount = 0
         private set
 
     // -- Kinematic state on the governing route --
@@ -142,6 +145,40 @@ class Estimator(val plannedRoute: Route) {
             }
         }
         lastGyroMs = g.timeMs
+    }
+
+    /**
+     * Manual visual fix. The user identified a landmark out of the window.
+     * @param landmark      position of the identified object
+     * @param sideRight     true = seen out of the right-hand window, false = left, null = straight below
+     * @param distanceM     estimated slant-ground distance to the landmark
+     * @param sigmaM        1-sigma of the implied aircraft position
+     * The implied aircraft position is the landmark displaced perpendicular to
+     * the route course, toward the aircraft's side. Only the along-track
+     * component is applied (route anchoring); the lateral component is exposed
+     * as a measured offset like any other fix.
+     */
+    fun onVisualFix(landmark: GeoPoint, sideRight: Boolean?, distanceM: Double, sigmaM: Double, now: Long, phase: FlightPhase) {
+        val brg = route.bearingAt(s)
+        val aircraft = when (sideRight) {
+            null -> landmark
+            // Landmark on the right => aircraft lies to the LEFT of the landmark => bearing course - 90.
+            true -> Geodesy.destination(landmark, Geodesy.wrapBearing(brg - 90.0), distanceM)
+            false -> Geodesy.destination(landmark, Geodesy.wrapBearing(brg + 90.0), distanceM)
+        }
+        val proj = route.project(aircraft)
+        val r = max(sigmaM, Parameters.SIGMA_MIN_M)
+        val k = (sigmaS * sigmaS) / (sigmaS * sigmaS + r * r)
+        s = (s + k * (proj.alongM - s)).coerceIn(0.0, route.lengthM)
+        sigmaS = max(Parameters.SIGMA_MIN_M, sqrt((1 - k) * sigmaS * sigmaS))
+        lastCross = proj.crossM; lastCrossMs = now
+        if (vRef < Parameters.PHASE_GROUND_SPEED_MPS) vRef = phaseSpeed(phase)
+        if (v < Parameters.PHASE_GROUND_SPEED_MPS) v = vRef
+        // A visual fix is a position observation: leave PREDICTED_ONLY, but as an aged fix so
+        // ROUTE_CONSTRAINED propagation takes over immediately.
+        everFixed = true
+        lastFixMs = now - Parameters.GNSS_LOSS_TO_CONSTRAINED_MS - 1
+        visualFixCount++
     }
 
     fun onGnss(g: GnssSample, phase: FlightPhase) {
@@ -326,6 +363,7 @@ class Estimator(val plannedRoute: Route) {
             deviationEvidence = evidence.size,
             deviationRequired = if (turnRecent) Parameters.DEVIATION_MIN_FIXES_TURN else Parameters.DEVIATION_MIN_FIXES,
             replanCount = replanCount,
+            visualFixCount = visualFixCount,
             originMismatchM = if (sensorsLive && onGround) originMismatch else null,
             mode = mode, phase = phase, lastFixAgeMs = if (everFixed && sensorsLive) now - lastFixMs else -1L,
             satsUsed = satsUsed, satsVisible = satsVisible, gnssQuality = if (sensorsLive) lastQuality else GnssQuality.NONE,
