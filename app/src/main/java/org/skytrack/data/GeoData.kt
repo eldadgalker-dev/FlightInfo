@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - GeoData
-// Version 1.0
+// Version 1.1
 // Purpose : In-memory access to the bundled Natural Earth reference data
 //           for two features:
 //             - nearby populated places (for the manual visual fix)
@@ -27,7 +27,22 @@ class GeoData(private val context: Context) {
     }
 
     /** One outer ring: interleaved lon/lat pairs plus a bounding box for fast rejection. */
-    private class Ring(val coords: DoubleArray, val minLon: Double, val maxLon: Double, val minLat: Double, val maxLat: Double)
+    class Ring(val coords: DoubleArray, val minLon: Double, val maxLon: Double, val minLat: Double, val maxLat: Double) {
+        /** Ray-casting point-in-polygon on the outer ring (holes ignored: no country has an enclave that matters here). */
+        fun contains(lon: Double, lat: Double): Boolean {
+            if (lon < minLon || lon > maxLon || lat < minLat || lat > maxLat) return false
+            var inside = false
+            val n = coords.size / 2
+            var j = n - 1
+            for (i in 0 until n) {
+                val xi = coords[2 * i]; val yi = coords[2 * i + 1]
+                val xj = coords[2 * j]; val yj = coords[2 * j + 1]
+                if ((yi > lat) != (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside
+                j = i
+            }
+            return inside
+        }
+    }
 
     class Country(val name: String, val nameHe: String?, private val rings: List<Ring>) {
         fun label(hebrew: Boolean): String = if (hebrew && nameHe != null) nameHe else name
@@ -103,19 +118,4 @@ class GeoData(private val context: Context) {
     }
 
     private fun readAsset(name: String): String = context.assets.open(name).bufferedReader().use { it.readText() }
-
-    /** Ray-casting point-in-polygon on the outer ring (holes ignored: no country has an enclave that matters here). */
-    private fun Ring.contains(lon: Double, lat: Double): Boolean {
-        if (lon < minLon || lon > maxLon || lat < minLat || lat > maxLat) return false
-        var inside = false
-        val n = coords.size / 2
-        var j = n - 1
-        for (i in 0 until n) {
-            val xi = coords[2 * i]; val yi = coords[2 * i + 1]
-            val xj = coords[2 * j]; val yj = coords[2 * j + 1]
-            if ((yi > lat) != (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside
-            j = i
-        }
-        return inside
-    }
 }
