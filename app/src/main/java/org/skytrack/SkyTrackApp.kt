@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - SkyTrackApp
-// Version 1.1
+// Version 2.1
 // Purpose : Application entry point; owns the singletons (manual DI, no
 //           framework) and initialises MapLibre. Resumes the previous
 //           flight automatically so the map is populated on relaunch.
@@ -15,6 +15,7 @@ import org.maplibre.android.MapLibre
 import org.skytrack.data.AirportRepository
 import org.skytrack.data.Stores
 import org.skytrack.service.FlightEngine
+import org.skytrack.service.FlightLogger
 
 class SkyTrackApp : Application() {
 
@@ -30,7 +31,7 @@ class SkyTrackApp : Application() {
         MapLibre.getInstance(this)
         airports = AirportRepository(this)
         stores = Stores(this)
-        engine = FlightEngine(airports, stores)
+        engine = FlightEngine(airports, stores, FlightLogger(this))
         stores.plan.value?.let { engine.start(it) }
     }
 }

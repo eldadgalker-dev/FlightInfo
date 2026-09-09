@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 1.1
+// Version 2.1
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -31,7 +31,11 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.GpsOff
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
@@ -71,12 +75,14 @@ fun MapScreen(
     night: Boolean,
     onOpenMetrics: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenSetup: () -> Unit
+    onOpenSetup: () -> Unit,
+    onOpenHelp: () -> Unit,
+    onToggleEstimateOnly: () -> Unit
 ) {
     val mapView = rememberMapViewWithLifecycle()
     var controller by remember { mutableStateOf<MapController?>(null) }
     var trackUp by rememberSaveable { mutableStateOf(settings.trackUp) }
-    var panelExpanded by rememberSaveable { mutableStateOf(true) }
+    var panelExpanded by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
         AndroidView(
@@ -106,9 +112,9 @@ fun MapScreen(
         // -- Status strip --
         StatusStrip(metrics, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(8.dp))
 
-        // -- Floating controls (right edge) --
+        // -- Floating controls: top corners, below the status strip, clear of the panel --
         Column(
-            Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+            Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 64.dp, end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             SmallFloatingActionButton(onClick = { controller?.zoomIn() }) { Icon(Icons.Filled.Add, stringResource(R.string.zoom_in)) }
@@ -120,14 +126,20 @@ fun MapScreen(
             }
         }
 
-        // -- Left controls: settings, metrics, setup --
+        // -- Left controls: metrics, settings, setup, help, live/estimate --
         Column(
-            Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
+            Modifier.align(Alignment.TopStart).statusBarsPadding().padding(top = 64.dp, start = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.List, stringResource(R.string.metrics)) }
             SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
             SmallFloatingActionButton(onClick = onOpenSetup) { Icon(Icons.Filled.Flight, stringResource(R.string.flight_setup)) }
+            SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Info, stringResource(R.string.help)) }
+            if (metrics != null) {
+                SmallFloatingActionButton(onClick = onToggleEstimateOnly) {
+                    Icon(if (metrics.estimateOnly) Icons.Filled.GpsOff else Icons.Filled.GpsFixed, stringResource(R.string.toggle_mode))
+                }
+            }
         }
 
         // -- Metrics panel --
@@ -143,6 +155,9 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             if (m == null) {
                 Text(stringResource(R.string.no_flight), style = MaterialTheme.typography.labelMedium)
+            } else if (m.estimateOnly) {
+                Text(stringResource(R.string.mode_estimate_only), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.phase_label, phaseName(m.estimate.phase)), style = MaterialTheme.typography.labelMedium)
             } else {
                 val e = m.estimate
                 val gnss = when (e.gnssQuality) {
@@ -154,7 +169,6 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
                     FusionMode.GNSS_TRACKING -> stringResource(R.string.mode_tracking)
                     FusionMode.ROUTE_CONSTRAINED -> stringResource(R.string.mode_constrained)
                     FusionMode.PREDICTED_ONLY -> stringResource(R.string.mode_predicted)
-                    FusionMode.OFF_ROUTE -> stringResource(R.string.mode_off_route)
                 }
                 Text(gnss, style = MaterialTheme.typography.labelMedium)
                 Text(mode, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -167,36 +181,51 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
 @Composable
 private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onToggle: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onToggle() },
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onToggle() },
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
     ) {
         if (m == null) {
             Text(stringResource(R.string.no_flight_hint), Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
             return@Surface
         }
         val e = m.estimate
-        Column(Modifier.padding(12.dp)) {
-            // Row 1: the three headline values
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                LabeledValue(stringResource(R.string.remaining), Format.distance(m.remainingM, s.distanceUnit), e.positionConfidence, big = true)
-                LabeledValue(stringResource(R.string.ete), Format.duration(m.eteS), m.eteConfidence, big = true)
-                LabeledValue(stringResource(R.string.eta_local, m.destination.iata), Format.time(m.etaAtDestination, s.use24h), m.eteConfidence, big = true)
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            e.originMismatchM?.let { d ->
+                Text(stringResource(R.string.origin_mismatch, Format.distance(d, s.distanceUnit), m.origin.iata),
+                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            // Headline: three equal cells, values never wrap.
+            Row(Modifier.fillMaxWidth()) {
+                LabeledValue(stringResource(R.string.remaining), Format.distance(m.remainingM, s.distanceUnit), e.positionConfidence, big = true, modifier = Modifier.weight(1f))
+                LabeledValue(stringResource(R.string.ete), Format.duration(m.eteS), m.eteConfidence, big = true, modifier = Modifier.weight(1f))
+                LabeledValue(stringResource(R.string.eta_local, m.destination.iata), Format.time(m.etaAtDestination, s.use24h), m.eteConfidence, big = true, modifier = Modifier.weight(1f))
             }
             if (expanded) {
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    LabeledValue(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, s.speedUnit), e.speedConfidence)
-                    LabeledValue(stringResource(R.string.altitude), Format.altitude(e.altM, s.altitudeUnit), e.altitudeConfidence)
-                    LabeledValue(stringResource(R.string.track), Format.heading(e.trackDeg), e.trackConfidence)
-                    LabeledValue(stringResource(R.string.vertical_rate), Format.verticalRate(e.verticalRateMps, s.altitudeUnit), e.altitudeConfidence)
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                Row(Modifier.fillMaxWidth()) {
+                    LabeledValue(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, s.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.altitude), Format.altitude(e.altM, s.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.track), Format.heading(e.trackDeg), e.trackConfidence, modifier = Modifier.weight(1f))
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    LabeledValue(stringResource(R.string.flown), "${Format.distance(m.flownM, s.distanceUnit)} (${Format.percent(m.percentComplete)})", e.positionConfidence)
-                    LabeledValue(stringResource(R.string.elapsed), Format.duration(m.elapsedS))
-                    LabeledValue(stringResource(R.string.time_at, m.origin.iata), Format.time(m.nowAtOrigin, s.use24h))
-                    LabeledValue(stringResource(R.string.time_at, m.destination.iata), Format.time(m.nowAtDestination, s.use24h))
+                Row(Modifier.fillMaxWidth()) {
+                    LabeledValue(stringResource(R.string.flown), Format.distance(m.flownM, s.distanceUnit), e.positionConfidence, modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.progress), Format.percent(m.percentComplete), e.positionConfidence, modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.elapsed), Format.duration(m.elapsedS), modifier = Modifier.weight(1f))
                 }
+                Row(Modifier.fillMaxWidth()) {
+                    LabeledValue(stringResource(R.string.time_at, m.origin.iata), Format.time(m.nowAtOrigin, s.use24h), modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.time_at, m.destination.iata), Format.time(m.nowAtDestination, s.use24h), modifier = Modifier.weight(1f))
+                }
+                val cross = e.measuredCrossM
+                if (cross != null && kotlin.math.abs(cross) >= 2_000.0) {
+                    Text(stringResource(R.string.measured_offset, Format.distance(kotlin.math.abs(cross), s.distanceUnit),
+                        e.deviationEvidence, e.deviationRequired),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                Text(stringResource(R.string.panel_expand_hint), style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.CenterHorizontally))
             }
         }
     }
@@ -226,3 +255,13 @@ fun rememberMapViewWithLifecycle(): MapView {
     }
     return mapView
 }
+
+@Composable
+fun phaseName(p: org.skytrack.sensors.FlightPhase): String = stringResource(when (p) {
+    org.skytrack.sensors.FlightPhase.GROUND -> R.string.phase_ground
+    org.skytrack.sensors.FlightPhase.TAKEOFF -> R.string.phase_takeoff
+    org.skytrack.sensors.FlightPhase.CLIMB -> R.string.phase_climb
+    org.skytrack.sensors.FlightPhase.CRUISE -> R.string.phase_cruise
+    org.skytrack.sensors.FlightPhase.DESCENT -> R.string.phase_descent
+    org.skytrack.sensors.FlightPhase.LANDED -> R.string.phase_landed
+})

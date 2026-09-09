@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Metrics
-// Version 1.1
+// Version 2.0
 // Purpose : Derive every displayed value (origin / now / destination
 //           columns) from a PositionEstimate, the Route and the airports.
 //           Time zones come from the airport table (IANA); the current
@@ -15,6 +15,7 @@ package org.skytrack.fusion
 
 import org.skytrack.Parameters
 import org.skytrack.data.Airport
+import org.skytrack.route.GeoPoint
 import org.skytrack.route.Route
 import org.skytrack.sensors.FlightPhase
 import java.time.Instant
@@ -26,7 +27,10 @@ data class FlightMetrics(
     val estimate: PositionEstimate,
     val origin: Airport,
     val destination: Airport,
-    val route: Route,
+    val route: Route,               // governing route (re-planned after a proven deviation)
+    val plannedRoute: Route,        // original great circle origin -> destination
+    val actualTrack: List<GeoPoint>,// decimated GOOD fixes (drawn once a deviation is proven)
+    val estimateOnly: Boolean,      // sensors deliberately ignored
     val routeLengthM: Double,
     val flownM: Double,
     val remainingM: Double,
@@ -49,10 +53,11 @@ data class FlightMetrics(
 
 object Metrics {
 
-    fun compute(e: PositionEstimate, route: Route, origin: Airport, destination: Airport,
-                takeoffMs: Long?): FlightMetrics {
-        val flown = e.alongTrackM.coerceIn(0.0, route.lengthM)
-        val remaining = route.lengthM - flown
+    fun compute(e: PositionEstimate, route: Route, plannedRoute: Route, actualTrack: List<GeoPoint>,
+                estimateOnly: Boolean, origin: Airport, destination: Airport, takeoffMs: Long?): FlightMetrics {
+        val remaining = (route.lengthM - e.alongTrackM).coerceAtLeast(0.0)
+        val flown = e.totalFlownM.coerceAtLeast(0.0)
+        val total = flown + remaining
 
         // Effective speed for ETE: measured speed in cruise, otherwise the phase-typical
         // value, so that a slow taxi or a stale zero does not produce an infinite ETE.
@@ -80,8 +85,9 @@ object Metrics {
 
         return FlightMetrics(
             estimate = e, origin = origin, destination = destination, route = route,
-            routeLengthM = route.lengthM, flownM = flown, remainingM = remaining,
-            percentComplete = if (route.lengthM > 0) 100.0 * flown / route.lengthM else 0.0,
+            plannedRoute = plannedRoute, actualTrack = actualTrack, estimateOnly = estimateOnly,
+            routeLengthM = total, flownM = flown, remainingM = remaining,
+            percentComplete = if (total > 0) 100.0 * flown / total else 0.0,
             elapsedS = elapsed, eteS = eteS, etaUtc = eta,
             takeoffUtc = takeoffMs?.let { Instant.ofEpochMilli(it) },
             nowUtc = now,

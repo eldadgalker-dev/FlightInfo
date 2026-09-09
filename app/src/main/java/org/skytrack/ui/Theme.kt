@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Theme
-// Version 1.1
+// Version 2.1
 // Purpose : Material 3 colour schemes (night default) and small shared
 //           composables: confidence marker, labelled value.
 // =============================================================
@@ -11,6 +11,10 @@ package org.skytrack.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -19,8 +23,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.skytrack.fusion.Confidence
 
@@ -67,26 +73,34 @@ fun confidenceColor(c: Confidence): Color = when (c) {
 }
 
 /**
- * A small label above a value. Values are forced LTR so digits and units
- * do not reorder under an RTL locale.
+ * A small label above a value. The value is a single non-wrapping line with
+ * tabular digits; labels are clipped with an ellipsis rather than colliding
+ * with the neighbouring cell. Digits and units stay LTR under RTL locales.
  */
 @Composable
 fun LabeledValue(label: String, value: String, confidence: Confidence? = null, big: Boolean = false, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(modifier = modifier.padding(horizontal = 2.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (confidence != null) {
-                Text(confidenceGlyph(confidence), color = confidenceColor(confidence), fontSize = if (big) 14.sp else 10.sp)
-                Text(" ")
+                Text(confidenceGlyph(confidence), color = confidenceColor(confidence), fontSize = if (big) 11.sp else 9.sp)
+                Spacer(Modifier.width(3.dp))
             }
             Text(
                 value,
-                style = if (big) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyLarge,
-                fontFamily = FontFamily.Monospace,
+                fontSize = if (big) 20.sp else 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
+                style = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr, fontFeatureSettings = "tnum"),
                 softWrap = false,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Clip
             )
         }
     }

@@ -41,7 +41,6 @@
     <string name="mode_tracking">Tracking</string>
     <string name="mode_constrained">Route estimate</string>
     <string name="mode_predicted">Predicted only</string>
-    <string name="mode_off_route">OFF ROUTE</string>
     <string name="fix_age">fix %1$s ago</string>
 
     <!-- Values -->
@@ -69,7 +68,6 @@
     <string name="satellites">Satellites</string>
     <string name="fix_age_label">Last fix</string>
     <string name="uncertainty_along">Along-track uncertainty</string>
-    <string name="uncertainty_cross">Cross-track uncertainty</string>
     <string name="position">Position</string>
     <string name="legend">Legend: \u25CF measured  \u25D0 fused  \u25CB predicted  \u25CC stale. Altitude comes from GNSS only; the barometer reads cabin pressure and is used solely to detect climb and descent.</string>
 
@@ -84,7 +82,6 @@
     <string name="rotate_gestures">Two-finger rotate gesture</string>
     <string name="about_copyright">FlightInfo \u00A9 1986\u20112026 Eldad Galker, eldad@galker.com</string>
     <string name="about_license">Free software released under the BSD 3-Clause License.</string>
-    <string name="about_data">Map data: Natural Earth (public domain). Airports: OurAirports (public domain). Fonts: Noto Sans (OFL).</string>
     <string name="about_offline">Works fully offline. No network, accounts or servers.</string>
 
     <!-- Boarding pass scan -->
@@ -99,6 +96,61 @@
     <string name="scan_unknown_airport">Boarding pass read (%1$s \u2192 %2$s) but an airport is missing from the database. Select it manually.</string>
 
     <!-- Notification -->
+    <!-- Route anchoring / estimate-only (v2.0) -->
+    <string name="mode_estimate_only">Estimate only (no sensors)</string>
+    <string name="toggle_mode">Switch live / estimate-only</string>
+    <string name="estimate_only">Estimate only</string>
+    <string name="estimate_only_hint">Ignore this phone\'s sensors and show where the flight should be, based on its departure time. Use for a flight you are not on.</string>
+    <string name="error_estimate_needs_time">Estimate-only mode needs the scheduled departure time.</string>
+    <string name="origin_mismatch">Your position is %1$s from %2$s. Check the flight plan.</string>
+    <string name="measured_offset">Measured lateral offset %1$s, not yet confirmed (%2$d/%3$d fixes)</string>
+    <string name="measured_offset_label">Measured lateral offset</string>
+    <string name="deviation_evidence">Deviation evidence</string>
+    <string name="replans">Route re-plans</string>
+    <string name="phase_label">Phase: %1$s</string>
+    <string name="phase_ground">on ground</string>
+    <string name="phase_takeoff">takeoff</string>
+    <string name="phase_climb">climb</string>
+    <string name="phase_cruise">cruise</string>
+    <string name="phase_descent">descent</string>
+    <string name="phase_landed">landed</string>
+
+    <!-- Help, logs, about (v2.1) -->
+    <string name="help">Help</string>
+    <string name="panel_expand_hint">tap for details</string>
+    <string name="log_flights">Record flight logs</string>
+    <string name="log_flights_hint">One CSV per flight with the estimate and the raw sensor data, stored only on this phone (%1$d files). Sharing a log helps calibrate the estimator.</string>
+    <string name="share_log">Share latest log</string>
+    <string name="delete_logs">Delete logs</string>
+    <string name="about_map">Map data: Natural Earth (public domain).</string>
+    <string name="about_airports">Airports: OurAirports (public domain).</string>
+    <string name="about_fonts">Fonts: Noto Sans (OFL). Barcode: ZXing (Apache-2.0).</string>
+
+    <string name="help_what_title">What FlightInfo does</string>
+    <string name="help_what_body">Shows your aircraft on an offline world map during a flight, with distance flown and remaining, speed, altitude, time to go and arrival time. It needs no network, no account and no server. Position comes from the phone\'s GPS when it can see satellites; otherwise the aircraft is moved along the planned route by time and speed.</string>
+    <string name="help_setup_title">Entering a flight</string>
+    <string name="help_setup_body">Choose origin and destination by IATA code (TLV, LHR) or by city / airport name in English. Fastest: tap "Scan boarding pass" and point the camera at the barcode, or pick a screenshot of the pass; origin, destination and flight number are read from it. The scheduled departure time is optional and is used only when no GPS fix is available. Tap "Start flight". Return here any time with the aircraft button to correct the plan or end the flight.</string>
+    <string name="help_map_title">Map controls</string>
+    <string name="help_map_body">+ / \u2212 zoom (also pinch or double-tap). Frame button: show the whole route. Target button: centre on the aircraft. Compass / aircraft button: north-up or track-up. GPS button: switch between live tracking and estimate-only. Dragging the map pauses following for 20 seconds. The bottom panel expands on tap.</string>
+    <string name="help_lines_title">Lines on the map</string>
+    <string name="help_lines_body">Dashed line: the remaining planned route. Solid orange line: the part already flown. Faint dotted line: the original plan, shown only after the route has been re-planned. Turquoise line: the actual measured track, shown only after a proven deviation. Shaded band: the along-route uncertainty of the position.</string>
+    <string name="help_modes_title">Tracking modes</string>
+    <string name="help_modes_body">Tracking: a GPS fix arrived within the last 10 seconds. Route estimate: GPS lost; the aircraft moves along the route at the last known speed, blending toward a typical cruise speed, and the uncertainty band grows about 3 % of the distance per second without a fix. Predicted only: no fix ever received; position follows a standard climb / cruise / descent profile from the takeoff time. Estimate only: you switched sensors off deliberately.</string>
+    <string name="help_confidence_title">Confidence markers</string>
+    <string name="help_confidence_body">\u25CF measured now. \u25D0 fused: measured recently and propagated. \u25CB predicted from the route and time. \u25CC stale: the last measurement is old. The aircraft icon is solid when the position is measured or fused and hollow when it is predicted.</string>
+    <string name="help_deviation_title">Why the aircraft stays on the route</string>
+    <string name="help_deviation_body">The planned route is treated as the strongest information. A single or weak GPS fix cannot pull the aircraft off it; it only moves the aircraft along it. A measured lateral offset is shown as a number ("not yet confirmed"). When at least 6 good fixes over 3 minutes agree on an offset of 15 km or more, with a heading that disagrees with the route, the deviation is accepted: the route is re-planned from the proven position to the destination, the old plan is drawn faintly and the real track is drawn in turquoise. Near the destination (last 60 km) every good fix re-anchors, because approaches never follow the direct line.</string>
+    <string name="help_estimate_title">Estimate-only mode</string>
+    <string name="help_estimate_body">Turn on "Estimate only" in the setup screen, or tap the GPS button on the map. The phone\'s sensors are ignored and the aircraft is placed where a flight with that departure time should be (departure + 15 minutes taxi, then a standard profile). Use it to follow a flight you are not on. A scheduled time later than now is assumed to be yesterday\'s departure.</string>
+    <string name="help_gnss_title">Getting a GPS fix on board</string>
+    <string name="help_gnss_body">Hold the phone against the window or on the tray table next to it. The first fix after takeoff can take 30\u201360 seconds. Aisle and middle seats often get no fix at all; the app then says "Predicted only" and works from time. Fewer than 4 satellites give no position; the status shows the count so you know the receiver is alive. Airplane mode does not affect GPS.</string>
+    <string name="help_values_title">The values</string>
+    <string name="help_values_body">Remaining and flown distance are measured along the route. Time to go assumes cruise speed plus 20 minutes for descent. Arrival time is shown in the destination\'s local time; the panel also shows local time at origin, UTC and destination. Altitude comes from GPS only; the phone\'s barometer measures cabin pressure, which is used solely to detect climb and descent. Heading after GPS loss follows the gyroscope for 90 seconds, then the route course.</string>
+    <string name="help_logs_title">Flight logs</string>
+    <string name="help_logs_body">When enabled in Settings, each live flight writes a CSV file on this phone (Android/data/com.galker.flightinfo/files/logs) with the estimate and the raw GPS, barometer and gyroscope readings, once per second. Nothing is uploaded. "Share latest log" sends the file through any app you choose; a real flight log is the best way to calibrate the estimator.</string>
+    <string name="help_limits_title">Limitations</string>
+    <string name="help_limits_body">Without GPS the aircraft follows the direct route; real routing may differ by hundreds of kilometres for weather or airspace, and the app cannot know until GPS returns. No flight-number lookup: there is no free offline schedule database, hence the boarding-pass scan. Local time at the current position is shown as UTC. The Earth is modelled as a sphere (0.3 % distance error).</string>
+
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>

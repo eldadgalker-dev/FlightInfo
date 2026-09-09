@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MetricsAndSettingsScreens
-// Version 1.4
+// Version 2.1
 // Purpose : Full-page metrics view (Origin / Now / Destination columns)
 //           and the settings page (units, clock, theme, follow, gestures).
 // =============================================================
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +25,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import org.skytrack.R
 import org.skytrack.data.AltitudeUnit
@@ -45,7 +48,7 @@ import org.skytrack.fusion.FusionMode
 
 @Composable
 fun MetricsScreen(m: FlightMetrics?, s: Settings, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().statusBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.metrics), style = MaterialTheme.typography.headlineSmall)
@@ -83,19 +86,22 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, onBack: () -> Unit) {
             ))
         }
         Section(stringResource(R.string.estimator)) {
-            val mode = when (e.mode) {
+            val mode = if (m.estimateOnly) stringResource(R.string.mode_estimate_only) else when (e.mode) {
                 FusionMode.GNSS_TRACKING -> stringResource(R.string.mode_tracking)
                 FusionMode.ROUTE_CONSTRAINED -> stringResource(R.string.mode_constrained)
                 FusionMode.PREDICTED_ONLY -> stringResource(R.string.mode_predicted)
-                FusionMode.OFF_ROUTE -> stringResource(R.string.mode_off_route)
             }
+            val cross = e.measuredCrossM
             Grid(listOf(
                 Triple(stringResource(R.string.mode), mode, null),
-                Triple(stringResource(R.string.phase), e.phase.name, null),
+                Triple(stringResource(R.string.phase), phaseName(e.phase), null),
                 Triple(stringResource(R.string.satellites), "${e.satsUsed}/${e.satsVisible}", null),
                 Triple(stringResource(R.string.fix_age_label), Format.ageSeconds(e.lastFixAgeMs), null),
                 Triple(stringResource(R.string.uncertainty_along), Format.distance(e.sigmaAlongM * 2, s.distanceUnit), null),
-                Triple(stringResource(R.string.uncertainty_cross), Format.distance(e.sigmaCrossM * 2, s.distanceUnit), null),
+                Triple(stringResource(R.string.measured_offset_label),
+                    if (cross == null) "--" else Format.distance(kotlin.math.abs(cross), s.distanceUnit), null),
+                Triple(stringResource(R.string.deviation_evidence), "${e.deviationEvidence}/${e.deviationRequired}", null),
+                Triple(stringResource(R.string.replans), "${e.replanCount}", null),
                 Triple(stringResource(R.string.position), String.format(java.util.Locale.US, "%.3f, %.3f", e.lat, e.lon), e.positionConfidence)
             ))
         }
@@ -128,8 +134,9 @@ private fun Grid(items: List<Triple<String, String, Confidence?>>) {
 }
 
 @Composable
-fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().statusBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
+fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit, onHelp: () -> Unit,
+                   onShareLog: () -> Unit, onDeleteLogs: () -> Unit, logCount: Int) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineSmall)
@@ -154,7 +161,17 @@ fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit
         ToggleRow(stringResource(R.string.track_up_default), s.trackUp) { onChange(s.copy(trackUp = it)) }
         ToggleRow(stringResource(R.string.rotate_gestures), s.rotateGestures) { onChange(s.copy(rotateGestures = it)) }
         HorizontalDivider()
+        ToggleRow(stringResource(R.string.log_flights), s.logFlights) { onChange(s.copy(logFlights = it)) }
+        Text(stringResource(R.string.log_flights_hint, logCount), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onShareLog, enabled = logCount > 0, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.share_log)) }
+            OutlinedButton(onClick = onDeleteLogs, enabled = logCount > 0, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.delete_logs)) }
+        }
+        HorizontalDivider()
+        OutlinedButton(onClick = onHelp, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.help)) }
         AboutBlock()
+        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -165,15 +182,14 @@ fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit
  */
 @Composable
 private fun AboutBlock() {
+    val small = MaterialTheme.typography.bodySmall
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-        for (id in listOf(R.string.about_copyright, R.string.about_license, R.string.about_data, R.string.about_offline)) {
-            Text(
-                stringResource(id),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth()
-            )
+        // Latin-only line: force LTR so the bidi algorithm cannot reverse its word order under a Hebrew locale.
+        Text(stringResource(R.string.about_copyright), style = small.copy(textDirection = TextDirection.Ltr),
+            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
+        for (id in listOf(R.string.about_license, R.string.about_map, R.string.about_airports, R.string.about_fonts, R.string.about_offline)) {
+            Text(stringResource(id), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
         }
     }
 }

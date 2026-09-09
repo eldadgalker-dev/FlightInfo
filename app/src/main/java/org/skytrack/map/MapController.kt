@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 1.1
+// Version 2.1
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -30,7 +30,6 @@ import org.maplibre.geojson.Polygon
 import org.skytrack.Parameters
 import org.skytrack.fusion.Confidence
 import org.skytrack.fusion.FlightMetrics
-import org.skytrack.fusion.FusionMode
 import org.skytrack.route.GeoPoint
 import org.skytrack.route.Geodesy
 import org.skytrack.route.Route
@@ -87,7 +86,7 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
                 val base = baseData(context)
                 mainHandler.post {
                     if (style !== st) return@post
-                    MapStyle.install(st, p, base)
+                    MapStyle.install(st, p, base, isHebrewLocale())
                     ready = true
                     pendingMetrics?.let { update(it) }
                 }
@@ -102,17 +101,22 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
         if (!ready) return
         val route = m.route
 
-        // Route geometry changes only when the plan changes; hash guards redundant uploads.
-        val routeHash = (m.origin.iata + m.destination.iata).hashCode()
+        // Planned route and airports change only with the plan; the governing route
+        // changes on every re-plan. The hash covers both.
+        val routeHash = (m.origin.iata + m.destination.iata + m.estimate.replanCount).hashCode()
         if (routeHash != lastRouteHash) {
             lastRouteHash = routeHash
             src(st, MapStyle.SRC_ROUTE_PLANNED)?.setGeoJson(lineFeature(route.points))
+            src(st, MapStyle.SRC_ROUTE_ORIGINAL)?.setGeoJson(
+                if (m.estimate.replanCount > 0) lineFeature(m.plannedRoute.points) else emptyCollection())
             src(st, MapStyle.SRC_AIRPORTS)?.setGeoJson(FeatureCollection.fromFeatures(listOf(
                 pointFeature(m.origin.lat, m.origin.lon).apply { addStringProperty("code", m.origin.iata) },
                 pointFeature(m.destination.lat, m.destination.lon).apply { addStringProperty("code", m.destination.iata) }
             )))
         }
-        src(st, MapStyle.SRC_ROUTE_FLOWN)?.setGeoJson(lineFeature(route.polylineUpTo(m.flownM)))
+        src(st, MapStyle.SRC_ROUTE_FLOWN)?.setGeoJson(lineFeature(route.polylineUpTo(m.estimate.alongTrackM)))
+        src(st, MapStyle.SRC_TRACK_ACTUAL)?.setGeoJson(
+            if (m.estimate.replanCount > 0 && m.actualTrack.size >= 2) lineFeature(m.actualTrack) else emptyCollection())
         src(st, MapStyle.SRC_UNCERTAINTY)?.setGeoJson(uncertaintyFeature(m, route))
 
         val e = m.estimate
@@ -184,26 +188,22 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
         }
     }
 
+    /** Along-route band: +/- k*sigma_s along the governing route, fixed half-width across. */
     private fun uncertaintyFeature(m: FlightMetrics, route: Route): Feature {
         val e = m.estimate
+        val k = Parameters.UNCERTAINTY_SIGMAS
+        val s0 = (e.alongTrackM - k * e.sigmaAlongM).coerceIn(0.0, route.lengthM)
+        val s1 = (e.alongTrackM + k * e.sigmaAlongM).coerceIn(0.0, route.lengthM)
+        val w = Parameters.UNCERTAINTY_BAND_HALF_W_M
         val ring = ArrayList<Point>()
-        if (e.mode == FusionMode.ROUTE_CONSTRAINED || e.mode == FusionMode.PREDICTED_ONLY) {
-            // Along-route band: +/- k*sigma_s along the route, +/- max(sigma_d, 5 km) across.
-            val k = Parameters.UNCERTAINTY_SIGMAS
-            val s0 = (e.alongTrackM - k * e.sigmaAlongM).coerceIn(0.0, route.lengthM)
-            val s1 = (e.alongTrackM + k * e.sigmaAlongM).coerceIn(0.0, route.lengthM)
-            val w = max(e.sigmaCrossM, 5_000.0)
-            val n = 12
-            for (i in 0..n) ring.add(pt(route.pointAtWithOffset(s0 + (s1 - s0) * i / n, w)))
-            for (i in n downTo 0) ring.add(pt(route.pointAtWithOffset(s0 + (s1 - s0) * i / n, -w)))
-        } else {
-            val r = max(Parameters.UNCERTAINTY_SIGMAS * e.sigmaAlongM, 500.0)
-            val c = GeoPoint(e.lat, e.lon)
-            for (i in 0 until 36) ring.add(pt(Geodesy.destination(c, i * 10.0, r)))
-        }
-        if (ring.isNotEmpty()) ring.add(ring[0])
+        val n = 12
+        for (i in 0..n) ring.add(pt(route.pointAtWithOffset(s0 + (s1 - s0) * i / n, w)))
+        for (i in n downTo 0) ring.add(pt(route.pointAtWithOffset(s0 + (s1 - s0) * i / n, -w)))
+        ring.add(ring[0])
         return Feature.fromGeometry(Polygon.fromLngLats(listOf<List<Point>>(ring)))
     }
+
+    private fun emptyCollection(): FeatureCollection = FeatureCollection.fromFeatures(emptyList<Feature>())
 
     private fun aircraftFeature(lat: Double, lon: Double, bearing: Double, icon: String): Feature =
         pointFeature(lat, lon).apply { addNumberProperty("bearing", bearing); addStringProperty("icon", icon) }
@@ -217,6 +217,11 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
 
     private fun src(st: Style, id: String): GeoJsonSource? = st.getSourceAs(id)
 
+    private fun isHebrewLocale(): Boolean {
+        val lang = context.resources.configuration.locales[0].language
+        return lang == "he" || lang == "iw"
+    }
+
     companion object {
         private val ioExecutor = Executors.newSingleThreadExecutor()
         @Volatile private var cachedBase: Map<String, String>? = null
@@ -226,6 +231,8 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
             cachedBase?.let { return it }
             val m = mapOf(
                 MapStyle.SRC_LAND to MapStyle.readAsset(context, "ne_land.geojson"),
+                MapStyle.SRC_COUNTRIES to MapStyle.readAsset(context, "ne_countries.geojson"),
+                MapStyle.SRC_COUNTRY_LABELS to MapStyle.readAsset(context, "ne_country_labels.geojson"),
                 MapStyle.SRC_LAKES to MapStyle.readAsset(context, "ne_lakes.geojson"),
                 MapStyle.SRC_BORDERS to MapStyle.readAsset(context, "ne_borders.geojson"),
                 MapStyle.SRC_PLACES to MapStyle.readAsset(context, "ne_places.geojson")

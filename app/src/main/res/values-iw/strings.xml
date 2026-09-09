@@ -38,7 +38,6 @@
     <string name="mode_tracking">מעקב</string>
     <string name="mode_constrained">הערכה לפי מסלול</string>
     <string name="mode_predicted">חיזוי בלבד</string>
-    <string name="mode_off_route">חריגה ממסלול</string>
     <string name="fix_age">תיקון לפני %1$s</string>
 
     <string name="remaining">נותר</string>
@@ -65,7 +64,6 @@
     <string name="satellites">לוויינים</string>
     <string name="fix_age_label">תיקון אחרון</string>
     <string name="uncertainty_along">אי־ודאות לאורך המסלול</string>
-    <string name="uncertainty_cross">אי־ודאות רוחבית</string>
     <string name="position">מיקום</string>
     <string name="legend">מקרא: \u25CF נמדד  \u25D0 ממוזג  \u25CB חיזוי  \u25CC לא מעודכן. הגובה מ־GNSS בלבד; הברומטר מודד לחץ תא ומשמש רק לזיהוי נסיקה והנמכה.</string>
 
@@ -77,9 +75,8 @@
     <string name="auto_follow">עקוב אחרי המטוס אוטומטית</string>
     <string name="track_up_default">כיוון טיסה למעלה כברירת מחדל</string>
     <string name="rotate_gestures">סיבוב מפה בשתי אצבעות</string>
-    <string name="about_copyright">\u2066FlightInfo\u2069 \u00A9 \u20661986\u20112026\u2069 \u2066Eldad Galker\u2069, \u2066eldad@galker.com\u2069</string>
-    <string name="about_license">תוכנה חופשית ברישיון \u2066BSD 3\u2011Clause\u2069.</string>
-    <string name="about_data">נתוני מפה: \u2066Natural Earth\u2069 (נחלת הכלל). שדות תעופה: \u2066OurAirports\u2069 (נחלת הכלל). גופנים: \u2066Noto Sans\u2069 (\u2066OFL\u2069).</string>
+    <string name="about_copyright">FlightInfo \u00A9 1986\u20112026 Eldad Galker, eldad@galker.com</string>
+    <string name="about_license">תוכנה חופשית ברישיון BSD 3-Clause.</string>
     <string name="about_offline">פועלת ללא רשת. ללא חשבונות וללא שרתים.</string>
 
     <string name="scan_boarding_pass">סרוק כרטיס עלייה למטוס</string>
@@ -91,6 +88,59 @@
     <string name="scan_no_barcode">לא נמצא ברקוד בתמונה.</string>
     <string name="scan_not_boarding_pass">הברקוד נקרא, אך אינו כרטיס עלייה למטוס.</string>
     <string name="scan_unknown_airport">הכרטיס נקרא (%1$s \u2192 %2$s) אך שדה תעופה חסר במאגר. בחר אותו ידנית.</string>
+
+    <string name="mode_estimate_only">הערכה בלבד (ללא חיישנים)</string>
+    <string name="toggle_mode">מעבר חי / הערכה בלבד</string>
+    <string name="estimate_only">הערכה בלבד</string>
+    <string name="estimate_only_hint">התעלם מחיישני הטלפון והצג היכן הטיסה אמורה להיות לפי שעת היציאה. לטיסה שאינך נמצא בה.</string>
+    <string name="error_estimate_needs_time">מצב הערכה בלבד דורש שעת יציאה מתוכננת.</string>
+    <string name="origin_mismatch">מיקומך במרחק %1$s מ־%2$s. בדוק את תוכנית הטיסה.</string>
+    <string name="measured_offset">היסט רוחבי נמדד %1$s, טרם אושר (%2$d/%3$d תיקונים)</string>
+    <string name="measured_offset_label">היסט רוחבי נמדד</string>
+    <string name="deviation_evidence">עדות לסטייה</string>
+    <string name="replans">תכנוני מסלול מחדש</string>
+    <string name="phase_label">שלב: %1$s</string>
+    <string name="phase_ground">על הקרקע</string>
+    <string name="phase_takeoff">המראה</string>
+    <string name="phase_climb">נסיקה</string>
+    <string name="phase_cruise">שיוט</string>
+    <string name="phase_descent">הנמכה</string>
+    <string name="phase_landed">נחת</string>
+
+    <string name="help">עזרה</string>
+    <string name="panel_expand_hint">הקש לפרטים</string>
+    <string name="log_flights">רישום יומני טיסה</string>
+    <string name="log_flights_hint">קובץ CSV אחד לכל טיסה, עם ההערכה ונתוני החיישנים הגולמיים, נשמר בטלפון בלבד (%1$d קבצים). שיתוף יומן מסייע לכייל את מנוע ההערכה.</string>
+    <string name="share_log">שתף יומן אחרון</string>
+    <string name="delete_logs">מחק יומנים</string>
+    <string name="about_map">נתוני מפה: Natural Earth (נחלת הכלל).</string>
+    <string name="about_airports">שדות תעופה: OurAirports (נחלת הכלל).</string>
+    <string name="about_fonts">גופנים: Noto Sans (OFL). ברקוד: ZXing (Apache 2.0).</string>
+
+    <string name="help_what_title">מה FlightInfo עושה</string>
+    <string name="help_what_body">מציג את המטוס שלך על מפת עולם לא־מקוונת במהלך הטיסה, עם מרחק שנטוס ונותר, מהירות, גובה, זמן ליעד ושעת הגעה. לא נדרשים רשת, חשבון או שרת. המיקום מגיע מה־GPS של הטלפון כשהוא רואה לוויינים; אחרת המטוס מוזז לאורך המסלול המתוכנן לפי זמן ומהירות.</string>
+    <string name="help_setup_title">הזנת טיסה</string>
+    <string name="help_setup_body">בחר מוצא ויעד לפי קוד IATA (TLV, LHR) או לפי שם עיר / שדה באנגלית. הדרך המהירה: "סרוק כרטיס עלייה למטוס" — כוון את המצלמה לברקוד או בחר צילום מסך של הכרטיס; מוצא, יעד ומספר טיסה נקראים ממנו. שעת היציאה המתוכננת אופציונלית ומשמשת רק כשאין תיקון GPS. לחץ "התחל טיסה". ניתן לחזור לכאן בכל עת דרך כפתור המטוס כדי לתקן את התוכנית או לסיים את הטיסה.</string>
+    <string name="help_map_title">פקדי המפה</string>
+    <string name="help_map_body">+ / \u2212 הגדלה והקטנה (גם צביטה או הקשה כפולה). כפתור המסגרת: הצגת כל המסלול. כפתור המטרה: מרכוז על המטוס. כפתור המצפן / המטוס: צפון למעלה או כיוון טיסה למעלה. כפתור GPS: מעבר בין מעקב חי להערכה בלבד. גרירת המפה משהה את העקיבה ל־20 שניות. הלוח התחתון נפתח בהקשה.</string>
+    <string name="help_lines_title">הקווים במפה</string>
+    <string name="help_lines_body">קו מקווקו: המסלול המתוכנן שנותר. קו כתום רציף: החלק שכבר נטוס. קו מנוקד דהוי: התוכנית המקורית, מוצג רק אחרי שהמסלול תוכנן מחדש. קו טורקיז: המסלול האמיתי שנמדד, מוצג רק אחרי סטייה מוכחת. פס מוצלל: אי־הודאות של המיקום לאורך המסלול.</string>
+    <string name="help_modes_title">מצבי מעקב</string>
+    <string name="help_modes_body">מעקב: התקבל תיקון GPS ב־10 השניות האחרונות. הערכה לפי מסלול: ה־GPS אבד; המטוס מתקדם לאורך המסלול במהירות האחרונה הידועה, מתמזג למהירות שיוט טיפוסית, ופס אי־הודאות גדל בכ־3% מהמרחק לשנייה ללא תיקון. חיזוי בלבד: לא התקבל תיקון מעולם; המיקום נגזר מפרופיל נסיקה / שיוט / הנמכה סטנדרטי מזמן ההמראה. הערכה בלבד: כיבית את החיישנים במכוון.</string>
+    <string name="help_confidence_title">סימוני ודאות</string>
+    <string name="help_confidence_body">\u25CF נמדד עכשיו. \u25D0 ממוזג: נמדד לאחרונה ומקודם בזמן. \u25CB חיזוי מהמסלול ומהזמן. \u25CC לא מעודכן: המדידה האחרונה ישנה. סמל המטוס מלא כשהמיקום נמדד או ממוזג, וחלול כשהוא חיזוי.</string>
+    <string name="help_deviation_title">למה המטוס נשאר על המסלול</string>
+    <string name="help_deviation_body">המסלול המתוכנן נחשב למידע החזק ביותר. תיקון GPS בודד או חלש אינו יכול להוריד את המטוס ממנו — הוא רק מזיז אותו לאורכו. היסט רוחבי שנמדד מוצג כמספר ("טרם אושר"). כשלפחות 6 תיקונים טובים במשך 3 דקות מסכימים על היסט של 15 ק"מ ומעלה, עם כיוון שסותר את המסלול, הסטייה מתקבלת: המסלול מתוכנן מחדש מהמיקום המוכח ליעד, התוכנית הישנה מצוירת דהויה והמסלול האמיתי בטורקיז. קרוב ליעד (60 הק"מ האחרונים) כל תיקון טוב מעגן מחדש, כי גישות לעולם אינן על הקו הישר.</string>
+    <string name="help_estimate_title">מצב הערכה בלבד</string>
+    <string name="help_estimate_body">הפעל "הערכה בלבד" במסך ההגדרה, או לחץ על כפתור ה־GPS במפה. חיישני הטלפון מותעלמים והמטוס ממוקם היכן שטיסה עם שעת יציאה זו אמורה להיות (יציאה + 15 דקות נסיעה על הקרקע, ואז פרופיל סטנדרטי). מתאים למעקב אחר טיסה שאינך נמצא בה. שעה מתוכננת מאוחרת מהשעה הנוכחית מתפרשת כיציאה של אתמול.</string>
+    <string name="help_gnss_title">קבלת GPS במטוס</string>
+    <string name="help_gnss_body">הצמד את הטלפון לחלון או הנח על השולחן לידו. התיקון הראשון אחרי ההמראה עשוי להימשך 30–60 שניות. במושבי מעבר ואמצע לרוב אין תיקון כלל; האפליקציה מציגה "חיזוי בלבד" ועובדת לפי זמן. פחות מ־4 לוויינים אינם נותנים מיקום; המצב מציג את מספרם כדי שתדע שהמקלט פעיל. מצב טיסה אינו משפיע על GPS.</string>
+    <string name="help_values_title">הערכים</string>
+    <string name="help_values_body">מרחק נותר ונטוס נמדדים לאורך המסלול. זמן ליעד מניח מהירות שיוט ועוד 20 דקות הנמכה. שעת ההגעה מוצגת בשעון היעד; הלוח מציג גם שעה במוצא, UTC ויעד. הגובה מ־GPS בלבד; ברומטר הטלפון מודד לחץ תא ומשמש רק לזיהוי נסיקה והנמכה. כיוון אחרי אובדן GPS עוקב אחרי הג׳ירוסקופ 90 שניות ואז אחרי כיוון המסלול.</string>
+    <string name="help_logs_title">יומני טיסה</string>
+    <string name="help_logs_body">כשמופעל בהגדרות, כל טיסה חיה כותבת קובץ CSV בטלפון (Android/data/com.galker.flightinfo/files/logs) עם ההערכה ונתוני GPS, ברומטר וג׳ירוסקופ גולמיים, פעם בשנייה. דבר אינו מועלה. "שתף יומן אחרון" שולח את הקובץ דרך כל אפליקציה שתבחר; יומן מטיסה אמיתית הוא הדרך הטובה ביותר לכייל את מנוע ההערכה.</string>
+    <string name="help_limits_title">מגבלות</string>
+    <string name="help_limits_body">ללא GPS המטוס עוקב אחרי הקו הישר; ניתוב אמיתי עלול לסטות במאות ק"מ בגלל מזג אוויר או מרחב אווירי, והאפליקציה לא תדע עד שה־GPS יחזור. אין שליפה לפי מספר טיסה: לא קיים מאגר לוחות זמנים חופשי ולא־מקוון, ולכן סריקת כרטיס העלייה. שעה מקומית במיקום הנוכחי מוצגת כ־UTC. כדור הארץ ממודל ככדור (שגיאת מרחק 0.3%).</string>
 
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>

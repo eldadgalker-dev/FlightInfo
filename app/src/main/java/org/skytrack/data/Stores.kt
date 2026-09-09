@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Stores
-// Version 1.1
+// Version 2.1
 // Purpose : SharedPreferences-backed persistence for the flight plan,
 //           the last position estimate (instant restore on relaunch),
 //           the last ground fix (origin auto-detection) and user settings.
@@ -23,11 +23,12 @@ data class FlightPlan(
     val destinationIata: String,
     val flightNumber: String = "",
     val scheduledDepartureMs: Long? = null,
-    val takeoffMs: Long? = null
+    val takeoffMs: Long? = null,
+    val estimateOnly: Boolean = false     // true: ignore sensors, show the time-based estimate only
 ) {
     fun toJson(): String = JSONObject().apply {
         put("o", originIata); put("d", destinationIata); put("fn", flightNumber)
-        put("sd", scheduledDepartureMs ?: 0L); put("to", takeoffMs ?: 0L)
+        put("sd", scheduledDepartureMs ?: 0L); put("to", takeoffMs ?: 0L); put("eo", estimateOnly)
     }.toString()
 
     companion object {
@@ -35,7 +36,8 @@ data class FlightPlan(
             if (s.isNullOrEmpty()) null else JSONObject(s).let {
                 FlightPlan(
                     it.getString("o"), it.getString("d"), it.optString("fn", ""),
-                    it.optLong("sd", 0L).takeIf { v -> v > 0 }, it.optLong("to", 0L).takeIf { v -> v > 0 }
+                    it.optLong("sd", 0L).takeIf { v -> v > 0 }, it.optLong("to", 0L).takeIf { v -> v > 0 },
+                    it.optBoolean("eo", false)
                 )
             }
         } catch (e: Exception) { null }
@@ -43,17 +45,17 @@ data class FlightPlan(
 }
 
 /** Minimal snapshot of estimator state for restore. */
-data class SavedEstimate(val timeMs: Long, val alongM: Double, val crossM: Double, val speedMps: Double,
+data class SavedEstimate(val timeMs: Long, val alongM: Double, val speedMps: Double,
                          val trackDeg: Double, val altM: Double, val phase: String) {
     fun toJson(): String = JSONObject().apply {
-        put("t", timeMs); put("s", alongM); put("d", crossM); put("v", speedMps)
+        put("t", timeMs); put("s", alongM); put("v", speedMps)
         put("psi", trackDeg); put("h", altM); put("ph", phase)
     }.toString()
 
     companion object {
         fun fromJson(s: String?): SavedEstimate? = try {
             if (s.isNullOrEmpty()) null else JSONObject(s).let {
-                SavedEstimate(it.getLong("t"), it.getDouble("s"), it.getDouble("d"), it.getDouble("v"),
+                SavedEstimate(it.getLong("t"), it.getDouble("s"), it.getDouble("v"),
                     it.getDouble("psi"), it.getDouble("h"), it.optString("ph", "GROUND"))
             }
         } catch (e: Exception) { null }
@@ -75,7 +77,8 @@ data class Settings(
     val theme: ThemeMode = ThemeMode.NIGHT,
     val autoFollow: Boolean = true,
     val trackUp: Boolean = false,
-    val rotateGestures: Boolean = false
+    val rotateGestures: Boolean = false,
+    val logFlights: Boolean = true      // write CSV flight logs for offline calibration
 )
 
 class Stores(context: Context) {
@@ -114,6 +117,7 @@ class Stores(context: Context) {
             .putString("du", s.distanceUnit.name).putString("au", s.altitudeUnit.name).putString("su", s.speedUnit.name)
             .putBoolean("h24", s.use24h).putString("theme", s.theme.name)
             .putBoolean("follow", s.autoFollow).putBoolean("trackup", s.trackUp).putBoolean("rotate", s.rotateGestures)
+            .putBoolean("log", s.logFlights)
             .apply()
         _settings.value = s
     }
@@ -128,7 +132,8 @@ class Stores(context: Context) {
             theme = enumOr(prefs.getString("theme", null), d.theme),
             autoFollow = prefs.getBoolean("follow", d.autoFollow),
             trackUp = prefs.getBoolean("trackup", d.trackUp),
-            rotateGestures = prefs.getBoolean("rotate", d.rotateGestures)
+            rotateGestures = prefs.getBoolean("rotate", d.rotateGestures),
+            logFlights = prefs.getBoolean("log", d.logFlights)
         )
     }
 

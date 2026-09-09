@@ -1,7 +1,7 @@
 // Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
-// FlightInfo app module build - Version 1.8
+// FlightInfo app module build - Version 2.2
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -16,8 +16,8 @@ android {
         applicationId = "com.galker.flightinfo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 8
-        versionName = "1.8"
+        versionCode = 11
+        versionName = "2.2"
         vectorDrawables.useSupportLibrary = true
     }
 

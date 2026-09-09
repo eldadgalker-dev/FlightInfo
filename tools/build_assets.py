@@ -37,9 +37,15 @@ AIRPORT_TYPES      = {"large_airport", "medium_airport"}   # OurAirports type co
 REQUIRE_SCHEDULED  = True   # keep only airports with scheduled service
 REQUIRE_IATA       = True   # keep only airports with an IATA code
 
-# -- Populated places filter --
-MAX_SCALERANK      = 6      # Natural Earth scalerank <= this value is kept (0 = largest)
-PLACE_PROPS        = ("name", "scalerank", "adm0cap")   # properties kept per place
+# -- Populated places filter (Natural Earth 1:10m, full attribute table) --
+MAX_SCALERANK      = 8      # scalerank <= this value is kept (0 = largest; 8 keeps ~6,800 places)
+PLACE_PROPS        = {"NAME": "name", "NAME_HE": "name_he", "SCALERANK": "scalerank",
+                      "MIN_ZOOM": "min_zoom", "ADM0CAP": "adm0cap"}   # source -> output property
+
+# -- Countries (Natural Earth 1:50m admin_0) --
+COUNTRY_PROPS      = {"NAME": "name", "NAME_HE": "name_he", "MAPCOLOR7": "color",
+                      "LABEL_X": "label_x", "LABEL_Y": "label_y", "LABELRANK": "labelrank"}
+COUNTRY_COORD_DEC  = 2      # ~1.1 km; polygons are fill/colour only, borders come from the borders layer
 
 # -- Geometry precision --
 COORD_DECIMALS     = 3      # ~110 m at the equator; sufficient for zoom <= 8
@@ -67,25 +73,57 @@ def round_coords(coords):
     return [round_coords(c) for c in coords]
 
 
-def slim_geojson(src_name, dst_name, keep_props=(), feature_filter=None):
-    """Copy a GeoJSON file keeping only selected properties and rounded coordinates."""
+def slim_geojson(src_name, dst_name, keep_props=(), feature_filter=None, decimals=None):
+    """Copy a GeoJSON file keeping only selected properties and rounded coordinates.
+    keep_props may be a sequence (same names) or a dict {source_name: output_name}."""
+    global COORD_DECIMALS
+    saved = COORD_DECIMALS
+    if decimals is not None:
+        COORD_DECIMALS = decimals
+    mapping = keep_props if isinstance(keep_props, dict) else {k: k for k in keep_props}
     with open(os.path.join(SRC_DIR, src_name), encoding="utf-8") as f:
         data = json.load(f)
     out_features = []
     for feat in data["features"]:
         if feature_filter and not feature_filter(feat):
             continue
-        props = {k: feat["properties"].get(k) for k in keep_props}
+        props = {}
+        for src, dst in mapping.items():
+            v = feat["properties"].get(src)
+            if v is not None and v != "":
+                props[dst] = v
         geom = feat["geometry"]
         if geom is None:
             continue
         geom = {"type": geom["type"], "coordinates": round_coords(geom["coordinates"])}
         out_features.append({"type": "Feature", "properties": props, "geometry": geom})
+    COORD_DECIMALS = saved
     with open(os.path.join(OUT_DIR, dst_name), "w", encoding="utf-8") as f:
         json.dump({"type": "FeatureCollection", "features": out_features}, f,
                   separators=(",", ":"), ensure_ascii=False)
     print(f"{dst_name}: {len(out_features)} features, "
           f"{os.path.getsize(os.path.join(OUT_DIR, dst_name)) // 1024} KB")
+
+
+def build_country_labels():
+    """Point features at Natural Earth's curated label positions (LABEL_X/LABEL_Y)."""
+    with open(os.path.join(SRC_DIR, "ne_50m_admin_0_countries.geojson"), encoding="utf-8") as f:
+        data = json.load(f)
+    feats = []
+    for feat in data["features"]:
+        pr = feat["properties"]
+        x, y = pr.get("LABEL_X"), pr.get("LABEL_Y")
+        if x is None or y is None:
+            continue
+        props = {"name": pr.get("NAME"), "labelrank": pr.get("LABELRANK", 5)}
+        if pr.get("NAME_HE"):
+            props["name_he"] = pr["NAME_HE"]
+        feats.append({"type": "Feature", "properties": props,
+                      "geometry": {"type": "Point", "coordinates": [round(x, 3), round(y, 3)]}})
+    path = os.path.join(OUT_DIR, "ne_country_labels.geojson")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"type": "FeatureCollection", "features": feats}, f, separators=(",", ":"), ensure_ascii=False)
+    print(f"ne_country_labels.geojson: {len(feats)} features, {os.path.getsize(path) // 1024} KB")
 
 
 def build_airports():
@@ -136,9 +174,12 @@ def main():
     slim_geojson("ne_50m_land.geojson", "ne_land.geojson")
     slim_geojson("ne_50m_lakes.geojson", "ne_lakes.geojson")
     slim_geojson("ne_50m_admin_0_boundary_lines_land.geojson", "ne_borders.geojson")
-    slim_geojson("ne_50m_populated_places_simple.geojson", "ne_places.geojson",
+    slim_geojson("ne_10m_populated_places.geojson", "ne_places.geojson",
                  keep_props=PLACE_PROPS,
-                 feature_filter=lambda ft: ft["properties"].get("scalerank", 99) <= MAX_SCALERANK)
+                 feature_filter=lambda ft: ft["properties"].get("SCALERANK", 99) <= MAX_SCALERANK)
+    slim_geojson("ne_50m_admin_0_countries.geojson", "ne_countries.geojson",
+                 keep_props=COUNTRY_PROPS, decimals=COUNTRY_COORD_DEC)
+    build_country_labels()
 
 
 if __name__ == "__main__":

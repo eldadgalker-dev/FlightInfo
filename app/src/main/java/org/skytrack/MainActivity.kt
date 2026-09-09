@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MainActivity
-// Version 1.5
+// Version 2.1
 // Purpose : Single-activity host. Simple state-based navigation between
 //           Setup / Map / Metrics / Settings, runtime permission requests,
 //           and foreground-service start/stop tied to the active flight.
@@ -36,6 +36,7 @@ import org.skytrack.data.FlightPlan
 import org.skytrack.data.ThemeMode
 import org.skytrack.service.TrackingService
 import org.skytrack.scan.BoardingPass
+import org.skytrack.ui.HelpScreen
 import org.skytrack.ui.MapScreen
 import org.skytrack.ui.ScanScreen
 import org.skytrack.ui.MetricsScreen
@@ -43,7 +44,7 @@ import org.skytrack.ui.SettingsScreen
 import org.skytrack.ui.SetupScreen
 import org.skytrack.ui.SkyTrackTheme
 
-private enum class Screen { SETUP, MAP, METRICS, SETTINGS, SCAN }
+private enum class Screen { SETUP, MAP, METRICS, SETTINGS, SCAN, HELP }
 
 class MainActivity : ComponentActivity() {
 
@@ -70,12 +71,18 @@ private fun Root(app: SkyTrackApp) {
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         // Start regardless of the result: without location the engine runs in PREDICTED_ONLY mode.
         pendingPlan?.let { p ->
-            if (app.engine.start(p)) { TrackingService.start(context); screen = Screen.MAP }
+            if (app.engine.start(p)) { if (!p.estimateOnly) TrackingService.start(context); screen = Screen.MAP }
             pendingPlan = null
         }
     }
 
     fun startFlight(p: FlightPlan) {
+        if (p.estimateOnly) {
+            // No sensors, no service, no permissions needed.
+            TrackingService.stop(context)
+            if (app.engine.start(p)) screen = Screen.MAP
+            return
+        }
         val needed = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) needed.add(Manifest.permission.POST_NOTIFICATIONS)
         val missing = needed.filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
@@ -88,8 +95,9 @@ private fun Root(app: SkyTrackApp) {
     }
 
     // Keep the service alive whenever a flight is active and permissions allow it.
-    LaunchedEffect(active) {
-        if (active && ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+    LaunchedEffect(active, plan?.estimateOnly) {
+        if (active && plan?.estimateOnly != true &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             TrackingService.start(context)
         }
     }
@@ -115,6 +123,7 @@ private fun Root(app: SkyTrackApp) {
                     onClear = { TrackingService.stop(context); app.engine.clearFlight(); screen = Screen.SETUP },
                     onBack = if (plan != null) ({ screen = Screen.MAP }) else null,
                     onScan = { screen = Screen.SCAN },
+                    onHelp = { screen = Screen.HELP },
                     prefill = scanned
                 )
                 Screen.SCAN -> {
@@ -127,7 +136,14 @@ private fun Root(app: SkyTrackApp) {
                         metrics = metrics, settings = settings, night = night,
                         onOpenMetrics = { screen = Screen.METRICS },
                         onOpenSettings = { screen = Screen.SETTINGS },
-                        onOpenSetup = { screen = Screen.SETUP }
+                        onOpenSetup = { screen = Screen.SETUP },
+                        onOpenHelp = { screen = Screen.HELP },
+                        onToggleEstimateOnly = {
+                            val nowEstimate = !(metrics?.estimateOnly ?: false)
+                            app.engine.setEstimateOnly(nowEstimate)
+                            if (nowEstimate) TrackingService.stop(context)
+                            else if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) TrackingService.start(context)
+                        }
                     )
                 }
                 Screen.METRICS -> {
@@ -136,12 +152,42 @@ private fun Root(app: SkyTrackApp) {
                 }
                 Screen.SETTINGS -> {
                     BackHandler { screen = Screen.MAP }
-                    SettingsScreen(settings, onChange = { app.stores.saveSettings(it) }) { screen = Screen.MAP }
+                    var logCount by remember { mutableStateOf(app.engine.logger.allFiles().size) }
+                    SettingsScreen(
+                        settings,
+                        onChange = { app.stores.saveSettings(it); app.engine.logger.enabled = it.logFlights },
+                        onBack = { screen = Screen.MAP },
+                        onHelp = { screen = Screen.HELP },
+                        onShareLog = { shareLatestLog(context, app) },
+                        onDeleteLogs = { app.engine.logger.deleteAll(); logCount = 0 },
+                        logCount = logCount
+                    )
+                }
+                Screen.HELP -> {
+                    BackHandler { screen = if (plan == null) Screen.SETUP else Screen.MAP }
+                    HelpScreen { screen = if (plan == null) Screen.SETUP else Screen.MAP }
                 }
             }
             if (screen == Screen.SETUP && plan != null) {
                 BackHandler { screen = Screen.MAP }
             }
         }
+    }
+}
+
+/** Share the most recent CSV log through the system share sheet (FileProvider URI). */
+private fun shareLatestLog(context: android.content.Context, app: SkyTrackApp) {
+    val f = app.engine.logger.latestFile() ?: return
+    try {
+        val uri = androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".files", f)
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            putExtra(android.content.Intent.EXTRA_SUBJECT, f.name)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(android.content.Intent.createChooser(intent, f.name))
+    } catch (e: Exception) {
+        // No app able to receive the file; nothing else to do offline.
     }
 }
