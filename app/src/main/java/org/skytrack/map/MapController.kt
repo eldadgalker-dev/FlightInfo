@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 2.1
+// Version 2.2
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -108,7 +108,7 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
             lastRouteHash = routeHash
             src(st, MapStyle.SRC_ROUTE_PLANNED)?.setGeoJson(lineFeature(route.points))
             src(st, MapStyle.SRC_ROUTE_ORIGINAL)?.setGeoJson(
-                if (m.estimate.replanCount > 0) lineFeature(m.plannedRoute.points) else emptyCollection())
+                if (m.estimate.replanCount > 0) FeatureCollection.fromFeature(lineFeature(m.plannedRoute.points)) else emptyCollection())
             src(st, MapStyle.SRC_AIRPORTS)?.setGeoJson(FeatureCollection.fromFeatures(listOf(
                 pointFeature(m.origin.lat, m.origin.lon).apply { addStringProperty("code", m.origin.iata) },
                 pointFeature(m.destination.lat, m.destination.lon).apply { addStringProperty("code", m.destination.iata) }
@@ -116,7 +116,7 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
         }
         src(st, MapStyle.SRC_ROUTE_FLOWN)?.setGeoJson(lineFeature(route.polylineUpTo(m.estimate.alongTrackM)))
         src(st, MapStyle.SRC_TRACK_ACTUAL)?.setGeoJson(
-            if (m.estimate.replanCount > 0 && m.actualTrack.size >= 2) lineFeature(m.actualTrack) else emptyCollection())
+            if (m.estimate.replanCount > 0 && m.actualTrack.size >= 2) FeatureCollection.fromFeature(lineFeature(m.actualTrack)) else emptyCollection())
         src(st, MapStyle.SRC_UNCERTAINTY)?.setGeoJson(uncertaintyFeature(m, route))
 
         val e = m.estimate
