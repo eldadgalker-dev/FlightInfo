@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Updater
-// Version 1.0
+// Version 1.1
 // Purpose : Manual update check against the project's GitHub Releases
 //           (public REST API, no token), download of the APK asset and
 //           hand-off to the Android package installer. Nothing runs
@@ -72,6 +72,19 @@ class Updater(private val context: Context) {
         if (err != null) throw IllegalStateException(err)
         return f
     }
+
+    /**
+     * True if the APK is signed with the same certificate as the installed app,
+     * false if not (Android would refuse the update), null if it cannot be determined.
+     */
+    fun signatureMatches(apk: File): Boolean? = try {
+        val pm = context.packageManager
+        val flags = android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+        val installed = pm.getPackageInfo(context.packageName, flags).signingInfo?.apkContentsSigners
+        val archive = pm.getPackageArchiveInfo(apk.absolutePath, flags)?.signingInfo?.apkContentsSigners
+        if (installed == null || archive == null) null
+        else installed.map { it.toCharsString() }.toSet() == archive.map { it.toCharsString() }.toSet()
+    } catch (e: Exception) { null }
 
     /** Hand the downloaded APK to the system installer. */
     fun install(apk: File) {

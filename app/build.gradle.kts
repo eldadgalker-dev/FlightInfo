@@ -1,7 +1,7 @@
 // Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
-// FlightInfo app module build - Version 2.5
+// FlightInfo app module build - Version 2.6
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -16,15 +16,31 @@ android {
         applicationId = "com.galker.flightinfo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 14
-        versionName = "2.5"
+        versionCode = 15
+        versionName = "2.6"
         vectorDrawables.useSupportLibrary = true
     }
 
+    // One stable signing key for every build (see keystore/README.md). Environment
+    // variables override the committed key, e.g. when the CI has a keystore secret.
+    signingConfigs {
+        getByName("debug") {
+            val ksPath = System.getenv("KEYSTORE_FILE")
+            storeFile = if (!ksPath.isNullOrBlank()) file(ksPath) else rootProject.file("keystore/flightinfo.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "flightinfo"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "flightinfo"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "flightinfo"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {

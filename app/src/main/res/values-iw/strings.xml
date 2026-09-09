@@ -184,6 +184,7 @@
     <string name="update_none">מותקנת הגרסה האחרונה.</string>
     <string name="update_error">בדיקת העדכון נכשלה: %1$s</string>
     <string name="update_install">הורד והתקן</string>
+    <string name="update_signature_mismatch">הגרסה החדשה חתומה במפתח שונה מזה שמותקן, ולכן Android יסרב לעדכן. הסר את FlightInfo פעם אחת והתקן את הקובץ שהורד; עדכונים הבאים יותקנו כרגיל.</string>
     <string name="update_install_hint">דורש אינטרנט. בפעם הראשונה Android יבקש לאשר התקנת אפליקציות מ־FlightInfo; Play Protect עשוי להציג אזהרה לאפליקציה שהותקנה מחוץ לחנות. ההגדרות והטיסה נשמרות.</string>
 
     <string name="notif_channel">מעקב טיסה</string>

@@ -1,7 +1,7 @@
 # Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
 # This software is released under the BSD 3-Clause License.
 # See the LICENSE.txt file in the project root for full license information.
-# FlightInfo CI - Version 2.0
+# FlightInfo CI - Version 2.1
 # Runs the JVM tests and publishes one installable APK (debug-signed):
 #  - as a workflow artifact on every push
 #  - as a GitHub Release tagged v<versionName> on every push to main, with a
@@ -41,8 +41,29 @@ jobs:
       - name: Unit tests
         run: ./gradlew test --no-daemon
 
+      # Optional: a private keystore from repository secrets replaces the committed one.
+      - name: Use keystore from secrets if present
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "Using keystore from secrets"
+          else
+            echo "Using committed keystore (keystore/flightinfo.jks)"
+          fi
+
       - name: Assemble
         run: ./gradlew assembleDebug --no-daemon
+
+      - name: Show signing certificate
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | grep -i "SHA-256" || true
 
       - name: Name the APK
         run: |

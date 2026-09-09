@@ -47,6 +47,10 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 `.github/workflows/build.yml` runs the tests on every push and publishes the APK (debug-signed, installable) as a workflow artifact and, on every push to `main`, as a GitHub Release tagged `v<version>` with two assets: `FlightInfo-<version>.apk` and a fixed-name `FlightInfo.apk`. No unsigned APK is produced.
 
+### Signing
+
+All builds are signed with the committed key `keystore/flightinfo.jks` (see `keystore/README.md`), so every APK from the workflow updates the previous one in place. GitHub-hosted runners would otherwise create a new throw-away debug key per run and Android would refuse each update ("App not installed"). To use a private key instead, add the secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`; the workflow prefers them automatically.
+
 ### Updating the phone directly from GitHub
 
 - **In-app**: Settings > App update > *Check for update* queries the GitHub Releases API (`Parameters.UPDATE_REPO_OWNER/NAME`), compares the tag with the installed version and, on request, downloads `FlightInfo.apk` and opens the system installer. Manual only; nothing runs in the background. Requires the release created by the build workflow.

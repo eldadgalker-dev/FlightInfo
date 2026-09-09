@@ -195,6 +195,7 @@
     <string name="update_none">You have the latest version.</string>
     <string name="update_error">Update check failed: %1$s</string>
     <string name="update_install">Download and install</string>
+    <string name="update_signature_mismatch">The new version is signed with a different key than the installed one, so Android will refuse the update. Uninstall FlightInfo once and install the downloaded file; later updates will install normally.</string>
     <string name="update_install_hint">Needs internet. The first time, Android asks you to allow installing apps from FlightInfo; Play Protect may show a warning for a sideloaded app. Your settings and flight are kept.</string>
 
     <string name="notif_channel">Flight tracking</string>

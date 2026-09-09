@@ -234,6 +234,7 @@ private fun UpdateSection(updater: Updater) {
     var progress by remember { mutableStateOf<Int?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var checked by remember { mutableStateOf(false) }
+    val sigMismatch = stringResource(R.string.update_signature_mismatch)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(stringResource(R.string.update_title), style = MaterialTheme.typography.labelLarge)
         Text(stringResource(R.string.update_current, updater.currentVersion()), style = MaterialTheme.typography.bodySmall,
@@ -270,7 +271,8 @@ private fun UpdateSection(updater: Updater) {
                     scope.launch {
                         try {
                             val f = updater.download(url) { pct -> progress = pct }
-                            updater.install(f)
+                            if (updater.signatureMatches(f) == false) error = sigMismatch
+                            else updater.install(f)
                         } catch (e: Exception) { error = e.message ?: "error" }
                         progress = null; busy = false
                     }
