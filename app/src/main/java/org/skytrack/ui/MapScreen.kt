@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 2.4
+// Version 2.5
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -27,17 +27,18 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.filled.CenterFocusStrong
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.SatelliteAlt
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Flight
-import androidx.compose.material.icons.filled.GpsFixed
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.GpsOff
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -122,7 +123,7 @@ fun MapScreen(
         LaunchedEffect(controller, metrics) { if (metrics != null) controller?.update(metrics) }
 
         // -- Status strip --
-        StatusStrip(metrics, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(8.dp))
+        StatusStrip(metrics, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 8.dp, start = 64.dp, end = 64.dp).fillMaxWidth())
 
         // -- Floating controls: top corners, below the status strip, clear of the panel --
         Column(
@@ -131,10 +132,10 @@ fun MapScreen(
         ) {
             SmallFloatingActionButton(onClick = { controller?.zoomIn() }) { Icon(Icons.Filled.Add, stringResource(R.string.zoom_in)) }
             SmallFloatingActionButton(onClick = { controller?.zoomOut() }) { Icon(Icons.Filled.Remove, stringResource(R.string.zoom_out)) }
-            SmallFloatingActionButton(onClick = { controller?.fitRoute() }) { Icon(Icons.Filled.Fullscreen, stringResource(R.string.fit_route)) }
-            SmallFloatingActionButton(onClick = { controller?.recenter() }) { Icon(Icons.Filled.MyLocation, stringResource(R.string.recenter)) }
+            SmallFloatingActionButton(onClick = { controller?.fitRoute() }) { Icon(Icons.Filled.ZoomOutMap, stringResource(R.string.fit_route)) }
+            SmallFloatingActionButton(onClick = { controller?.recenter() }) { Icon(Icons.Filled.CenterFocusStrong, stringResource(R.string.recenter)) }
             SmallFloatingActionButton(onClick = { trackUp = !trackUp; controller?.recenter() }) {
-                Icon(if (trackUp) Icons.Filled.Flight else Icons.Filled.Explore, stringResource(R.string.orientation))
+                Icon(if (trackUp) Icons.Filled.Navigation else Icons.Filled.Explore, stringResource(R.string.orientation))
             }
         }
 
@@ -143,13 +144,14 @@ fun MapScreen(
             Modifier.align(Alignment.TopStart).statusBarsPadding().padding(top = 64.dp, start = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.List, stringResource(R.string.metrics)) }
+            SmallFloatingActionButton(onClick = onOpenSetup) { Icon(Icons.Filled.EditNote, stringResource(R.string.flight_setup)) }
+            SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.TableChart, stringResource(R.string.metrics)) }
             SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
-            SmallFloatingActionButton(onClick = onOpenSetup) { Icon(Icons.Filled.Flight, stringResource(R.string.flight_setup)) }
-            SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Info, stringResource(R.string.help)) }
+            SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.AutoMirrored.Filled.Help, stringResource(R.string.help)) }
             if (metrics != null) {
+                // Live sensing (satellite) vs time-based estimate (clock)
                 SmallFloatingActionButton(onClick = onToggleEstimateOnly) {
-                    Icon(if (metrics.estimateOnly) Icons.Filled.GpsOff else Icons.Filled.GpsFixed, stringResource(R.string.toggle_mode))
+                    Icon(if (metrics.estimateOnly) Icons.Filled.Schedule else Icons.Filled.SatelliteAlt, stringResource(R.string.toggle_mode))
                 }
                 if (!metrics.estimateOnly) {
                     SmallFloatingActionButton(onClick = { showVisualFix = true }) {
@@ -177,16 +179,21 @@ fun MapScreen(
 
 @Composable
 private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
-    Surface(modifier = modifier.clip(RoundedCornerShape(12.dp)), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    // Fixed footprint between the two button columns: at most two single-line rows.
+    Surface(modifier = modifier.clip(RoundedCornerShape(12.dp)), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (m == null) {
-                Text(stringResource(R.string.no_flight), style = MaterialTheme.typography.labelMedium)
-            } else if (m.estimateOnly) {
-                Text(stringResource(R.string.mode_estimate_only), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                Text(stringResource(R.string.phase_label, phaseName(m.estimate.phase)), style = MaterialTheme.typography.labelMedium)
-                m.overflownCountry?.let { c -> Text(stringResource(R.string.over_country, c), style = MaterialTheme.typography.labelMedium) }
+                StripText(stringResource(R.string.no_flight))
+                return@Surface
+            }
+            val e = m.estimate
+            if (m.estimateOnly) {
+                StripText(stringResource(R.string.mode_estimate_only), MaterialTheme.colorScheme.primary)
+                StripText(listOfNotNull(
+                    stringResource(R.string.phase_label, phaseName(e.phase)),
+                    m.overflownCountry?.let { stringResource(R.string.over_country, it) }
+                ).joinToString("  \u00B7  "))
             } else {
-                val e = m.estimate
                 val gnss = when (e.gnssQuality) {
                     GnssQuality.GOOD -> stringResource(R.string.gnss_good, e.satsUsed)
                     GnssQuality.DEGRADED -> stringResource(R.string.gnss_degraded, e.satsUsed)
@@ -197,15 +204,22 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
                     FusionMode.ROUTE_CONSTRAINED -> stringResource(R.string.mode_constrained)
                     FusionMode.PREDICTED_ONLY -> stringResource(R.string.mode_predicted)
                 }
-                Text(gnss, style = MaterialTheme.typography.labelMedium)
-                Text(mode, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                Text(stringResource(R.string.fix_age, Format.ageSeconds(e.lastFixAgeMs)), style = MaterialTheme.typography.labelMedium)
-            }
-            m?.overflownCountry?.let { c ->
-                Text(stringResource(R.string.over_country, c), style = MaterialTheme.typography.labelMedium)
+                StripText("$mode  \u00B7  $gnss  \u00B7  ${stringResource(R.string.fix_age, Format.ageSeconds(e.lastFixAgeMs))}",
+                    MaterialTheme.colorScheme.primary)
+                val second = listOfNotNull(
+                    stringResource(R.string.phase_label, phaseName(e.phase)),
+                    m.overflownCountry?.let { stringResource(R.string.over_country, it) }
+                ).joinToString("  \u00B7  ")
+                StripText(second)
             }
         }
     }
+}
+
+@Composable
+private fun StripText(text: String, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
+    Text(text, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
 }
 
 @Composable
