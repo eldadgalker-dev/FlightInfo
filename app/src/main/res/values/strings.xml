@@ -177,6 +177,7 @@
     <string name="aerial_installed">Installed, %1$d MB. Public-domain satellite mosaic, ~1 km per pixel.</string>
     <string name="aerial_not_installed">Not installed. One-time download of about 60\u201380 MB on Wi-Fi; afterwards works fully offline.</string>
     <string name="aerial_hint">Shows continents, mountains, deserts and coastlines as seen from cruise altitude. Cities and roads are not resolved at this scale.</string>
+    <string name="aerial_not_published">The imagery pack has not been published yet (GitHub Release data-v1 missing). Run the "bluemarble" workflow once in the repository\'s Actions tab.</string>
     <string name="aerial_error">Download failed: %1$s</string>
     <string name="aerial_download">Download</string>
     <string name="aerial_redownload">Download again</string>

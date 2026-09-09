@@ -167,6 +167,7 @@
     <string name="aerial_installed">מותקן, %1$d MB. פסיפס לוויין בנחלת הכלל, ~1 ק"מ לפיקסל.</string>
     <string name="aerial_not_installed">לא מותקן. הורדה חד־פעמית של כ־60–80 MB ב־Wi‑Fi; לאחר מכן פועל לחלוטין ללא רשת.</string>
     <string name="aerial_hint">מציג יבשות, הרים, מדבריות וחופים כפי שנראים מגובה שיוט. ערים וכבישים אינם ניתנים להבחנה בקנה מידה זה.</string>
+    <string name="aerial_not_published">חבילת התצלום עדיין לא פורסמה (חסר Release בשם data-v1 ב־GitHub). הרץ פעם אחת את ה־workflow "bluemarble" בכרטיסיית Actions.</string>
     <string name="aerial_error">ההורדה נכשלה: %1$s</string>
     <string name="aerial_download">הורד</string>
     <string name="aerial_redownload">הורד שוב</string>

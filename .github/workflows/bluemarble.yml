@@ -1,23 +1,31 @@
 # Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
 # This software is released under the BSD 3-Clause License.
 # See the LICENSE.txt file in the project root for full license information.
-# FlightInfo - aerial imagery pack builder - Version 1.0
-# Manual workflow: downloads a NASA Blue Marble equirectangular image (public
-# domain), reprojects it to Web Mercator tiles and publishes the MBTiles file
-# to the GitHub Release "data-v1", where the app downloads it from.
-# The default source URL is the 21600x10800 Blue Marble Next Generation with
-# topography and bathymetry (August); adjust the input if NASA moves the file.
+# FlightInfo - aerial imagery pack builder - Version 2.0
+# Manual workflow. Default mode "gibs" fetches ready-made Web Mercator tiles of
+# NASA Blue Marble (public domain) from NASA GIBS (WMTS) and packs them into
+# MBTiles. Mode "image" reprojects an equirectangular source image instead
+# (NASA's image server was found to refuse connections from Actions runners).
+# The result is attached to the GitHub Release "data-v1".
 name: bluemarble
 
 on:
   workflow_dispatch:
     inputs:
-      source_url:
-        description: "Equirectangular Blue Marble image URL"
+      mode:
+        description: "gibs (fetch tiles from NASA GIBS) or image (reproject a source image URL)"
         required: true
-        default: "https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73776/world.topo.bathy.200408.3x21600x10800.png"
+        default: "gibs"
+      layer:
+        description: "GIBS layer (gibs mode): BlueMarble_ShadedRelief_Bathymetry, BlueMarble_NextGeneration, BlueMarble_ShadedRelief"
+        required: false
+        default: "BlueMarble_ShadedRelief_Bathymetry"
+      source_url:
+        description: "Equirectangular image URL (image mode only)"
+        required: false
+        default: ""
       max_zoom:
-        description: "Maximum zoom level (6 for 21600 px source, 7 for 43200 px)"
+        description: "Maximum zoom level (6 recommended: ~5,500 tiles, ~60-80 MB)"
         required: true
         default: "6"
 
@@ -34,20 +42,32 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install pillow numpy
+      - name: Build from GIBS tiles
+        if: github.event.inputs.mode == 'gibs'
+        run: python tools/build_bluemarble_gibs.py "bluemarble_z0-${{ github.event.inputs.max_zoom }}.mbtiles" "${{ github.event.inputs.max_zoom }}" "${{ github.event.inputs.layer }}"
 
-      - name: Download source image
-        run: curl -L --fail --retry 3 -o bluemarble_src "${{ github.event.inputs.source_url }}" && ls -la bluemarble_src
+      - name: Build from source image
+        if: github.event.inputs.mode == 'image'
+        run: |
+          pip install pillow numpy
+          curl -L --fail --retry 3 --connect-timeout 30 -o bluemarble_src "${{ github.event.inputs.source_url }}"
+          python tools/build_bluemarble.py bluemarble_src "bluemarble_z0-${{ github.event.inputs.max_zoom }}.mbtiles" "${{ github.event.inputs.max_zoom }}"
 
-      - name: Build MBTiles
-        run: python tools/build_bluemarble.py bluemarble_src "bluemarble_z0-${{ github.event.inputs.max_zoom }}.mbtiles" "${{ github.event.inputs.max_zoom }}"
+      - name: Sanity check
+        run: |
+          ls -la *.mbtiles
+          python - <<'PY'
+          import glob, sqlite3
+          for f in glob.glob("*.mbtiles"):
+              c = sqlite3.connect(f)
+              print(f, c.execute("select zoom_level, count(*) from tiles group by 1").fetchall())
+          PY
 
       - name: Publish to release data-v1
         uses: softprops/action-gh-release@v2
         with:
           tag_name: data-v1
           name: "Data packs"
-          body: "Optional data packs downloaded by the app. bluemarble_z0-6.mbtiles: NASA Blue Marble Next Generation (public domain), Web Mercator, zoom 0-6."
+          body: "Optional data packs downloaded by the app. bluemarble_z0-6.mbtiles: NASA Blue Marble (public domain), Web Mercator, zoom 0-6."
           overwrite_files: true
           files: "*.mbtiles"

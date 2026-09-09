@@ -301,7 +301,10 @@ private fun AerialSection(s: Settings, onChange: (Settings) -> Unit, aerial: Aer
             else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             Text(if (p >= 0) "$p%" else "...", style = MaterialTheme.typography.labelSmall)
         }
-        error?.let { Text(stringResource(R.string.aerial_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        error?.let {
+            val msg = if (it.contains("404")) stringResource(R.string.aerial_not_published) else stringResource(R.string.aerial_error, it)
+            Text(msg, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = {

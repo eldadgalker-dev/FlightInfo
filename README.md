@@ -60,7 +60,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ### Aerial imagery pack
 
-`.github/workflows/bluemarble.yml` (run manually from the Actions tab) downloads a NASA Blue Marble Next Generation image, reprojects it with `tools/build_bluemarble.py` into `bluemarble_z0-6.mbtiles` (Web Mercator, zoom 0-6, ~60-80 MB estimated) and attaches it to the release `data-v1`. The app downloads that file on demand from Settings (`Parameters.AERIAL_PACK_URL`) and reads it locally through MapLibre's `mbtiles://` scheme. The default source URL is on NASA's Visible Earth image server; if NASA moves it, pass another equirectangular Blue Marble URL as the workflow input.
+`.github/workflows/bluemarble.yml` (run manually from the Actions tab) builds `bluemarble_z0-6.mbtiles` and attaches it to the release `data-v1`. Default mode fetches ready-made Web Mercator tiles from NASA GIBS (`tools/build_bluemarble_gibs.py`, layer `BlueMarble_ShadedRelief_Bathymetry`); the alternative mode reprojects an equirectangular image with `tools/build_bluemarble.py`. NASA's `eoimages` image server refuses connections from GitHub-hosted runners, hence the GIBS default. The app downloads that file on demand from Settings (`Parameters.AERIAL_PACK_URL`) and reads it locally through MapLibre's `mbtiles://` scheme. The default source URL is on NASA's Visible Earth image server; if NASA moves it, pass another equirectangular Blue Marble URL as the workflow input.
 
 ### Regenerating bundled data
 
