@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 2.3
+// Version 2.4
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -59,6 +59,11 @@ object Parameters {
     const val AERIAL_PACK_URL  = "https://github.com/eldadgalker-dev/FlightInfo/releases/download/data-v1/bluemarble_z0-6.mbtiles"
     const val AERIAL_PACK_FILE = "bluemarble_z0-6.mbtiles"
     const val AERIAL_MAX_ZOOM  = 6
+
+    // -- In-app update (manual check against GitHub Releases) --
+    const val UPDATE_REPO_OWNER = "eldadgalker-dev"
+    const val UPDATE_REPO_NAME  = "FlightInfo"
+    const val UPDATE_ASSET_NAME = "FlightInfo.apk"   // fixed-name asset published by the build workflow
 
     // -- Estimate-only mode --
     const val TAXI_ALLOWANCE_S          = 900.0     // s, scheduled departure -> assumed takeoff

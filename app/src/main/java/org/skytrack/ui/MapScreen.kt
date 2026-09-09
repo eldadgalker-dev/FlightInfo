@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 2.3
+// Version 2.4
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -226,26 +226,26 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onTo
             }
             // Headline: three equal cells, values never wrap.
             Row(Modifier.fillMaxWidth()) {
-                LabeledValue(stringResource(R.string.remaining), Format.distance(m.remainingM, s.distanceUnit), e.positionConfidence, big = true, modifier = Modifier.weight(1f))
-                LabeledValue(stringResource(R.string.ete), Format.duration(m.eteS), m.eteConfidence, big = true, modifier = Modifier.weight(1f))
-                LabeledValue(stringResource(R.string.eta_local, m.destination.iata), Format.time(m.etaAtDestination, s.use24h), m.eteConfidence, big = true, modifier = Modifier.weight(1f))
+                LabeledValue(stringResource(R.string.remaining), Format.distance(m.remainingM, s.distanceUnit), e.positionConfidence, big = true, modifier = Modifier.weight(1f), accent = Accent.distance)
+                LabeledValue(stringResource(R.string.ete), Format.duration(m.eteS), m.eteConfidence, big = true, modifier = Modifier.weight(1f), accent = Accent.time)
+                LabeledValue(stringResource(R.string.eta_local, m.destination.iata), Format.time(m.etaAtDestination, s.use24h), m.eteConfidence, big = true, modifier = Modifier.weight(1f), accent = Accent.time)
             }
             if (expanded) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                 Row(Modifier.fillMaxWidth()) {
-                    LabeledValue(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, s.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f))
-                    LabeledValue(stringResource(R.string.altitude), Format.altitude(e.altM, s.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f))
-                    LabeledValue(stringResource(R.string.track), Format.heading(e.trackDeg), e.trackConfidence, modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, s.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(stringResource(R.string.altitude), Format.altitude(e.altM, s.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(stringResource(R.string.track), Format.heading(e.trackDeg), e.trackConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
                 }
                 Row(Modifier.fillMaxWidth()) {
-                    LabeledValue(stringResource(R.string.flown), Format.distance(m.flownM, s.distanceUnit), e.positionConfidence, modifier = Modifier.weight(1f))
-                    LabeledValue(stringResource(R.string.progress), Format.percent(m.percentComplete), e.positionConfidence, modifier = Modifier.weight(1f))
-                    LabeledValue(stringResource(R.string.elapsed), Format.duration(m.elapsedS), modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.flown), Format.distance(m.flownM, s.distanceUnit), e.positionConfidence, modifier = Modifier.weight(1f), accent = Accent.distance)
+                    LabeledValue(stringResource(R.string.progress), Format.percent(m.percentComplete), e.positionConfidence, modifier = Modifier.weight(1f), accent = Accent.distance)
+                    LabeledValue(stringResource(R.string.elapsed), Format.duration(m.elapsedS), modifier = Modifier.weight(1f), accent = Accent.time)
                 }
                 Row(Modifier.fillMaxWidth()) {
-                    LabeledValue(stringResource(R.string.time_at, m.origin.iata), Format.time(m.nowAtOrigin, s.use24h), modifier = Modifier.weight(1f))
-                    LabeledValue(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), modifier = Modifier.weight(1f))
-                    LabeledValue(stringResource(R.string.time_at, m.destination.iata), Format.time(m.nowAtDestination, s.use24h), modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.time_at, m.origin.iata), Format.time(m.nowAtOrigin, s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
+                    LabeledValue(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
+                    LabeledValue(stringResource(R.string.time_at, m.destination.iata), Format.time(m.nowAtDestination, s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
                 }
                 val cross = e.measuredCrossM
                 if (cross != null && kotlin.math.abs(cross) >= 2_000.0) {

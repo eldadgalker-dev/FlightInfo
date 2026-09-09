@@ -15,6 +15,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Used only for the optional one-time download of the aerial imagery pack. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Manual in-app update: hand the downloaded APK to the system installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />

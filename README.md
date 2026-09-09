@@ -49,6 +49,8 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ### Updating the phone directly from GitHub
 
+- **In-app**: Settings > App update > *Check for update* queries the GitHub Releases API (`Parameters.UPDATE_REPO_OWNER/NAME`), compares the tag with the installed version and, on request, downloads `FlightInfo.apk` and opens the system installer. Manual only; nothing runs in the background. Requires the release created by the build workflow.
+
 - **Fixed link** (open on the phone, then install): `https://github.com/<owner>/FlightInfo/releases/latest/download/FlightInfo.apk`
 - **Obtainium** (free, open source, no account): install Obtainium, tap **+**, paste `https://github.com/<owner>/FlightInfo`. It watches the Releases page and offers each new version as an in-place update. Play Protect will still warn once per install for a sideloaded app.
 

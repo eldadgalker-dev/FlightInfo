@@ -175,6 +175,16 @@
     <string name="actual_takeoff">זמן המראה בפועל (אופציונלי)</string>
     <string name="actual_takeoff_hint">HH:MM, שעון מקומי במוצא. אם ידוע לך (אפליקציית חברת התעופה, שעון), הוא מחליף את ההנחה "יציאה + 15 דקות" ומשפר מאוד את ההערכה ללא GPS.</string>
 
+    <string name="update_title">עדכון האפליקציה</string>
+    <string name="update_current">גרסה מותקנת: %1$s</string>
+    <string name="update_check">בדוק אם יש עדכון</string>
+    <string name="update_checking">בודק\u2026</string>
+    <string name="update_available">גרסה %1$s זמינה.</string>
+    <string name="update_none">מותקנת הגרסה האחרונה.</string>
+    <string name="update_error">בדיקת העדכון נכשלה: %1$s</string>
+    <string name="update_install">הורד והתקן</string>
+    <string name="update_install_hint">דורש אינטרנט. בפעם הראשונה Android יבקש לאשר התקנת אפליקציות מ־FlightInfo; Play Protect עשוי להציג אזהרה לאפליקציה שהותקנה מחוץ לחנות. ההגדרות והטיסה נשמרות.</string>
+
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

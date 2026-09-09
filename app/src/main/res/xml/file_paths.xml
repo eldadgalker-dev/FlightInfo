@@ -6,5 +6,7 @@
 -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-files-path name="logs" path="logs/" />
+    <external-files-path name="updates" path="updates/" />
+    <files-path name="updates_internal" path="updates/" />
     <files-path name="logs_internal" path="logs/" />
 </paths>

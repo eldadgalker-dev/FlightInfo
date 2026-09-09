@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MainActivity
-// Version 2.3
+// Version 2.4
 // Purpose : Single-activity host. Simple state-based navigation between
 //           Setup / Map / Metrics / Settings, runtime permission requests,
 //           and foreground-service start/stop tied to the active flight.
@@ -165,7 +165,8 @@ private fun Root(app: SkyTrackApp) {
                         onShareLog = { shareLatestLog(context, app) },
                         onDeleteLogs = { app.engine.logger.deleteAll(); logCount = 0 },
                         logCount = logCount,
-                        aerial = remember { org.skytrack.map.AerialPack(context) }
+                        aerial = remember { org.skytrack.map.AerialPack(context) },
+                        updater = remember { org.skytrack.net.Updater(context) }
                     )
                 }
                 Screen.HELP -> {

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MetricsAndSettingsScreens
-// Version 2.3
+// Version 2.4
 // Purpose : Full-page metrics view (Origin / Now / Destination columns)
 //           and the settings page (units, clock, theme, follow, gestures).
 // =============================================================
@@ -36,7 +36,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +54,8 @@ import org.skytrack.fusion.Confidence
 import org.skytrack.fusion.FlightMetrics
 import org.skytrack.fusion.FusionMode
 import org.skytrack.map.AerialPack
+import org.skytrack.net.UpdateInfo
+import org.skytrack.net.Updater
 import kotlinx.coroutines.launch
 
 @Composable
@@ -65,7 +69,7 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBac
         if (m == null) { Text(stringResource(R.string.no_flight_hint)); return }
         val e = m.estimate
 
-        Section(stringResource(R.string.now)) {
+        Section(stringResource(R.string.now), Accent.motion) {
             Grid(listOf(
                 Triple(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, s.speedUnit), e.speedConfidence),
                 Triple(stringResource(R.string.altitude), Format.altitude(e.altM, s.altitudeUnit), e.altitudeConfidence),
@@ -75,25 +79,25 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBac
                 Triple(stringResource(R.string.elapsed), Format.duration(m.elapsedS), null),
                 Triple(stringResource(R.string.total_flight_time), Format.duration(m.totalFlightS), m.eteConfidence),
                 Triple(stringResource(R.string.progress), Format.percent(m.percentComplete), e.positionConfidence)
-            ))
+            ), Accent.motion)
         }
-        Section("${stringResource(R.string.origin)}: ${m.origin.iata} ${m.origin.city}") {
+        Section("${stringResource(R.string.origin)}: ${m.origin.iata} ${m.origin.city}", Accent.time) {
             Grid(listOf(
                 Triple(stringResource(R.string.local_time), "${Format.time(m.nowAtOrigin, s.use24h)} ${Format.offset(m.nowAtOrigin)}", null),
                 Triple(stringResource(R.string.takeoff_time), Format.time(m.takeoffAtOrigin, s.use24h), null),
                 Triple(stringResource(R.string.flown), Format.distance(m.flownM, s.distanceUnit), e.positionConfidence),
                 Triple(stringResource(R.string.route_length), Format.distance(m.routeLengthM, s.distanceUnit), null)
-            ))
+            ), Accent.time)
         }
-        Section("${stringResource(R.string.destination)}: ${m.destination.iata} ${m.destination.city}") {
+        Section("${stringResource(R.string.destination)}: ${m.destination.iata} ${m.destination.city}", Accent.distance) {
             Grid(listOf(
                 Triple(stringResource(R.string.local_time), "${Format.time(m.nowAtDestination, s.use24h)} ${Format.offset(m.nowAtDestination)}", null),
                 Triple(stringResource(R.string.eta), Format.time(m.etaAtDestination, s.use24h), m.eteConfidence),
                 Triple(stringResource(R.string.remaining), Format.distance(m.remainingM, s.distanceUnit), e.positionConfidence),
                 Triple(stringResource(R.string.ete), Format.duration(m.eteS), m.eteConfidence)
-            ))
+            ), Accent.distance)
         }
-        Section(stringResource(R.string.estimator)) {
+        Section(stringResource(R.string.estimator), Accent.status) {
             val mode = if (m.estimateOnly) stringResource(R.string.mode_estimate_only) else when (e.mode) {
                 FusionMode.GNSS_TRACKING -> stringResource(R.string.mode_tracking)
                 FusionMode.ROUTE_CONSTRAINED -> stringResource(R.string.mode_constrained)
@@ -115,7 +119,7 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBac
                     null -> "--"; true -> stringResource(R.string.present); false -> stringResource(R.string.absent) }, null),
                 Triple(stringResource(R.string.over_country_label), m.overflownCountry ?: "--", null),
                 Triple(stringResource(R.string.position), String.format(java.util.Locale.US, "%.3f, %.3f", e.lat, e.lon), e.positionConfidence)
-            ))
+            ), Accent.status)
             if (baroAvailable == false) {
                 Spacer(Modifier.height(6.dp))
                 Text(stringResource(R.string.no_barometer_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -126,23 +130,30 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBac
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+private fun Section(title: String, accent: Color, content: @Composable () -> Unit) {
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
-            content()
+        Column {
+            // Coloured header band identifies the section at a glance.
+            Row(Modifier.fillMaxWidth().background(accent.copy(alpha = 0.16f)).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = accent)
+            }
+            Column(Modifier.padding(12.dp)) { content() }
         }
     }
 }
 
 @Composable
-private fun Grid(items: List<Triple<String, String, Confidence?>>) {
+private fun Grid(items: List<Triple<String, String, Confidence?>>, accent: Color) {
     val rows = items.chunked(2)
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        for (r in rows) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                for (it in r) LabeledValue(it.first, it.second, it.third, modifier = Modifier.weight(1f))
+    Column {
+        rows.forEachIndexed { i, r ->
+            Row(
+                Modifier.fillMaxWidth()
+                    .background(if (i % 2 == 1) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f) else Color.Transparent)
+                    .padding(vertical = 5.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                for (it in r) LabeledValue(it.first, it.second, it.third, modifier = Modifier.weight(1f), accent = accent)
                 if (r.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -151,7 +162,7 @@ private fun Grid(items: List<Triple<String, String, Confidence?>>) {
 
 @Composable
 fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit, onHelp: () -> Unit,
-                   onShareLog: () -> Unit, onDeleteLogs: () -> Unit, logCount: Int, aerial: AerialPack) {
+                   onShareLog: () -> Unit, onDeleteLogs: () -> Unit, logCount: Int, aerial: AerialPack, updater: Updater) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -187,6 +198,8 @@ fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit
             OutlinedButton(onClick = onDeleteLogs, enabled = logCount > 0, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.delete_logs)) }
         }
         HorizontalDivider()
+        UpdateSection(updater)
+        HorizontalDivider()
         OutlinedButton(onClick = onHelp, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.help)) }
         AboutBlock()
         Spacer(Modifier.height(24.dp))
@@ -209,6 +222,64 @@ private fun AboutBlock() {
             Text(stringResource(id), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
         }
+    }
+}
+
+/** Manual update: check GitHub Releases, download the APK, hand it to the installer. */
+@Composable
+private fun UpdateSection(updater: Updater) {
+    val scope = rememberCoroutineScope()
+    var info by remember { mutableStateOf<UpdateInfo?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf<Int?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var checked by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.update_title), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.update_current, updater.currentVersion()), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val i = info
+        when {
+            error != null -> Text(stringResource(R.string.update_error, error ?: ""), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            i != null && i.isNewer -> Text(stringResource(R.string.update_available, i.latestVersion), color = MaterialTheme.colorScheme.primary)
+            i != null && checked -> Text(stringResource(R.string.update_none), style = MaterialTheme.typography.bodySmall)
+        }
+        if (i != null && i.isNewer && i.notes.isNotBlank()) {
+            Text(i.notes.take(400), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val p = progress
+        if (p != null) {
+            if (p >= 0) LinearProgressIndicator(progress = { p / 100f }, modifier = Modifier.fillMaxWidth())
+            else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = {
+                    busy = true; error = null
+                    scope.launch {
+                        try { info = updater.check(); checked = true } catch (e: Exception) { error = e.message ?: "error" }
+                        busy = false
+                    }
+                },
+                enabled = !busy, modifier = Modifier.weight(1f)
+            ) { Text(stringResource(if (busy && progress == null) R.string.update_checking else R.string.update_check)) }
+            OutlinedButton(
+                onClick = {
+                    val url = i?.apkUrl ?: return@OutlinedButton
+                    busy = true; error = null; progress = -1
+                    scope.launch {
+                        try {
+                            val f = updater.download(url) { pct -> progress = pct }
+                            updater.install(f)
+                        } catch (e: Exception) { error = e.message ?: "error" }
+                        progress = null; busy = false
+                    }
+                },
+                enabled = !busy && i != null && i.isNewer && i.apkUrl != null, modifier = Modifier.weight(1f)
+            ) { Text(stringResource(R.string.update_install)) }
+        }
+        Text(stringResource(R.string.update_install_hint), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

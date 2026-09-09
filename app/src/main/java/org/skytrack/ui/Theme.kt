@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Theme
-// Version 2.1
+// Version 2.4
 // Purpose : Material 3 colour schemes (night default) and small shared
 //           composables: confidence marker, labelled value.
 // =============================================================
@@ -34,6 +34,7 @@ private val NightScheme = darkColorScheme(
     primary = Color(0xFFFFB454),
     onPrimary = Color(0xFF1A1200),
     secondary = Color(0xFF7AA2C4),
+    tertiary = Color(0xFF5AD1C6),
     background = Color(0xFF0B1622),
     surface = Color(0xFF13202D),
     onSurface = Color(0xFFE6ECF2),
@@ -44,12 +45,21 @@ private val NightScheme = darkColorScheme(
 private val DayScheme = lightColorScheme(
     primary = Color(0xFFD9581E),
     secondary = Color(0xFF2E5F8A),
+    tertiary = Color(0xFF0F8F83),
     background = Color(0xFFF4F1EA),
     surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF1A1A1A),
     surfaceVariant = Color(0xFFE8E2D4),
     onSurfaceVariant = Color(0xFF4A4A4A)
 )
+
+/** Semantic value colours: distances, times, motion (speed / altitude / track), status. */
+object Accent {
+    val distance @Composable get() = MaterialTheme.colorScheme.primary
+    val time @Composable get() = MaterialTheme.colorScheme.secondary
+    val motion @Composable get() = MaterialTheme.colorScheme.tertiary
+    val status @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+}
 
 @Composable
 fun SkyTrackTheme(night: Boolean, content: @Composable () -> Unit) {
@@ -78,7 +88,8 @@ fun confidenceColor(c: Confidence): Color = when (c) {
  * with the neighbouring cell. Digits and units stay LTR under RTL locales.
  */
 @Composable
-fun LabeledValue(label: String, value: String, confidence: Confidence? = null, big: Boolean = false, modifier: Modifier = Modifier) {
+fun LabeledValue(label: String, value: String, confidence: Confidence? = null, big: Boolean = false,
+                 modifier: Modifier = Modifier, accent: Color? = null) {
     Column(modifier = modifier.padding(horizontal = 2.dp)) {
         Text(
             label,
@@ -96,7 +107,7 @@ fun LabeledValue(label: String, value: String, confidence: Confidence? = null, b
                 value,
                 fontSize = if (big) 20.sp else 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = accent ?: MaterialTheme.colorScheme.onSurface,
                 style = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr, fontFeatureSettings = "tnum"),
                 softWrap = false,
                 maxLines = 1,

@@ -185,6 +185,17 @@
     <string name="actual_takeoff">Actual takeoff time (optional)</string>
     <string name="actual_takeoff_hint">HH:MM, origin local time. If you know it (airline app, watch), it replaces the scheduled time + 15 min assumption and greatly improves the estimate without GPS.</string>
 
+    <!-- In-app update (v2.4) -->
+    <string name="update_title">App update</string>
+    <string name="update_current">Installed version: %1$s</string>
+    <string name="update_check">Check for update</string>
+    <string name="update_checking">Checking\u2026</string>
+    <string name="update_available">Version %1$s is available.</string>
+    <string name="update_none">You have the latest version.</string>
+    <string name="update_error">Update check failed: %1$s</string>
+    <string name="update_install">Download and install</string>
+    <string name="update_install_hint">Needs internet. The first time, Android asks you to allow installing apps from FlightInfo; Play Protect may show a warning for a sideloaded app. Your settings and flight are kept.</string>
+
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>
