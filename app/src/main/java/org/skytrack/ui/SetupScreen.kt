@@ -74,7 +74,7 @@ fun SetupScreen(
     var flightNumber by rememberSaveable { mutableStateOf(existing?.flightNumber ?: "") }
     var estimateOnly by rememberSaveable { mutableStateOf(existing?.estimateOnly ?: false) }
     var takeoffText by rememberSaveable { mutableStateOf(existing?.takeoffMs?.let { ms ->
-        val zone = ZoneId.of(existing.originIata.let { airports.byCode(it) }?.tz ?: "UTC")
+        val zone = ZoneId.of(existing?.originIata?.let { airports.byCode(it) }?.tz ?: "UTC")
         java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
     } ?: "") }
     var departure by rememberSaveable { mutableStateOf(existing?.scheduledDepartureMs?.let { ms ->
@@ -163,7 +163,7 @@ fun SetupScreen(
                 error = null
                 val keepTakeoff = existing?.let { ex -> ex.takeoffMs?.takeIf { ex.originIata == o.iata && ex.destinationIata == d.iata } }
                 val takeoff = manualTakeoff ?: (if (estimateOnly) null else keepTakeoff)
-                val measuredKept = existing?.takeoffMeasured == true && takeoff == existing.takeoffMs
+                val measuredKept = existing != null && existing.takeoffMeasured && takeoff == existing.takeoffMs
                 onStart(FlightPlan(o.iata, d.iata, flightNumber.trim(), depMs, takeoff, estimateOnly, measuredKept))
             },
             enabled = origin != null && destination != null && origin?.iata != destination?.iata,

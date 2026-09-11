@@ -130,7 +130,7 @@ fun MapScreen(
         LaunchedEffect(controller, metrics) { if (metrics != null) controller?.update(metrics) }
         // One map snapshot when the flight ends, saved next to the flight log.
         LaunchedEffect(metrics?.estimate?.phase) {
-            if (!snapshotTaken && metrics?.estimate?.phase == org.skytrack.sensors.FlightPhase.LANDED && !metrics.estimateOnly) {
+            if (!snapshotTaken && metrics != null && metrics.estimate.phase == org.skytrack.sensors.FlightPhase.LANDED && !metrics.estimateOnly) {
                 snapshotTaken = true
                 try { controller?.snapshot { bmp -> onSnapshot(bmp) } } catch (e: Exception) { }
             }

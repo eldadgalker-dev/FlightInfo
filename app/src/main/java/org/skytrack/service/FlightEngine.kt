@@ -79,7 +79,6 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     private var phaseDetector = FlightPhaseDetector()
     private var plan: FlightPlan? = null
     private var lastPersistMs = 0L
-    private var lastTrackSaved = 0
     private var lastTrackSizeSaved = -1
     private var lastGnssVRate = 0.0
     private var lastGnssAltMs = 0L
@@ -112,8 +111,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         if (!samePlanAsBefore) stores.clearTrack()
         if (!p.estimateOnly && saved != null && System.currentTimeMillis() - saved.timeMs < 12 * 3600_000L && p.takeoffMs != null) {
             est.restore(saved.alongM, saved.speedMps, saved.trackDeg, saved.altM, saved.timeMs)
-            if (samePlanAsBefore) est.restoreTrack(stores.loadTrack())
-            stores.loadTrack()?.let { (pts, flown) -> est.restoreTrack(pts, flown, saved.timeMs) }
+            if (samePlanAsBefore) stores.loadTrack()?.let { (pts, flown) -> est.restoreTrack(pts, flown, saved.timeMs) }
             val ph = try { FlightPhase.valueOf(saved.phase) } catch (e: Exception) { FlightPhase.CRUISE }
             phaseDetector.restore(ph, p.takeoffMs)
         } else if (!p.estimateOnly && p.takeoffMs != null) {

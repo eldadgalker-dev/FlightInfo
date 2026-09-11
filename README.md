@@ -1,6 +1,6 @@
 # FlightInfo
 
-> **Status: 4.2-beta5 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Not yet validated on a real flight.
+> **Status: 4.3-beta6 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Not yet validated on a real flight.
 
 **Install (Android):** https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk — or scan the QR on the [installation page](https://eldadgalker-dev.github.io/FlightInfo/) ([INSTALL.md](INSTALL.md)).
 

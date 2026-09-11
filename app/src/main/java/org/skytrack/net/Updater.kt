@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Updater
-// Version 1.2
+// Version 1.3
 // Purpose : Manual update check against the project's GitHub Releases
 //           (public REST API, no token), download of the APK asset and
 //           hand-off to the Android package installer. Nothing runs
@@ -92,6 +92,7 @@ class Updater(private val context: Context) {
      * false if not (Android would refuse the update), null if it cannot be determined.
      */
     fun signatureMatches(apk: File): Boolean? = try {
+        if (android.os.Build.VERSION.SDK_INT < 28) throw UnsupportedOperationException("signingInfo needs API 28")
         val pm = context.packageManager
         val flags = android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
         val installed = pm.getPackageInfo(context.packageName, flags).signingInfo?.apkContentsSigners

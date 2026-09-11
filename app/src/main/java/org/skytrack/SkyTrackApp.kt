@@ -36,12 +36,14 @@ class SkyTrackApp : Application() {
     val updateInfo = kotlinx.coroutines.flow.MutableStateFlow<org.skytrack.net.UpdateInfo?>(null)
 
     /** True when a validated internet connection exists right now. */
-    fun isOnline(): Boolean = try {
-        val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-        caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-    } catch (e: Exception) { false }
+    fun isOnline(): Boolean {
+        return try {
+            val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        } catch (e: Exception) { false }
+    }
 
     override fun onCreate() {
         super.onCreate()
