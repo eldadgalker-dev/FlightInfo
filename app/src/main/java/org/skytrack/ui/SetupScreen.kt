@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - SetupScreen
-// Version 4.1
+// Version 4.5
 // Purpose : Flight plan entry: origin (auto-suggested from the last ground
 //           fix), destination search, optional flight number and scheduled
 //           departure. Starts or clears the active flight.
@@ -67,7 +67,9 @@ fun SetupScreen(
     onHelp: () -> Unit,
     prefill: BoardingPass? = null,
     updateAvailable: String? = null,
-    onOpenSettings: () -> Unit = {}
+    onOpenSettings: () -> Unit = {},
+    onConfirmGround: (() -> Unit)? = null,
+    groundStatus: String? = null
 ) {
     var origin by remember { mutableStateOf(existing?.let { airports.byCode(it.originIata) } ?: suggestedOrigin) }
     var destination by remember { mutableStateOf(existing?.let { airports.byCode(it.destinationIata) }) }
@@ -169,6 +171,12 @@ fun SetupScreen(
             enabled = origin != null && destination != null && origin?.iata != destination?.iata,
             modifier = Modifier.fillMaxWidth()
         ) { Text(stringResource(if (existing == null) R.string.start_flight else R.string.update_flight)) }
+
+        if (existing != null && !existing.estimateOnly && onConfirmGround != null) {
+            OutlinedButton(onClick = onConfirmGround, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.still_on_ground)) }
+            Text(groundStatus ?: stringResource(R.string.ground_ref_hint), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             if (existing != null) OutlinedButton(onClick = onClear) { Text(stringResource(R.string.end_flight)) }

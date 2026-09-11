@@ -1,6 +1,8 @@
 # FlightInfo
 
-> **Status: 4.3-beta6 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Not yet validated on a real flight.
+> **Status: 4.5-beta8 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
+
+**Docs:** [INSTALL](INSTALL.md) · [BETA testers](BETA.md) · [Help (all in-app help pages)](docs/HELP.md) · [How it works](docs/TECHNOLOGY.md) · [Development process & decisions](docs/DEVELOPMENT.md) · [Full development prompt](docs/PROMPT.md) · [Screenshots](docs/SCREENSHOTS.md) · [Tools & components, licences, risk](TOOLS.md) · [Installation page](https://eldadgalker-dev.github.io/FlightInfo/)
 
 **Install (Android):** https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk — or scan the QR on the [installation page](https://eldadgalker-dev.github.io/FlightInfo/) ([INSTALL.md](INSTALL.md)).
 
@@ -19,6 +21,9 @@ Offline in-flight position tracker for Android. Shows your aircraft on a map usi
 - **Aerial imagery** (optional): NASA Blue Marble mosaic, public domain, downloaded once (~60-80 MB) from the project's GitHub Release and shown under the vector layers
 - **Country below** the aircraft, from bundled polygons (point-in-polygon)
 - **Online enrichment (optional, never required)**: when the phone has internet, the real position of the flight is fetched from community ADS-B data (adsb.lol) by flight number — in estimate-only mode always, in live mode when the phone's GNSS is silent; plus a silent update check
+- **Flight logs**: manager (list, replay at 30-600x through the current estimator, share, delete, report), CSV with full telemetry plus a map snapshot at landing
+- **In-app feedback**: bug / improvement / flight-log report by e-mail (with the log attached) or as a pre-filled GitHub issue
+- **Resource usage** panel: heap, CPU share, disk, device battery
 - **Boarding-pass scan**: camera or screenshot; reads origin, destination and flight number from the IATA BCBP barcode (PDF417 / Aztec / QR), fully offline
 - English and Hebrew (full RTL)
 
@@ -74,6 +79,10 @@ All builds are signed with the committed key `keystore/flightinfo.jks` (see `key
 ### Aerial imagery pack
 
 `.github/workflows/bluemarble.yml` (run manually from the Actions tab) builds `bluemarble_z0-6.mbtiles` and attaches it to the release `data-v1`. Default mode fetches ready-made Web Mercator tiles from NASA GIBS (`tools/build_bluemarble_gibs.py`, layer `BlueMarble_ShadedRelief_Bathymetry`); the alternative mode reprojects an equirectangular image with `tools/build_bluemarble.py`. NASA's `eoimages` image server refuses connections from GitHub-hosted runners, hence the GIBS default. The app downloads that file on demand from Settings (`Parameters.AERIAL_PACK_URL`) and reads it locally through MapLibre's `mbtiles://` scheme. The default source URL is on NASA's Visible Earth image server; if NASA moves it, pass another equirectangular Blue Marble URL as the workflow input.
+
+### Keeping the documents in sync
+
+`tools/build_docs.py` regenerates `docs/HELP.md` from the Hebrew help strings and stamps the current `versionName` into README, BETA.md and TOOLS.md. The build workflow runs it on every push to `main` and commits the result automatically, so the companion documents cannot drift from the app.
 
 ### Regenerating bundled data
 

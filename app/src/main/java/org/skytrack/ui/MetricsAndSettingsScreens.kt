@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MetricsAndSettingsScreens
-// Version 4.0
+// Version 4.4
 // Purpose : Full-page metrics view (Origin / Now / Destination columns)
 //           and the settings page (units, clock, theme, follow, gestures).
 // =============================================================
@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import org.skytrack.R
 import org.skytrack.data.AltitudeUnit
 import org.skytrack.data.DistanceUnit
+import org.skytrack.data.ResourceSnapshot
 import org.skytrack.data.Settings
 import org.skytrack.data.SpeedUnit
 import org.skytrack.data.ThemeMode
@@ -59,7 +60,7 @@ import org.skytrack.net.Updater
 import kotlinx.coroutines.launch
 
 @Composable
-fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBack: () -> Unit) {
+fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, resources: ResourceSnapshot?, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -129,6 +130,22 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBac
                 Text(stringResource(R.string.no_barometer_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
         }
+        resources?.let { r ->
+            Section(stringResource(R.string.resources_title), Accent.status) {
+                Grid(listOf(
+                    Triple(stringResource(R.string.res_java_heap), String.format(java.util.Locale.US, "%.0f MB", r.javaHeapMb), null),
+                    Triple(stringResource(R.string.res_native_heap), String.format(java.util.Locale.US, "%.0f MB", r.nativeHeapMb), null),
+                    Triple(stringResource(R.string.res_cpu_total), String.format(java.util.Locale.US, "%.1f%%", r.cpuPercentSinceStart), null),
+                    Triple(stringResource(R.string.res_cpu_recent), r.cpuPercentRecent?.let { String.format(java.util.Locale.US, "%.1f%%", it) } ?: "--", null),
+                    Triple(stringResource(R.string.res_disk_internal), String.format(java.util.Locale.US, "%.1f MB", r.filesMb), null),
+                    Triple(stringResource(R.string.res_disk_external), String.format(java.util.Locale.US, "%.1f MB", r.externalMb), null),
+                    Triple(stringResource(R.string.res_battery), r.batteryPercent?.let { "$it%" + (if (r.charging == true) " \u26A1" else "") } ?: "--", null),
+                    Triple(stringResource(R.string.res_current), r.currentMa?.let { "$it mA" } ?: "--", null)
+                ), Accent.status)
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.res_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Text(stringResource(R.string.legend), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -167,7 +184,7 @@ private fun Grid(items: List<Triple<String, String, Confidence?>>, accent: Color
 @Composable
 fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit, onHelp: () -> Unit,
                    onShareLog: () -> Unit, onDeleteLogs: () -> Unit, logCount: Int, aerial: AerialPack, updater: Updater,
-                   onExit: (keepTracking: Boolean) -> Unit) {
+                   onExit: (keepTracking: Boolean) -> Unit, onLogs: () -> Unit = {}, onFeedback: () -> Unit = {}) {
     var exitDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -206,9 +223,10 @@ fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit
         Text(stringResource(R.string.log_flights_hint, logCount), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onLogs, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_title)) }
             OutlinedButton(onClick = onShareLog, enabled = logCount > 0, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.share_log)) }
-            OutlinedButton(onClick = onDeleteLogs, enabled = logCount > 0, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.delete_logs)) }
         }
+        OutlinedButton(onClick = onFeedback, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.feedback_title)) }
         HorizontalDivider()
         UpdateSection(updater)
         HorizontalDivider()

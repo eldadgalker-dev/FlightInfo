@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 4.2
+// Version 4.4
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -79,6 +79,7 @@ object Parameters {
     const val UPDATE_REPO_OWNER = "eldadgalker-dev"
     const val UPDATE_REPO_NAME  = "FlightInfo"
     const val UPDATE_ASSET_NAME = "FlightInfo.apk"   // fixed-name asset published by the build workflow
+    const val FEEDBACK_EMAIL    = "eldad@galker.com"  // in-app feedback (bug / improvement / flight log)
 
     // -- Estimate-only mode --
     const val TAXI_ALLOWANCE_S          = 900.0     // s, scheduled departure -> assumed takeoff

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 4.2
+// Version 4.5
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -200,52 +200,42 @@ fun MapScreen(
 
 @Composable
 private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
-    // Fixed footprint between the two button columns: at most two single-line rows.
+    // Three short facts, one per line, each short enough never to be cut: sensor / method / phase+country.
     Surface(modifier = modifier.clip(RoundedCornerShape(12.dp)), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             if (m == null) {
                 StripText(stringResource(R.string.no_flight))
                 return@Surface
             }
             val e = m.estimate
-            if (m.estimateOnly) {
-                StripText(stringResource(R.string.mode_estimate_only), MaterialTheme.colorScheme.primary)
-                StripText(listOfNotNull(
-                    stringResource(R.string.phase_label, phaseName(e.phase)),
-                    m.overflownCountry?.let { stringResource(R.string.over_country, it) }
-                ).joinToString("  \u00B7  "))
-            } else {
-                val gnss = if (m.positionSource != null) stringResource(R.string.source_adsb) else when (e.gnssQuality) {
-                    GnssQuality.GOOD -> stringResource(R.string.gnss_good, e.satsUsed)
-                    GnssQuality.DEGRADED -> stringResource(R.string.gnss_degraded, e.satsUsed)
-                    GnssQuality.NONE -> stringResource(R.string.gnss_none)
-                }
-                val mode = when (e.mode) {
-                    FusionMode.GNSS_TRACKING -> stringResource(R.string.mode_tracking)
-                    FusionMode.ROUTE_CONSTRAINED -> stringResource(R.string.mode_constrained)
-                    FusionMode.PREDICTED_ONLY -> stringResource(R.string.mode_predicted)
-                }
-                val line1 = when {
-                    m.positionSource != null -> gnss
-                    e.mode == FusionMode.GNSS_TRACKING -> "$gnss  \u00B7  ${stringResource(R.string.accuracy_m, e.sigmaAlongM.toInt())}"
-                    e.mode == FusionMode.ROUTE_CONSTRAINED -> "${stringResource(R.string.gnss_none)}  \u00B7  ${Format.duration(m.gnssNoFixS)}  \u00B7  $mode"
-                    else -> mode
-                }
-                StripText(line1, MaterialTheme.colorScheme.primary)
-                val second = listOfNotNull(
-                    stringResource(R.string.phase_label, phaseName(e.phase)),
-                    if (e.maneuvering) stringResource(R.string.maneuvering) else null,
-                    m.overflownCountry?.let { stringResource(R.string.over_country, it) }
-                ).joinToString("  \u00B7  ")
-                StripText(second)
+            // Line 1: what the position rests on
+            val line1 = when {
+                m.estimateOnly -> stringResource(R.string.strip_time_only)
+                m.positionSource != null -> stringResource(R.string.source_adsb)
+                e.mode == FusionMode.GNSS_TRACKING -> stringResource(R.string.strip_gnss, e.satsUsed, e.sigmaAlongM.toInt())
+                e.mode == FusionMode.ROUTE_CONSTRAINED -> if (m.gnssNoFixS > 0) stringResource(R.string.strip_no_gnss_for, Format.duration(m.gnssNoFixS)) else stringResource(R.string.gnss_none)
+                else -> stringResource(R.string.gnss_none)
             }
+            val level = e.sensorLevel
+            val color = when (level) { 3 -> androidx.compose.ui.graphics.Color(0xFF4CC96A); 2 -> androidx.compose.ui.graphics.Color(0xFFE0B400); 1 -> androidx.compose.ui.graphics.Color(0xFFFF8C00); else -> androidx.compose.ui.graphics.Color(0xFFE63946) }
+            StripText("\u25CF  $line1", color)
+            // Line 2: how the position is computed
+            val line2 = when {
+                m.estimateOnly -> stringResource(R.string.mode_estimate_only)
+                e.mode == FusionMode.GNSS_TRACKING -> stringResource(R.string.strip_measured)
+                e.mode == FusionMode.ROUTE_CONSTRAINED -> stringResource(if (e.maneuvering) R.string.strip_route_maneuvering else R.string.mode_constrained)
+                else -> stringResource(R.string.mode_predicted)
+            }
+            StripText(line2)
+            // Line 3: phase and country
+            StripText(listOfNotNull(phaseName(e.phase), m.overflownCountry).joinToString("  \u00B7  "))
         }
     }
 }
 
 @Composable
 private fun StripText(text: String, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
-    Text(text, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1,
+    Text(text, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 2, softWrap = true,
         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
 }
 
@@ -266,11 +256,14 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onCo
                     color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             // Before takeoff, in live mode: one-tap ground confirmation / altitude calibration.
-            if (!m.estimateOnly && e.phase == org.skytrack.sensors.FlightPhase.GROUND && expanded) {
+            val onGroundLike = e.phase == org.skytrack.sensors.FlightPhase.GROUND || e.phase == org.skytrack.sensors.FlightPhase.LANDED ||
+                    (e.groundSpeedMps < 40.0 && e.altM < m.origin.elevM + 500.0)
+            if (!m.estimateOnly && onGroundLike && expanded) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     androidx.compose.material3.OutlinedButton(onClick = onConfirmGround) { Text(stringResource(R.string.confirm_ground)) }
                     Text(
-                        m.groundReference?.let { gr -> stringResource(R.string.ground_ref_done, gr.gnssBiasM?.let { Format.altitude(it, s.altitudeUnit) } ?: "--") }
+                        m.groundReference?.let { gr -> stringResource(R.string.ground_ref_done2,
+                            gr.gnssBiasM?.let { Format.altitude(it, s.altitudeUnit) } ?: "--", gr.satsUsed, gr.hAccM?.toInt() ?: 0) }
                             ?: stringResource(R.string.ground_ref_hint),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }

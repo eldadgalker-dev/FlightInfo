@@ -237,6 +237,49 @@
     <string name="help_terms_title">Terms in the metrics screen</string>
     <string name="help_terms_body">Along-track uncertainty: 1\u03C3 of the position along the direction of flight; it equals the GPS accuracy while there is a fix and grows about 3 % of the distance per second without one, faster while manoeuvring.\nRoute re-anchors: how many times the governing route was re-drawn from a new measured position to the destination.\nVisual fixes: manual landmark fixes you applied.\nManoeuvring: the gyroscope shows the aircraft heading more than 60 degrees away from the route for 45 s (hold, vectoring).\nCabin altitude: pressure altitude of the cabin from the barometer, relative to the on-ground calibration; typically 1,800\u20132,400 m in cruise. It is not the aircraft altitude.\nGround calibration: difference between GPS altitude and the field elevation, taken when you pressed \u201cI am on the ground now\u201d, and subtracted from displayed altitudes.</string>
 
+    <!-- v4.4: status strip, logs manager, replay, feedback, resources -->
+    <string name="strip_time_only">Time-based estimate, no sensors</string>
+    <string name="strip_gnss">GPS %1$d satellites, \u00B1%2$d m</string>
+    <string name="strip_no_gnss_for">No GPS for %1$s</string>
+    <string name="strip_measured">Position measured</string>
+    <string name="strip_route_maneuvering">Estimated along route \u00B7 manoeuvring</string>
+    <string name="logs_title">Flight logs</string>
+    <string name="logs_none">No flight logs yet. Logs are written during live flights when recording is enabled.</string>
+    <string name="logs_fixes">fixes</string>
+    <string name="logs_has_map">map</string>
+    <string name="logs_replay">Replay</string>
+    <string name="logs_share">Share</string>
+    <string name="logs_report">Report</string>
+    <string name="logs_delete">Delete</string>
+    <string name="replay_title">Replay %1$s</string>
+    <string name="replay_close">Close</string>
+    <string name="replay_error">Cannot replay: %1$s</string>
+    <string name="replay_play">Play</string>
+    <string name="replay_pause">Pause</string>
+    <string name="feedback_title">Report / feedback</string>
+    <string name="feedback_bug">Bug</string>
+    <string name="feedback_improvement">Improvement</string>
+    <string name="feedback_log">Flight log</string>
+    <string name="feedback_subject">Subject</string>
+    <string name="feedback_body">What happened, what you expected, when (flight, phase)</string>
+    <string name="feedback_attach_log">Attach the flight log (and map snapshot)</string>
+    <string name="feedback_send_email">Send by e-mail</string>
+    <string name="feedback_open_issue">Open a GitHub issue (browser)</string>
+    <string name="feedback_no_app">No app found to handle this. Install a mail app or a browser.</string>
+    <string name="feedback_hint">E-mail works with any mail app and can carry the log file. A GitHub issue needs a GitHub account and cannot attach files automatically. Device and version details are appended to both.</string>
+    <string name="resources_title">App resource usage</string>
+    <string name="res_java_heap">Java heap</string>
+    <string name="res_native_heap">Native heap (map)</string>
+    <string name="res_cpu_total">CPU since start</string>
+    <string name="res_cpu_recent">CPU last interval</string>
+    <string name="res_disk_internal">Disk, internal</string>
+    <string name="res_disk_external">Disk, external (imagery, logs)</string>
+    <string name="res_battery">Device battery</string>
+    <string name="res_current">Device current</string>
+    <string name="res_note">CPU = process CPU time as a share of wall time. Battery and current are for the whole device: Android does not expose per-app battery use to apps.</string>
+
+    <string name="still_on_ground">Still on the ground: calibrate now</string>
+    <string name="ground_ref_done2">Calibrated: GPS altitude bias %1$s, %2$d satellites, \u00B1%3$d m. Tap again to refresh before takeoff.</string>
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Metrics
-// Version 4.1
+// Version 4.5
 // Purpose : Derive every displayed value (origin / now / destination
 //           columns) from a PositionEstimate, the Route and the airports.
 //           Time zones come from the airport table (IANA); the current
@@ -60,7 +60,8 @@ data class FlightMetrics(
 }
 
 /** Result of the user's "on the ground now" confirmation. */
-data class GroundReference(val timeMs: Long, val fieldElevM: Int, val gnssAltM: Double?, val pressureHpa: Double?) {
+data class GroundReference(val timeMs: Long, val fieldElevM: Int, val gnssAltM: Double?, val pressureHpa: Double?,
+                           val satsUsed: Int = 0, val hAccM: Double? = null) {
     val gnssBiasM: Double? get() = gnssAltM?.let { it - fieldElevM }
 }
 

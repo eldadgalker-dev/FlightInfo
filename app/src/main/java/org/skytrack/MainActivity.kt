@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MainActivity
-// Version 4.0
+// Version 4.5
 // Purpose : Single-activity host. Simple state-based navigation between
 //           Setup / Map / Metrics / Settings, runtime permission requests,
 //           and foreground-service start/stop tied to the active flight.
@@ -38,7 +38,11 @@ import org.skytrack.data.FlightPlan
 import org.skytrack.data.ThemeMode
 import org.skytrack.service.TrackingService
 import org.skytrack.scan.BoardingPass
+import org.skytrack.ui.FeedbackScreen
 import org.skytrack.ui.HelpScreen
+import org.skytrack.ui.LogsScreen
+import org.skytrack.ui.ReplayOverlay
+import kotlinx.coroutines.launch
 import org.skytrack.ui.MapScreen
 import org.skytrack.ui.ScanScreen
 import org.skytrack.ui.MetricsScreen
@@ -46,7 +50,7 @@ import org.skytrack.ui.SettingsScreen
 import org.skytrack.ui.SetupScreen
 import org.skytrack.ui.SkyTrackTheme
 
-private enum class Screen { SETUP, MAP, METRICS, SETTINGS, SCAN, HELP }
+private enum class Screen { SETUP, MAP, METRICS, SETTINGS, SCAN, HELP, LOGS, REPLAY, FEEDBACK }
 
 class MainActivity : AppCompatActivity() {
 
@@ -68,6 +72,9 @@ private fun Root(app: SkyTrackApp) {
     var screen by rememberSaveable { mutableStateOf(if (plan == null) Screen.SETUP else Screen.MAP) }
     var pendingPlan by remember { mutableStateOf<FlightPlan?>(null) }
     var scanned by remember { mutableStateOf<BoardingPass?>(null) }
+    val replay = remember { org.skytrack.service.ReplayEngine(app.airports) }
+    var reportLog by remember { mutableStateOf<java.io.File?>(null) }
+    val resourceMonitor = remember { org.skytrack.data.ResourceMonitor(context) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -136,7 +143,12 @@ private fun Root(app: SkyTrackApp) {
                     onHelp = { screen = Screen.HELP },
                     prefill = scanned,
                     updateAvailable = updateInfo?.takeIf { it.isNewer }?.latestVersion,
-                    onOpenSettings = { screen = Screen.SETTINGS }
+                    onOpenSettings = { screen = Screen.SETTINGS },
+                    onConfirmGround = { app.engine.confirmOnGround() },
+                    groundStatus = metrics?.groundReference?.let { gr ->
+                        androidx.compose.ui.res.stringResource(R.string.ground_ref_done2,
+                            gr.gnssBiasM?.let { org.skytrack.ui.Format.altitude(it, settings.altitudeUnit) } ?: "--", gr.satsUsed, gr.hAccM?.toInt() ?: 0)
+                    }
                 )
                 Screen.SCAN -> {
                     BackHandler { screen = Screen.SETUP }
@@ -170,7 +182,9 @@ private fun Root(app: SkyTrackApp) {
                 Screen.METRICS -> {
                     BackHandler { screen = Screen.MAP }
                     val baro by app.engine.baroAvailable.collectAsStateWithLifecycle()
-                    MetricsScreen(metrics, settings, baro) { screen = Screen.MAP }
+                    var res by remember { mutableStateOf<org.skytrack.data.ResourceSnapshot?>(null) }
+                    LaunchedEffect(Unit) { while (true) { res = resourceMonitor.snapshot(); kotlinx.coroutines.delay(5_000) } }
+                    MetricsScreen(metrics, settings, baro, res) { screen = Screen.MAP }
                 }
                 Screen.SETTINGS -> {
                     BackHandler { screen = Screen.MAP }
@@ -191,8 +205,43 @@ private fun Root(app: SkyTrackApp) {
                         onDeleteLogs = { app.engine.logger.deleteAll(); logCount = 0 },
                         logCount = logCount,
                         aerial = remember { org.skytrack.map.AerialPack(context) },
-                        updater = remember { org.skytrack.net.Updater(context) }
+                        updater = remember { org.skytrack.net.Updater(context) },
+                        onLogs = { screen = Screen.LOGS },
+                        onFeedback = { reportLog = null; screen = Screen.FEEDBACK }
                     )
+                }
+                Screen.LOGS -> {
+                    BackHandler { screen = Screen.SETTINGS }
+                    val scope = androidx.compose.runtime.rememberCoroutineScope()
+                    LogsScreen(
+                        files = { app.engine.logger.allFiles() },
+                        onReplay = { f -> scope.launch { if (replay.load(f)) { replay.play(); screen = Screen.REPLAY } } },
+                        onShare = { files -> shareFiles(context, files) },
+                        onDelete = { f -> f.delete() },
+                        onReport = { f -> reportLog = f; screen = Screen.FEEDBACK },
+                        onBack = { screen = Screen.SETTINGS }
+                    )
+                }
+                Screen.REPLAY -> {
+                    BackHandler { replay.stop(); screen = Screen.LOGS }
+                    val rm by replay.metrics.collectAsStateWithLifecycle()
+                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                        MapScreen(
+                            metrics = rm, settings = settings, night = night,
+                            onOpenMetrics = {}, onOpenSettings = {}, onOpenSetup = {}, onOpenHelp = {},
+                            visualFixCandidates = { emptyList() }, onVisualFix = { _, _, _ -> }, onConfirmGround = {},
+                            onSnapshot = {}, initialZoom = app.stores.loadLastZoom(), onZoomChanged = {},
+                            panelExpandedInitial = true, onPanelExpandedChanged = {},
+                            hebrew = app.hebrew, onToggleEstimateOnly = {}
+                        )
+                        ReplayOverlay(replay) { screen = Screen.LOGS }
+                    }
+                }
+                Screen.FEEDBACK -> {
+                    BackHandler { screen = Screen.SETTINGS }
+                    val latest = app.engine.logger.latestFile()
+                    val snap = latest?.let { java.io.File(it.parentFile, it.nameWithoutExtension + "_map.png").takeIf { p -> p.exists() } }
+                    FeedbackScreen(settings, latest, snap, reportLog) { screen = Screen.SETTINGS }
                 }
                 Screen.HELP -> {
                     BackHandler { screen = if (plan == null) Screen.SETUP else Screen.MAP }
@@ -227,4 +276,18 @@ private fun shareLatestLog(context: android.content.Context, app: SkyTrackApp) {
 private fun applyLanguage(lang: String) {
     val locales = if (lang == "system") LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(lang)
     AppCompatDelegate.setApplicationLocales(locales)
+}
+
+/** Share one or more files (CSV log, PNG snapshot) through the system share sheet. */
+private fun shareFiles(context: android.content.Context, files: List<java.io.File>) {
+    val uris = files.filter { it.exists() }.map { androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".files", it) }
+    if (uris.isEmpty()) return
+    try {
+        val intent = android.content.Intent(if (uris.size > 1) android.content.Intent.ACTION_SEND_MULTIPLE else android.content.Intent.ACTION_SEND).apply {
+            type = "*/*"
+            if (uris.size == 1) putExtra(android.content.Intent.EXTRA_STREAM, uris[0]) else putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, ArrayList(uris))
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(android.content.Intent.createChooser(intent, files[0].name))
+    } catch (e: Exception) { }
 }

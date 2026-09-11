@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 4.2
+// Version 4.5
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -254,7 +254,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         if (p.takeoffMs != null) { plan = p.copy(takeoffMs = null); stores.savePlan(plan) }
         val g = lastGnss?.takeIf { it.quality != GnssQuality.NONE && it.hasAlt && System.currentTimeMillis() - it.timeMs < 30_000 }
         est.setGroundReference(g?.altM, o.elevM.toDouble())
-        groundRef = GroundReference(System.currentTimeMillis(), o.elevM, g?.altM, lastBaro?.pressureHpa)
+        groundRef = GroundReference(System.currentTimeMillis(), o.elevM, g?.altM, lastBaro?.pressureHpa, g?.satsUsed ?: 0, g?.hAccM)
         publish(System.currentTimeMillis())
     }
 

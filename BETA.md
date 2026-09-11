@@ -1,4 +1,4 @@
-# FlightInfo 4.3-beta6 — Tester notes
+# FlightInfo 4.5-beta8 — Tester notes
 
 <div dir="rtl">
 
@@ -30,4 +30,4 @@ Chrome עלול לחסום ("Dangerous download") — הורדות ← הקוב�
 
 ---
 
-**English.** First beta for testers only; not yet validated on a real flight. Install from the page above. Before departure: enable flight logging, enter the flight (or scan the boarding pass), start it at the gate, keep the phone near the window. After landing: Settings > Share latest log, and open an Issue with a screenshot, phone model, Android version and flight number. Known limits: great-circle route without GPS, current-position time in UTC, GPS-only altitude, community ADS-B when online, uncalibrated profile parameters.
+**English.** Beta for testers only; validated on one real flight (MUC-TLV). Install from the page above. Before departure: enable flight logging, enter the flight (or scan the boarding pass), start it at the gate, keep the phone near the window. After landing: Settings > Share latest log, and open an Issue with a screenshot, phone model, Android version and flight number. Known limits: great-circle route without GPS, current-position time in UTC, GPS-only altitude, community ADS-B when online, uncalibrated profile parameters.
