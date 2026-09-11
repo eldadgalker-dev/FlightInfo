@@ -1,7 +1,7 @@
 # Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
 # This software is released under the BSD 3-Clause License.
 # See the LICENSE.txt file in the project root for full license information.
-# FlightInfo CI - Version 2.2
+# FlightInfo CI - Version 2.3
 # Runs the JVM tests and publishes one installable APK (debug-signed):
 #  - as a workflow artifact on every push
 #  - as a GitHub Release tagged v<versionName> on every push to main, with a
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -38,16 +38,18 @@ jobs:
       - name: Make wrapper executable
         run: chmod +x gradlew
 
+      # Never fails the build: documentation drift is reported, not fatal.
       - name: Sync companion documents (HELP.md, version stamps)
         if: github.ref == 'refs/heads/main'
+        continue-on-error: true
         run: |
-          python3 tools/build_docs.py .
-          if ! git diff --quiet; then
+          python3 tools/build_docs.py . || { echo "::warning::build_docs.py failed"; exit 0; }
+          if ! git diff --quiet -- docs/HELP.md README.md BETA.md TOOLS.md; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add docs/HELP.md README.md BETA.md TOOLS.md
-            git commit -m "docs: sync with $(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts) [skip ci]"
-            git push
+            git commit -m "docs: sync with $(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts) [skip ci]" || true
+            git push || echo "::warning::docs push failed (permissions?)"
           fi
 
       - name: Unit tests
