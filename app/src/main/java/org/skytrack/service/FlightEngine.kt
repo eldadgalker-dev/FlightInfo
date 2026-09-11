@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 4.0
+// Version 4.1
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -198,7 +198,9 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
             }
             lastGnssAlt = g.altM; lastGnssAltMs = g.timeMs
         }
-        phaseDetector.onGnss(g.speedMps, lastGnssVRate, g.quality == GnssQuality.GOOD, g.timeMs)
+        destination?.let { phaseDetector.onAltitudeContext(if (g.hasAlt) g.altM else null, it.elevM.toDouble()) }
+        // Any fix with a position is good enough for phase logic (accuracy classes are for the estimator).
+        phaseDetector.onGnss(g.speedMps, lastGnssVRate, g.quality != GnssQuality.NONE && g.hAccM < Parameters.WEAK_FIX_MAX_HACC_M, g.timeMs)
         est.onGnss(g, phaseDetector.phase)
         if (phaseDetector.phase == FlightPhase.GROUND && g.quality != GnssQuality.NONE && g.speedMps < 5.0) {
             stores.saveGroundFix(GroundFix(g.lat, g.lon, g.timeMs))

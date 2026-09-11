@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightLogger
-// Version 2.0
+// Version 2.1
 // Purpose : Write one CSV row per engine tick with the estimate AND the raw
 //           sensor inputs (GNSS, barometer, gyro), so real flights can be
 //           replayed offline to calibrate Parameters (taxi time, speed
@@ -46,7 +46,9 @@ class FlightLogger(private val context: Context) {
             val stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmm", Locale.US).format(Instant.now().atZone(ZoneOffset.UTC))
             val fn = flightNumber.ifBlank { "flight" }
             val f = File(dir, "${stamp}_${originIata}_${destinationIata}_$fn.csv")
+            val fresh = !f.exists() || f.length() == 0L
             writer = BufferedWriter(FileWriter(f, true))
+            if (!fresh) { currentFile = f; rows = 0; return }   // same file re-opened within the minute: no second header
             // Header comments: everything needed to interpret the file later.
             val ver = try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (e: Exception) { "?" }
             writer?.write("# FlightInfo flight log"); writer?.newLine()

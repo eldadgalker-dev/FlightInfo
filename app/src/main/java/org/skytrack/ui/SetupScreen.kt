@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - SetupScreen
-// Version 4.0
+// Version 4.1
 // Purpose : Flight plan entry: origin (auto-suggested from the last ground
 //           fix), destination search, optional flight number and scheduled
 //           departure. Starts or clears the active flight.
@@ -74,7 +74,7 @@ fun SetupScreen(
     var flightNumber by rememberSaveable { mutableStateOf(existing?.flightNumber ?: "") }
     var estimateOnly by rememberSaveable { mutableStateOf(existing?.estimateOnly ?: false) }
     var takeoffText by rememberSaveable { mutableStateOf(existing?.takeoffMs?.let { ms ->
-        val zone = ZoneId.of((existing.let { airports.byCode(it.originIata) })?.tz ?: "UTC")
+        val zone = ZoneId.of(existing.originIata.let { airports.byCode(it) }?.tz ?: "UTC")
         java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
     } ?: "") }
     var departure by rememberSaveable { mutableStateOf(existing?.scheduledDepartureMs?.let { ms ->

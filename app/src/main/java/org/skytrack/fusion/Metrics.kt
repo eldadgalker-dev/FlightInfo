@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Metrics
-// Version 4.0
+// Version 4.1
 // Purpose : Derive every displayed value (origin / now / destination
 //           columns) from a PositionEstimate, the Route and the airports.
 //           Time zones come from the airport table (IANA); the current
@@ -91,7 +91,8 @@ object Metrics {
             onGround && takeoffRefMs != null -> max(0.0, (takeoffRefMs - e.timeMs) / 1000.0) + fullFlightS
             onGround -> null                                   // departure time unknown: no honest ETA
             e.phase == FlightPhase.LANDED || remaining < 1_000.0 -> 0.0
-            e.phase == FlightPhase.DESCENT -> remaining / max(60.0, if (vMeasured > 60.0) vMeasured else Parameters.SPEED_DESCENT_MPS)
+            // Descent: speed keeps falling to touchdown; use the average of now and touchdown, plus the approach pattern.
+            e.phase == FlightPhase.DESCENT -> remaining / max(60.0, ((if (vMeasured > 60.0) vMeasured else Parameters.SPEED_DESCENT_MPS) + Parameters.TOUCHDOWN_SPEED_MPS) / 2.0) + Parameters.APPROACH_ALLOWANCE_S
             remaining > descentDist -> (remaining - descentDist) / vCruise + Parameters.DESCENT_ALLOWANCE_S
             else -> remaining / Parameters.SPEED_DESCENT_MPS
         }

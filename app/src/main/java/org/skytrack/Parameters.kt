@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 4.0
+// Version 4.1
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -82,7 +82,9 @@ object Parameters {
     const val SPEED_CRUISE_MPS          = 235.0     // m/s (~845 km/h, ~455 kt)
     const val SPEED_DESCENT_MPS         = 140.0     // m/s (~270 kt average in descent)
     const val CLIMB_DURATION_S          = 1_200.0   // s, predicted-only profile climb length
-    const val DESCENT_ALLOWANCE_S       = 1_200.0   // s, descent time assumed in ETE
+    const val DESCENT_ALLOWANCE_S       = 1_500.0   // s, descent time assumed in ETE (MUC-TLV log: 33 min from FL370 incl. approach)
+    const val APPROACH_ALLOWANCE_S      = 300.0     // s, added while in DESCENT for the approach pattern
+    const val TOUCHDOWN_SPEED_MPS       = 70.0      // m/s, ground speed at touchdown for the descent average
     const val DESCENT_DISTANCE_M        = 170_000.0 // m, ground distance covered in descent
 
     // -- Flight phase detector --
@@ -94,6 +96,9 @@ object Parameters {
     const val PHASE_DESCENT_CONFIRM_S   = 120.0     // s, positive rate before CRUISE -> DESCENT
     const val PHASE_GNSS_VRATE_CLIMB    = 3.0       // m/s, GNSS vertical rate => climb (when GNSS good)
     const val PHASE_GNSS_VRATE_DESCENT  = -3.0      // m/s, GNSS vertical rate => descent
+    const val PHASE_GNSS_CONFIRM_S      = 60.0      // s, sustained GNSS vertical rate before a phase change
+    const val PHASE_LANDED_ALT_ABOVE_M  = 300.0     // m, GNSS altitude above the destination elevation counts as on the ground
+    const val PHASE_LOW_ALT_LOCK_M      = 1_500.0   // m above destination: below this DESCENT never reverts to CLIMB
     // -- Accelerometer: takeoff roll and landing deceleration --
     const val ACCEL_GRAVITY_TAU_S       = 3.0       // s, low-pass for the gravity estimate
     const val ACCEL_WINDOW_S            = 12.0      // s, averaging window for horizontal acceleration

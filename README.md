@@ -1,6 +1,6 @@
 # FlightInfo
 
-> **Status: 4.0-beta3 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Not yet validated on a real flight.
+> **Status: 4.1-beta4 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Not yet validated on a real flight.
 
 **Install (Android):** https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk — or scan the QR on the [installation page](https://eldadgalker-dev.github.io/FlightInfo/) ([INSTALL.md](INSTALL.md)).
 
@@ -35,6 +35,10 @@ Offline in-flight position tracker for Android. Shows your aircraft on a map usi
 Escalating "no GPS" banner (30 s / 3 min / 10 min) tells the passenger to hold the phone to the window; a green notice says when it can be put down. Flight phase comes from cabin-pressure rate, GNSS vertical rate, the accelerometer (takeoff roll, landing deceleration) and route context (descent near the destination). A takeoff measured by the sensors replaces any manual or scheduled value. "I am on the ground now" calibrates altitude and cabin pressure. Estimate-only mode and the optional ADS-B network source are described in the Help.
 
 All tunables are in `app/src/main/java/org/skytrack/Parameters.kt`.
+
+### Validation against a real flight (MUC-TLV, 10 Sep 2026, 2 h 49 min of log)
+
+Replaying the flight log through the v4 estimator: position error against the next fix while tracking median 1 m, p90 4 m; after the longest GNSS outage (24 min) the propagated position was 34 km off at re-acquisition (v3 route anchoring: 63 km). Fixes were available 94 % of the time, median 8 satellites used, median horizontal accuracy 57 m (almost never "GOOD" by the old 30 m rule, which is why v3 failed). ETA error in cruise -3 to -6 min, in descent up to -13 min before the 4.1 descent model. Cabin pressure stepped 799 -> 754 -> 776 hPa during cruise (cabin altitude ~2,000-2,400 m), which produced false CLIMB/DESCENT phases under the barometer-first logic; 4.1 makes GNSS the primary phase source whenever it is fresh.
 
 ## Building
 

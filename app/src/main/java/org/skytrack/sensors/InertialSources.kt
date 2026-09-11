@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - InertialSources
-// Version 4.0
+// Version 4.1
 // Purpose : Barometer (cabin pressure and its rate), gyroscope yaw rate,
 //           and the flight-phase state machine that consumes them.
 //
@@ -237,19 +237,45 @@ class FlightPhaseDetector(initial: FlightPhase = FlightPhase.GROUND) {
     /** Force a phase (e.g. restore after relaunch). */
     fun restore(p: FlightPhase, takeoffMs: Long?) { phase = p; takeoffTimeMs = takeoffMs }
 
+    private var gnssAlt = Double.NaN
+    private var destElevM = Double.NaN
+    private var vrateUpSinceMs = 0L
+    private var vrateDownSinceMs = 0L
+
+    /** Destination field elevation and current GNSS altitude (from the engine) for landing detection. */
+    fun onAltitudeContext(gnssAltM: Double?, destinationElevM: Double) { if (gnssAltM != null) gnssAlt = gnssAltM; destElevM = destinationElevM }
+
+    /**
+     * Phase logic. When GNSS with altitude is fresh it is the primary source (cabin pressure
+     * steps during cruise - re-pressurisation, step climbs - produced false CLIMB/DESCENT in a
+     * real flight log); the barometer decides only without GNSS.
+     */
     private fun step(now: Long) {
         val baroFresh = now - baroTimeMs < 120_000
         val gnssFresh = gnssGood && now - gnssTimeMs < 30_000
-        val climbing = (baroFresh && baroRate < Parameters.PHASE_CLIMB_BARO_RATE) ||
-                (gnssFresh && gnssVRate > Parameters.PHASE_GNSS_VRATE_CLIMB)
-        val descending = (baroFresh && baroRate > Parameters.PHASE_DESCENT_BARO_RATE) ||
-                (gnssFresh && gnssVRate < Parameters.PHASE_GNSS_VRATE_DESCENT)
-        val level = !climbing && !descending
         val fast = gnssFresh && gnssSpeed > Parameters.PHASE_TAKEOFF_SPEED_MPS
         val slow = gnssFresh && gnssSpeed < Parameters.PHASE_GROUND_SPEED_MPS
+        val aboveDest = if (!gnssAlt.isNaN() && !destElevM.isNaN()) gnssAlt - destElevM else Double.NaN
+
+        val climbing: Boolean
+        val descending: Boolean
+        if (gnssFresh) {
+            // Sustained vertical rate, not a single sample.
+            if (gnssVRate > Parameters.PHASE_GNSS_VRATE_CLIMB) { if (vrateUpSinceMs == 0L) vrateUpSinceMs = now } else vrateUpSinceMs = 0L
+            if (gnssVRate < Parameters.PHASE_GNSS_VRATE_DESCENT) { if (vrateDownSinceMs == 0L) vrateDownSinceMs = now } else vrateDownSinceMs = 0L
+            climbing = vrateUpSinceMs != 0L && now - vrateUpSinceMs > Parameters.PHASE_GNSS_CONFIRM_S * 1000
+            descending = vrateDownSinceMs != 0L && now - vrateDownSinceMs > Parameters.PHASE_GNSS_CONFIRM_S * 1000
+        } else {
+            vrateUpSinceMs = 0L; vrateDownSinceMs = 0L
+            climbing = baroFresh && baroRate < Parameters.PHASE_CLIMB_BARO_RATE
+            descending = baroFresh && baroRate > Parameters.PHASE_DESCENT_BARO_RATE
+        }
+        val level = !climbing && !descending
+        val nearGround = !aboveDest.isNaN() && aboveDest < Parameters.PHASE_LANDED_ALT_ABOVE_M
+        val lowAlt = !aboveDest.isNaN() && aboveDest < Parameters.PHASE_LOW_ALT_LOCK_M
 
         when (phase) {
-            FlightPhase.GROUND, FlightPhase.LANDED -> if (fast || (baroFresh && climbing && !slow)) {
+            FlightPhase.GROUND, FlightPhase.LANDED -> if (fast || (!gnssFresh && baroFresh && climbing)) {
                 phase = FlightPhase.TAKEOFF; takeoffTimeMs = takeoffTimeMs ?: now; stableSinceMs = 0L
             }
             FlightPhase.TAKEOFF -> if (climbing || fast) phase = FlightPhase.CLIMB
@@ -258,16 +284,17 @@ class FlightPhaseDetector(initial: FlightPhase = FlightPhase.GROUND) {
                     if (stableSinceMs == 0L) stableSinceMs = now
                     if (now - stableSinceMs > Parameters.PHASE_CRUISE_STABLE_S * 1000) { phase = FlightPhase.CRUISE; descentSinceMs = 0L }
                 } else stableSinceMs = 0L
+                if (descending && gnssFresh) { phase = FlightPhase.DESCENT }
             }
             FlightPhase.CRUISE -> {
                 if (descending) {
                     if (descentSinceMs == 0L) descentSinceMs = now
-                    if (now - descentSinceMs > Parameters.PHASE_DESCENT_CONFIRM_S * 1000) phase = FlightPhase.DESCENT
+                    if (gnssFresh || now - descentSinceMs > Parameters.PHASE_DESCENT_CONFIRM_S * 1000) phase = FlightPhase.DESCENT
                 } else descentSinceMs = 0L
             }
             FlightPhase.DESCENT -> {
-                if (slow && abs(baroRate) < Parameters.PHASE_DESCENT_BARO_RATE) phase = FlightPhase.LANDED
-                else if (climbing) { phase = FlightPhase.CLIMB; stableSinceMs = 0L }
+                if (slow && (nearGround || abs(baroRate) < Parameters.PHASE_DESCENT_BARO_RATE)) phase = FlightPhase.LANDED
+                else if (climbing && !lowAlt) { phase = FlightPhase.CLIMB; stableSinceMs = 0L }
             }
         }
     }
