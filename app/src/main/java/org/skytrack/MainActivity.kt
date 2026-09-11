@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MainActivity
-// Version 4.5
+// Version 4.5.1
 // Purpose : Single-activity host. Simple state-based navigation between
 //           Setup / Map / Metrics / Settings, runtime permission requests,
 //           and foreground-service start/stop tied to the active flight.
@@ -74,8 +74,8 @@ private fun Root(app: SkyTrackApp) {
     var scanned by remember { mutableStateOf<BoardingPass?>(null) }
     val replay = remember { org.skytrack.service.ReplayEngine(app.airports) }
     var reportLog by remember { mutableStateOf<java.io.File?>(null) }
-    val resourceMonitor = remember { org.skytrack.data.ResourceMonitor(context) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resourceMonitor = remember { org.skytrack.data.ResourceMonitor(context) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         // Start regardless of the result: without location the engine runs in PREDICTED_ONLY mode.
