@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - HelpScreen
-// Version 1.1
+// Version 1.2
 // Purpose : In-app manual. Plain scrollable sections, all text from string
 //           resources (English default, Hebrew in values-iw).
 // =============================================================
@@ -47,6 +47,7 @@ fun HelpScreen(onBack: () -> Unit) {
         R.string.help_estimate_title to R.string.help_estimate_body,
         R.string.help_gnss_title to R.string.help_gnss_body,
         R.string.help_values_title to R.string.help_values_body,
+        R.string.help_terms_title to R.string.help_terms_body,
         R.string.help_logs_title to R.string.help_logs_body,
         R.string.help_limits_title to R.string.help_limits_body
     )

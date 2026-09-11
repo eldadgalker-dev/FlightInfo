@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - TrackingService
-// Version 2.3
+// Version 3.1
 // Purpose : Foreground service (type location) that keeps GNSS, barometer
 //           and gyro flowing into the FlightEngine while the screen is off,
 //           and shows remaining distance / ETE in a persistent notification.
@@ -36,6 +36,7 @@ import org.skytrack.MainActivity
 import org.skytrack.Parameters
 import org.skytrack.R
 import org.skytrack.SkyTrackApp
+import org.skytrack.sensors.AccelSource
 import org.skytrack.sensors.BaroSource
 import org.skytrack.sensors.GnssSource
 import org.skytrack.sensors.GyroSource
@@ -67,6 +68,7 @@ class TrackingService : Service() {
         engine.baroAvailable.value = baro.available
         scope.launch { baro.samples().catch { }.collect { engine.onBaro(it) } }
         scope.launch { GyroSource(this@TrackingService).samples().catch { }.collect { engine.onGyro(it) } }
+        scope.launch { AccelSource(this@TrackingService).samples().catch { }.collect { engine.onMotion(it) } }
 
         // Notification refresh once every 30 s.
         scope.launch {

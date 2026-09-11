@@ -1,5 +1,9 @@
 # FlightInfo
 
+> **Status: 4.0-beta3 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Not yet validated on a real flight.
+
+**Install (Android):** https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk — or scan the QR on the [installation page](https://eldadgalker-dev.github.io/FlightInfo/) ([INSTALL.md](INSTALL.md)).
+
 Offline in-flight position tracker for Android. Shows your aircraft on a map using GNSS when the phone can see satellites and a route-constrained estimate when it cannot. No network, no accounts, no API keys, no servers. Free software under the BSD-3-Clause licence.
 
 ## What it does
@@ -14,24 +18,21 @@ Offline in-flight position tracker for Android. Shows your aircraft on a map usi
 - **Visual fix**: pick a city you see out of the window (side + rough distance) to move the estimate along the route when there is no GPS (about 15 km accuracy)
 - **Aerial imagery** (optional): NASA Blue Marble mosaic, public domain, downloaded once (~60-80 MB) from the project's GitHub Release and shown under the vector layers
 - **Country below** the aircraft, from bundled polygons (point-in-polygon)
+- **Online enrichment (optional, never required)**: when the phone has internet, the real position of the flight is fetched from community ADS-B data (adsb.lol) by flight number — in estimate-only mode always, in live mode when the phone's GNSS is silent; plus a silent update check
 - **Boarding-pass scan**: camera or screenshot; reads origin, destination and flight number from the IATA BCBP barcode (PDF417 / Aztec / QR), fully offline
 - English and Hebrew (full RTL)
 
 ## How position is estimated
 
-**The governing route is the strongest hypothesis; the aircraft is always drawn on it.** Measurements move the aircraft along the route and accumulate evidence; only a *proven* deviation changes the route.
+**Measured first.** With a usable GPS fix (any accuracy up to 2 km) the aircraft is drawn where it was measured and the turquoise track records the real path at 0.5 km resolution, including manoeuvres around the airports. The governing route (blue dashed) is the great circle from the latest measured position to the destination and re-anchors as the aircraft moves; the remaining distance is measured along it, and the original plan stays as a faint dotted line.
 
 | Mode | When | Behaviour |
 |------|------|-----------|
-| Tracking | GNSS fix within the last 10 s | Along-track Kalman update; lateral offset is measured, shown as a number, never applied to the drawn position |
-| Route estimate | GNSS lost > 10 s | Moves along the governing route at the last measured speed blending toward a phase-typical speed; heading follows the gyro for 90 s, then the route course |
-| Predicted only | No fix ever received, or estimate-only mode | Time-since-takeoff profile (climb / cruise / descent) along the route |
+| GNSS | fix within the last 10 s | position = measurement, short dead reckoning between fixes; ring colour green (good fix) or yellow (weak / network fix) |
+| Route estimate | fix lost > 10 s | propagate along the governing route from the last measured position: last speed blending toward a phase-typical speed, gyro heading for 90 s, progress scaled by the gyro-measured deviation for 5 min (a holding circle nets zero; "manoeuvring" flag); ring orange |
+| Predicted only | no fix ever, or estimate-only mode | time-since-takeoff profile along the planned route; ring red |
 
-**Proven deviation and re-planning.** A deviation is accepted when at least 6 GOOD fixes (3 if the gyro recorded a sustained turn) spanning at least 180 s all show a lateral offset of at least 15 km on the same side, a GNSS track at least 8 degrees off the route course, and along-track progress consistent with the measured speed. Then the governing route becomes the great circle from the proven position to the destination, the original plan is drawn faintly, and the measured track is drawn in a third colour. Within 60 km of the destination every GOOD fix re-anchors, since approaches never follow the great circle. On the ground the aircraft sits at the origin; a fix far from the origin produces a "check the flight plan" warning instead of moving it.
-
-**Estimate-only mode** (switch in Setup, or the GPS toggle on the map) ignores the phone's sensors entirely and shows where a flight *should* be given its scheduled departure time (+15 min taxi). Use it to follow a flight you are not on. A scheduled time later than now is taken as yesterday's departure.
-
-Flight phase (ground / climb / cruise / descent / landed) is detected from the cabin-pressure rate and GNSS vertical rate. Takeoff time is captured automatically on the ground-to-airborne transition.
+Escalating "no GPS" banner (30 s / 3 min / 10 min) tells the passenger to hold the phone to the window; a green notice says when it can be put down. Flight phase comes from cabin-pressure rate, GNSS vertical rate, the accelerometer (takeoff roll, landing deceleration) and route context (descent near the destination). A takeoff measured by the sensors replaces any manual or scheduled value. "I am on the ground now" calibrates altitude and cabin pressure. Estimate-only mode and the optional ADS-B network source are described in the Help.
 
 All tunables are in `app/src/main/java/org/skytrack/Parameters.kt`.
 
@@ -50,6 +51,10 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 ### Signing
 
 All builds are signed with the committed key `keystore/flightinfo.jks` (see `keystore/README.md`), so every APK from the workflow updates the previous one in place. GitHub-hosted runners would otherwise create a new throw-away debug key per run and Android would refuse each update ("App not installed"). To use a private key instead, add the secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`; the workflow prefers them automatically.
+
+### Installation page (GitHub Pages)
+
+`docs/index.html` is a self-contained RTL landing page with the QR code (`docs/qr-install.png`, `.svg`), step-by-step installation, and links to Releases, README, source, Issues and licence. Enable it once: repository **Settings > Pages > Build and deployment > Source: Deploy from a branch > Branch: main, folder: /docs > Save**. The page is then served at `https://<owner>.github.io/FlightInfo/`. Regenerate the QR with `python -c "import qrcode; qrcode.make('<url>').save('docs/qr-install.png')"` if the repository moves.
 
 ### Updating the phone directly from GitHub
 
@@ -96,7 +101,7 @@ Android Studio > Emulator > Extended controls > Location lets you play back a GP
 - **Current-position local time is UTC.** No timezone polygon database is bundled to keep the APK small; origin and destination times use IANA zones from the airport table.
 - **Middle seats** may receive no GNSS at all. The app then runs in predicted-only mode and says so.
 - **Spherical Earth** model (0.3 % error); far below the estimator's own uncertainty.
-- Historical flight tracks (OpenSky) are not fetched; the planned route is always the great circle.
+- Historical flight tracks are not fetched; the planned route is always the great circle. Live ADS-B (adsb.lol) is used opportunistically when a network exists; its availability and terms are those of a community service.
 - **No flight-number lookup.** There is no free, offline schedule database; the boarding-pass barcode is the zero-cost substitute. Departure time is not in the barcode and stays optional/manual.
 
 ## Data licences

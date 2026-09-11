@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MainActivity
-// Version 2.4
+// Version 4.0
 // Purpose : Single-activity host. Simple state-based navigation between
 //           Setup / Map / Metrics / Settings, runtime permission requests,
 //           and foreground-service start/stop tied to the active flight.
@@ -14,7 +14,9 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -46,7 +48,7 @@ import org.skytrack.ui.SkyTrackTheme
 
 private enum class Screen { SETUP, MAP, METRICS, SETTINGS, SCAN, HELP }
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +96,14 @@ private fun Root(app: SkyTrackApp) {
         }
     }
 
+    // Silent update check once per launch, only when allowed and online. Result shown as a line in Setup / Settings.
+    val updateInfo by app.updateInfo.collectAsStateWithLifecycle()
+    LaunchedEffect(settings.useNetwork) {
+        if (settings.useNetwork && app.updateInfo.value == null && app.isOnline()) {
+            try { app.updateInfo.value = org.skytrack.net.Updater(context).check() } catch (e: Exception) { }
+        }
+    }
+
     // Keep the service alive whenever a flight is active and permissions allow it.
     LaunchedEffect(active, plan?.estimateOnly) {
         if (active && plan?.estimateOnly != true &&
@@ -124,7 +134,9 @@ private fun Root(app: SkyTrackApp) {
                     onBack = if (plan != null) ({ screen = Screen.MAP }) else null,
                     onScan = { screen = Screen.SCAN },
                     onHelp = { screen = Screen.HELP },
-                    prefill = scanned
+                    prefill = scanned,
+                    updateAvailable = updateInfo?.takeIf { it.isNewer }?.latestVersion,
+                    onOpenSettings = { screen = Screen.SETTINGS }
                 )
                 Screen.SCAN -> {
                     BackHandler { screen = Screen.SETUP }
@@ -140,6 +152,12 @@ private fun Root(app: SkyTrackApp) {
                         onOpenHelp = { screen = Screen.HELP },
                         visualFixCandidates = { app.engine.visualFixCandidates() },
                         onVisualFix = { place, side, dist -> app.engine.applyVisualFix(place.point, side, dist) },
+                        onConfirmGround = { app.engine.confirmOnGround() },
+                        onSnapshot = { bmp -> app.engine.logger.saveSnapshot(bmp) },
+                        initialZoom = remember { app.stores.loadLastZoom() },
+                        onZoomChanged = { z -> app.stores.saveLastZoom(z) },
+                        panelExpandedInitial = remember { app.stores.loadPanelExpanded() },
+                        onPanelExpandedChanged = { e -> app.stores.savePanelExpanded(e) },
                         hebrew = app.hebrew,
                         onToggleEstimateOnly = {
                             val nowEstimate = !(metrics?.estimateOnly ?: false)
@@ -159,7 +177,14 @@ private fun Root(app: SkyTrackApp) {
                     var logCount by remember { mutableStateOf(app.engine.logger.allFiles().size) }
                     SettingsScreen(
                         settings,
-                        onChange = { app.stores.saveSettings(it); app.engine.logger.enabled = it.logFlights },
+                        onChange = {
+                            app.stores.saveSettings(it); app.engine.logger.enabled = it.logFlights
+                            if (it.language != settings.language) applyLanguage(it.language)
+                        },
+                        onExit = { keep ->
+                            if (!keep) { TrackingService.stop(context); app.engine.stop() }
+                            (context as? android.app.Activity)?.finishAffinity()
+                        },
                         onBack = { screen = Screen.MAP },
                         onHelp = { screen = Screen.HELP },
                         onShareLog = { shareLatestLog(context, app) },
@@ -196,4 +221,10 @@ private fun shareLatestLog(context: android.content.Context, app: SkyTrackApp) {
     } catch (e: Exception) {
         // No app able to receive the file; nothing else to do offline.
     }
+}
+
+/** Per-app language: "system" clears the override; otherwise a BCP-47 tag. Applies immediately (activity recreates). */
+private fun applyLanguage(lang: String) {
+    val locales = if (lang == "system") LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(lang)
+    AppCompatDelegate.setApplicationLocales(locales)
 }

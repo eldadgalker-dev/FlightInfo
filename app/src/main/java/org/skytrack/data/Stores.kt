@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Stores
-// Version 2.3
+// Version 4.0
 // Purpose : SharedPreferences-backed persistence for the flight plan,
 //           the last position estimate (instant restore on relaunch),
 //           the last ground fix (origin auto-detection) and user settings.
@@ -24,11 +24,12 @@ data class FlightPlan(
     val flightNumber: String = "",
     val scheduledDepartureMs: Long? = null,
     val takeoffMs: Long? = null,
-    val estimateOnly: Boolean = false     // true: ignore sensors, show the time-based estimate only
+    val estimateOnly: Boolean = false,    // true: ignore sensors, show the time-based estimate only
+    val takeoffMeasured: Boolean = false  // takeoffMs came from the sensors (overrides a manual entry)
 ) {
     fun toJson(): String = JSONObject().apply {
         put("o", originIata); put("d", destinationIata); put("fn", flightNumber)
-        put("sd", scheduledDepartureMs ?: 0L); put("to", takeoffMs ?: 0L); put("eo", estimateOnly)
+        put("sd", scheduledDepartureMs ?: 0L); put("to", takeoffMs ?: 0L); put("eo", estimateOnly); put("tm", takeoffMeasured)
     }.toString()
 
     companion object {
@@ -37,7 +38,7 @@ data class FlightPlan(
                 FlightPlan(
                     it.getString("o"), it.getString("d"), it.optString("fn", ""),
                     it.optLong("sd", 0L).takeIf { v -> v > 0 }, it.optLong("to", 0L).takeIf { v -> v > 0 },
-                    it.optBoolean("eo", false)
+                    it.optBoolean("eo", false), it.optBoolean("tm", false)
                 )
             }
         } catch (e: Exception) { null }
@@ -79,7 +80,9 @@ data class Settings(
     val trackUp: Boolean = false,
     val rotateGestures: Boolean = false,
     val logFlights: Boolean = true,     // write CSV flight logs for offline calibration
-    val aerial: Boolean = false         // show the downloaded Blue Marble imagery when available
+    val aerial: Boolean = false,        // show the downloaded Blue Marble imagery when available
+    val useNetwork: Boolean = true,     // when a network is available: ADS-B position, update check
+    val language: String = "system"     // "system", "he", "en"
 )
 
 class Stores(context: Context) {
@@ -113,12 +116,18 @@ class Stores(context: Context) {
         )
     }
 
+    /** Last map zoom, restored on the next launch (not part of Settings to avoid recomposition on every gesture). */
+    fun saveLastZoom(z: Double) = prefs.edit().putFloat(KEY_ZOOM, z.toFloat()).apply()
+    fun loadLastZoom(): Double? = if (prefs.contains(KEY_ZOOM)) prefs.getFloat(KEY_ZOOM, 5f).toDouble() else null
+    fun savePanelExpanded(e: Boolean) = prefs.edit().putBoolean(KEY_PANEL, e).apply()
+    fun loadPanelExpanded(): Boolean = prefs.getBoolean(KEY_PANEL, true)
+
     fun saveSettings(s: Settings) {
         prefs.edit()
             .putString("du", s.distanceUnit.name).putString("au", s.altitudeUnit.name).putString("su", s.speedUnit.name)
             .putBoolean("h24", s.use24h).putString("theme", s.theme.name)
             .putBoolean("follow", s.autoFollow).putBoolean("trackup", s.trackUp).putBoolean("rotate", s.rotateGestures)
-            .putBoolean("log", s.logFlights).putBoolean("aerial", s.aerial)
+            .putBoolean("log", s.logFlights).putBoolean("aerial", s.aerial).putBoolean("net", s.useNetwork).putString("lang", s.language)
             .apply()
         _settings.value = s
     }
@@ -135,7 +144,9 @@ class Stores(context: Context) {
             trackUp = prefs.getBoolean("trackup", d.trackUp),
             rotateGestures = prefs.getBoolean("rotate", d.rotateGestures),
             logFlights = prefs.getBoolean("log", d.logFlights),
-            aerial = prefs.getBoolean("aerial", d.aerial)
+            aerial = prefs.getBoolean("aerial", d.aerial),
+            useNetwork = prefs.getBoolean("net", d.useNetwork),
+            language = prefs.getString("lang", d.language) ?: d.language
         )
     }
 
@@ -148,5 +159,7 @@ class Stores(context: Context) {
         private const val KEY_GF_LAT = "gf_lat"
         private const val KEY_GF_LON = "gf_lon"
         private const val KEY_GF_T = "gf_t"
+        private const val KEY_ZOOM = "last_zoom"
+        private const val KEY_PANEL = "panel_expanded"
     }
 }

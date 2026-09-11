@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Updater
-// Version 1.1
+// Version 1.2
 // Purpose : Manual update check against the project's GitHub Releases
 //           (public REST API, no token), download of the APK asset and
 //           hand-off to the Android package installer. Nothing runs
@@ -26,8 +26,13 @@ data class UpdateInfo(val latestVersion: String, val currentVersion: String, val
     companion object {
         /** Compare dotted numeric versions ("2.10" > "2.3"). Non-numeric parts count as 0. */
         fun compareVersions(a: String, b: String): Int {
-            val pa = a.trimStart('v', 'V').split('.').map { it.filter(Char::isDigit).toIntOrNull() ?: 0 }
-            val pb = b.trimStart('v', 'V').split('.').map { it.filter(Char::isDigit).toIntOrNull() ?: 0 }
+            // "3.0-beta2" -> numeric core 3.0 plus pre-release number 2; a final release ("3.0") ranks above any beta.
+            fun parts(v: String): List<Int> {
+                val core = v.trimStart('v', 'V').substringBefore('-')
+                val pre = v.substringAfter('-', "").filter(Char::isDigit).toIntOrNull()
+                return core.split('.').map { it.filter(Char::isDigit).toIntOrNull() ?: 0 } + listOf(if (pre == null) Int.MAX_VALUE else pre)
+            }
+            val pa = parts(a); val pb = parts(b)
             for (i in 0 until maxOf(pa.size, pb.size)) {
                 val x = pa.getOrElse(i) { 0 }; val y = pb.getOrElse(i) { 0 }
                 if (x != y) return x.compareTo(y)
@@ -47,8 +52,17 @@ class Updater(private val context: Context) {
 
     /** Query the latest release. Throws on network / parse errors. */
     suspend fun check(): UpdateInfo {
-        val url = "https://api.github.com/repos/${Parameters.UPDATE_REPO_OWNER}/${Parameters.UPDATE_REPO_NAME}/releases/latest"
-        val json = JSONObject(Downloader.getText(url, "application/vnd.github+json"))
+        // /releases (not /releases/latest) so that beta pre-releases are offered to testers too.
+        val url = "https://api.github.com/repos/${Parameters.UPDATE_REPO_OWNER}/${Parameters.UPDATE_REPO_NAME}/releases?per_page=10"
+        val arr = org.json.JSONArray(Downloader.getText(url, "application/vnd.github+json"))
+        var json: JSONObject? = null
+        for (i in 0 until arr.length()) {
+            val r = arr.getJSONObject(i)
+            if (r.optBoolean("draft", false)) continue
+            if (!r.optString("tag_name", "").startsWith("v")) continue          // skip data packs (data-v1)
+            json = r; break
+        }
+        json ?: throw IllegalStateException("no release found")
         val tag = json.optString("tag_name", "")
         val assets = json.optJSONArray("assets")
         var apkUrl: String? = null

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightLogger
-// Version 1.0
+// Version 2.0
 // Purpose : Write one CSV row per engine tick with the estimate AND the raw
 //           sensor inputs (GNSS, barometer, gyro), so real flights can be
 //           replayed offline to calibrate Parameters (taxi time, speed
@@ -26,7 +26,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class FlightLogger(context: Context) {
+class FlightLogger(private val context: Context) {
 
     private val dir: File = File(context.getExternalFilesDir(null) ?: context.filesDir, "logs")
     private var writer: BufferedWriter? = null
@@ -47,6 +47,12 @@ class FlightLogger(context: Context) {
             val fn = flightNumber.ifBlank { "flight" }
             val f = File(dir, "${stamp}_${originIata}_${destinationIata}_$fn.csv")
             writer = BufferedWriter(FileWriter(f, true))
+            // Header comments: everything needed to interpret the file later.
+            val ver = try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (e: Exception) { "?" }
+            writer?.write("# FlightInfo flight log"); writer?.newLine()
+            writer?.write("# app_version=$ver device=${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} android=${android.os.Build.VERSION.RELEASE} sdk=${android.os.Build.VERSION.SDK_INT}"); writer?.newLine()
+            writer?.write("# flight=$fn origin=$originIata destination=$destinationIata started_utc=${ISO.format(Instant.now().atZone(ZoneOffset.UTC))}"); writer?.newLine()
+            writer?.write("# columns: see header row; distances m, speeds m/s, angles deg, pressure hPa; empty = not available"); writer?.newLine()
             writer?.write(HEADER); writer?.newLine()
             currentFile = f
             rows = 0
@@ -74,10 +80,11 @@ class FlightLogger(context: Context) {
             sb.append(e.mode.name).append(',').append(e.phase.name).append(',')
             sb.append(f(e.lat, 6)).append(',').append(f(e.lon, 6)).append(',')
             sb.append(f(e.alongTrackM, 0)).append(',').append(f(e.totalFlownM, 0)).append(',').append(f(m.remainingM, 0)).append(',')
-            sb.append(f(e.sigmaAlongM, 0)).append(',').append(e.measuredCrossM?.let { f(it, 0) } ?: "").append(',')
-            sb.append(e.deviationEvidence).append(',').append(e.replanCount).append(',')
+            sb.append(f(e.sigmaAlongM, 0)).append(',')
             sb.append(f(e.groundSpeedMps, 1)).append(',').append(f(e.trackDeg, 1)).append(',').append(f(e.altM, 0)).append(',')
             sb.append(m.eteS ?: "").append(',')
+            sb.append(if (e.maneuvering) 1 else 0).append(',').append(m.cabinAltM?.let { f(it, 0) } ?: "").append(',')
+            sb.append(e.sensorLevel).append(',').append(e.replanCount).append(',').append(m.positionSource ?: "").append(',')
             if (gnss != null) {
                 sb.append(gnss.timeMs).append(',').append(f(gnss.lat, 6)).append(',').append(f(gnss.lon, 6)).append(',')
                 sb.append(if (gnss.hasAlt) f(gnss.altM, 0) else "").append(',')
@@ -94,6 +101,16 @@ class FlightLogger(context: Context) {
         } catch (e: Exception) {
             // Logging must never affect tracking.
         }
+    }
+
+    /** Save a PNG of the map next to the current log (called once at landing). */
+    @Synchronized
+    fun saveSnapshot(bmp: android.graphics.Bitmap) {
+        val base = currentFile ?: latestFile() ?: return
+        try {
+            val f = File(base.parentFile, base.name.removeSuffix(".csv") + "_map.png")
+            java.io.FileOutputStream(f).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it) }
+        } catch (e: Exception) { }
     }
 
     fun latestFile(): File? = dir.listFiles()?.filter { it.isFile && it.name.endsWith(".csv") }?.maxByOrNull { it.lastModified() }
@@ -113,7 +130,7 @@ class FlightLogger(context: Context) {
         private const val MAX_FILES = 20
         private val ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
         const val HEADER = "time_utc,epoch_ms,tracking,mode,phase,est_lat,est_lon,along_m,total_flown_m,remaining_m," +
-                "sigma_s_m,measured_cross_m,deviation_evidence,replans,speed_mps,track_deg,alt_m,ete_s," +
+                "sigma_s_m,speed_mps,track_deg,alt_m,ete_s,maneuvering,cabin_alt_m,sensor_level,reanchors,position_source," +
                 "gnss_time_ms,gnss_lat,gnss_lon,gnss_alt_m,gnss_speed_mps,gnss_bearing_deg,gnss_hacc_m,gnss_sats_used,gnss_sats_visible,gnss_quality," +
                 "baro_hpa,baro_rate_hpa_min,gyro_yaw_dps"
     }

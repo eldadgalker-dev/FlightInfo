@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 2.3
+// Version 4.0
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -35,7 +35,9 @@ import org.skytrack.data.SavedEstimate
 import org.skytrack.data.Stores
 import org.skytrack.fusion.Estimator
 import org.skytrack.fusion.FlightMetrics
+import org.skytrack.fusion.GroundReference
 import org.skytrack.fusion.Metrics
+import org.skytrack.net.LiveFlightSource
 import org.skytrack.route.GeoPoint
 import org.skytrack.route.Route
 import org.skytrack.sensors.BaroSample
@@ -44,12 +46,16 @@ import org.skytrack.sensors.FlightPhaseDetector
 import org.skytrack.sensors.GnssQuality
 import org.skytrack.sensors.GnssSample
 import org.skytrack.sensors.GyroSample
+import org.skytrack.sensors.MotionSample
 
 class FlightEngine(private val airports: AirportRepository, private val stores: Stores, val logger: FlightLogger,
-                   val geo: GeoData, private val hebrew: Boolean) {
+                   val geo: GeoData, private val hebrew: Boolean, private val isOnline: () -> Boolean) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var tickJob: Job? = null
+    private var pollJob: Job? = null
+    @Volatile private var lastExternalFixMs = 0L
+    @Volatile private var lastAnyFixMs = 0L
 
     private val _metrics = MutableStateFlow<FlightMetrics?>(null)
     val metrics: StateFlow<FlightMetrics?> = _metrics
@@ -79,6 +85,11 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     @Volatile private var lastGnss: GnssSample? = null
     @Volatile private var lastBaro: BaroSample? = null
     @Volatile private var lastGyro: GyroSample? = null
+    @Volatile private var groundRef: GroundReference? = null
+    private var startMs = 0L
+    private var warnActiveSinceMs = 0L
+    private var reliefUntilMs = 0L
+    private var lastWarnLevel = 0
 
     /** True when sensors drive the estimate; false in estimate-only mode. */
     val sensorsLive: Boolean get() = plan?.estimateOnly != true
@@ -105,6 +116,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
             stores.clearEstimate()
         }
         stores.savePlan(p)
+        startMs = System.currentTimeMillis(); lastWarnLevel = 0; reliefUntilMs = 0L
         if (!geoReady) scope.launch { geo.warmUp(); geoReady = true }
         logger.enabled = stores.settings.value.logFlights
         if (!p.estimateOnly) logger.start(p.originIata, p.destinationIata, p.flightNumber) else logger.stop()
@@ -116,7 +128,32 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
                 publish(System.currentTimeMillis())
             }
         }
+        if (p.flightNumber.isNotBlank()) pollJob = scope.launch { pollLive(p) }
         return true
+    }
+
+    /**
+     * Online enrichment: when the phone has a network, ask the ADS-B aggregator for the
+     * real position of this flight. Used always in estimate-only mode, and in live mode
+     * only when the phone's own GNSS has been silent for a while.
+     */
+    private suspend fun pollLive(p: FlightPlan) {
+        while (true) {
+            try {
+                val s = stores.settings.value
+                val gnssStale = System.currentTimeMillis() - lastAnyFixMs > Parameters.LIVE_ONLY_WHEN_GNSS_OLDER_MS
+                if (s.useNetwork && isOnline() && (p.estimateOnly || gnssStale)) {
+                    val fix = LiveFlightSource.fetch(p.flightNumber)
+                    if (fix != null) {
+                        lastExternalFixMs = System.currentTimeMillis()
+                        ingestFix(fix)
+                    }
+                }
+            } catch (e: Exception) {
+                // Network hiccup: try again next interval.
+            }
+            delay(Parameters.LIVE_POLL_INTERVAL_MS)
+        }
     }
 
     /** Switch between live sensing and estimate-only without losing the plan. */
@@ -130,6 +167,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     @Synchronized
     fun stop() {
         tickJob?.cancel(); tickJob = null
+        pollJob?.cancel(); pollJob = null
         _active.value = false
         logger.stop()
     }
@@ -146,6 +184,12 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     fun onGnss(g: GnssSample) {
         lastGnss = g
         if (!sensorsLive) return
+        if (g.quality != GnssQuality.NONE) lastAnyFixMs = g.timeMs
+        ingestFix(g)
+    }
+
+    /** Shared path for phone GNSS and network ADS-B fixes. */
+    private fun ingestFix(g: GnssSample) {
         val est = estimator ?: return
         if (g.quality != GnssQuality.NONE && g.hasAlt) {
             if (lastGnssAltMs != 0L) {
@@ -188,6 +232,26 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
 
     fun onBaro(b: BaroSample) { lastBaro = b; if (sensorsLive) { phaseDetector.onBaro(b); captureTakeoff() } }
 
+    fun onMotion(m: MotionSample) { if (sensorsLive) { phaseDetector.onMotion(m); captureTakeoff() } }
+
+    /**
+     * The user confirms the aircraft is on the ground at the origin now. Resets the phase to
+     * GROUND, forgets a wrongly captured takeoff, records field elevation vs GNSS altitude
+     * (altitude bias) and the cabin pressure (cabin-altitude reference).
+     */
+    @Synchronized
+    fun confirmOnGround() {
+        val est = estimator ?: return
+        val o = origin ?: return
+        val p = plan ?: return
+        phaseDetector.confirmGround()
+        if (p.takeoffMs != null) { plan = p.copy(takeoffMs = null); stores.savePlan(plan) }
+        val g = lastGnss?.takeIf { it.quality != GnssQuality.NONE && it.hasAlt && System.currentTimeMillis() - it.timeMs < 30_000 }
+        est.setGroundReference(g?.altM, o.elevM.toDouble())
+        groundRef = GroundReference(System.currentTimeMillis(), o.elevM, g?.altM, lastBaro?.pressureHpa)
+        publish(System.currentTimeMillis())
+    }
+
     fun onGyro(g: GyroSample) { lastGyro = g; if (sensorsLive) estimator?.onGyro(g) }
 
     /** Nearest airport to the last ground fix, for pre-filling the origin field. */
@@ -198,11 +262,12 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
 
     fun currentPlan(): FlightPlan? = plan
 
+    /** A takeoff measured by the sensors is the only one that really happened: it replaces a manual or scheduled value. */
     private fun captureTakeoff() {
         val p = plan ?: return
         val to = phaseDetector.takeoffTimeMs
-        if (to != null && p.takeoffMs == null) {
-            plan = p.copy(takeoffMs = to)
+        if (to != null && (p.takeoffMs == null || (!p.takeoffMeasured && kotlin.math.abs(to - p.takeoffMs) > 60_000))) {
+            plan = p.copy(takeoffMs = to, takeoffMeasured = true)
             stores.savePlan(plan)
         }
     }
@@ -216,9 +281,10 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         val o = origin ?: return
         val dst = destination ?: return
         val p = plan ?: return
-        val live = !p.estimateOnly
+        val externalFresh = lastExternalFixMs != 0L && now - lastExternalFixMs < Parameters.LIVE_MAX_AGE_S * 1000
+        val live = !p.estimateOnly || externalFresh
         val takeoffRef = takeoffReference(p)
-        val phase = if (live) phaseDetector.phase else est.predictedPhase(now, takeoffRef)
+        val phase = if (!p.estimateOnly || externalFresh) phaseDetector.phase else est.predictedPhase(now, takeoffRef)
         val e = est.tick(now, phase, takeoffRef, live)
         val takeoffForMetrics = if (live) p.takeoffMs ?: takeoffRef?.takeIf { now > it } else takeoffRef?.takeIf { now > it }
         // Country under the aircraft: cheap point-in-polygon, refreshed every 5 s once the data is parsed.
@@ -226,7 +292,25 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
             lastCountryCheckMs = now
             lastCountry = geo.countryAt(GeoPoint(e.lat, e.lon))?.label(hebrew)
         }
-        val fm = Metrics.compute(e, est.route, est.plannedRoute, est.actualTrack.toList(), !live, o, dst, takeoffForMetrics, lastCountry)
+        val source = if (externalFresh && (p.estimateOnly || now - lastAnyFixMs > Parameters.LIVE_ONLY_WHEN_GNSS_OLDER_MS)) "ADS-B" else null
+        // Cabin pressure altitude: barometric formula from the on-ground reference (cabin = ambient at the gate).
+        val gr = groundRef?.takeIf { now - it.timeMs < Parameters.GROUND_REF_MAX_AGE_H * 3600_000 }
+        val cabinAlt = if (gr?.pressureHpa != null && lastBaro != null)
+            gr.fieldElevM + Parameters.STD_ATMOS_SCALE_M * (1.0 - Math.pow(lastBaro!!.pressureHpa / gr.pressureHpa, Parameters.STD_ATMOS_EXP)) else null
+        // GNSS warning escalation (live mode only): seconds since the last usable fix or since start.
+        val noFixS = if (!live) 0L else (now - (if (lastAnyFixMs != 0L) lastAnyFixMs else startMs)) / 1000
+        val warn = if (!live || externalFresh) 0 else when {
+            noFixS < Parameters.GNSS_WARN_AFTER_S -> 0
+            noFixS < Parameters.GNSS_WARN_LEVEL2_S -> 1
+            noFixS < Parameters.GNSS_WARN_LEVEL3_S -> 2
+            else -> 3
+        }
+        if (warn == 0 && lastWarnLevel > 0) reliefUntilMs = now + (Parameters.GNSS_RELIEF_SHOW_S * 1000).toLong()
+        lastWarnLevel = warn
+        val relief = now < reliefUntilMs
+        val fm = Metrics.compute(e, est.route, est.plannedRoute, est.actualTrack.toList(), p.estimateOnly && !externalFresh,
+            o, dst, takeoffForMetrics, lastCountry, takeoffRef, source, cabinAlt, gr, warn, relief, noFixS)
+        phaseDetector.onRemaining(fm.remainingM, now)
         _metrics.value = fm
         if (live) logger.log(fm, lastGnss, lastBaro, lastGyro)
         if (live && now - lastPersistMs > Parameters.PERSIST_INTERVAL_MS) {

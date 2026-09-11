@@ -1,7 +1,7 @@
 // Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
-// FlightInfo app module build - Version 2.6
+// FlightInfo app module build - Version 4.0
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -16,8 +16,8 @@ android {
         applicationId = "com.galker.flightinfo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 15
-        versionName = "2.6"
+        versionCode = 18
+        versionName = "4.0-beta3"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -81,4 +81,5 @@ dependencies {
     implementation("androidx.camera:camera-view:1.3.4")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")   // real org.json for JVM tests (android.jar stubs throw)
 }

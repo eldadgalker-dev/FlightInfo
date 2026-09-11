@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 2.5
+// Version 4.0
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -27,7 +27,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Explore
@@ -86,15 +86,22 @@ fun MapScreen(
     onToggleEstimateOnly: () -> Unit,
     visualFixCandidates: () -> List<Pair<GeoData.Place, Double>>,
     onVisualFix: (GeoData.Place, Boolean?, Int) -> Unit,
+    onConfirmGround: () -> Unit,
+    onSnapshot: (android.graphics.Bitmap) -> Unit,
+    initialZoom: Double?,
+    onZoomChanged: (Double) -> Unit,
+    panelExpandedInitial: Boolean,
+    onPanelExpandedChanged: (Boolean) -> Unit,
     hebrew: Boolean
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val context = LocalContext.current
     val aerial = remember { AerialPack(context) }
     var showVisualFix by remember { mutableStateOf(false) }
+    var snapshotTaken by rememberSaveable { mutableStateOf(false) }
     var controller by remember { mutableStateOf<MapController?>(null) }
     var trackUp by rememberSaveable { mutableStateOf(settings.trackUp) }
-    var panelExpanded by rememberSaveable { mutableStateOf(false) }
+    var panelExpanded by rememberSaveable { mutableStateOf(panelExpandedInitial) }
 
     Box(Modifier.fillMaxSize()) {
         AndroidView(
@@ -103,7 +110,7 @@ fun MapScreen(
             update = { mv ->
                 if (controller == null) {
                     mv.getMapAsync { map ->
-                        val c = MapController(mv.context, map)
+                        val c = MapController(mv.context, map, initialZoom, onZoomChanged)
                         c.followEnabled = settings.autoFollow
                         c.trackUp = trackUp
                         c.setRotateGestures(settings.rotateGestures)
@@ -121,9 +128,23 @@ fun MapScreen(
         }
         LaunchedEffect(controller, trackUp) { controller?.trackUp = trackUp }
         LaunchedEffect(controller, metrics) { if (metrics != null) controller?.update(metrics) }
+        // One map snapshot when the flight ends, saved next to the flight log.
+        LaunchedEffect(metrics?.estimate?.phase) {
+            if (!snapshotTaken && metrics?.estimate?.phase == org.skytrack.sensors.FlightPhase.LANDED && !metrics.estimateOnly) {
+                snapshotTaken = true
+                try { mapView.snapshot { bmp -> onSnapshot(bmp) } } catch (e: Exception) { }
+            }
+        }
 
         // -- Status strip --
         StatusStrip(metrics, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 8.dp, start = 64.dp, end = 64.dp).fillMaxWidth())
+
+        // -- GNSS warning / relief banner (live mode) --
+        metrics?.let { m ->
+            if (m.gnssWarnLevel > 0 || m.gnssRelief) {
+                GnssBanner(m, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 62.dp, start = 64.dp, end = 64.dp).fillMaxWidth())
+            }
+        }
 
         // -- Floating controls: top corners, below the status strip, clear of the panel --
         Column(
@@ -147,7 +168,7 @@ fun MapScreen(
             SmallFloatingActionButton(onClick = onOpenSetup) { Icon(Icons.Filled.EditNote, stringResource(R.string.flight_setup)) }
             SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.TableChart, stringResource(R.string.metrics)) }
             SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
-            SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.AutoMirrored.Filled.Help, stringResource(R.string.help)) }
+            SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Help, stringResource(R.string.help)) }
             if (metrics != null) {
                 // Live sensing (satellite) vs time-based estimate (clock)
                 SmallFloatingActionButton(onClick = onToggleEstimateOnly) {
@@ -172,7 +193,7 @@ fun MapScreen(
 
         // -- Metrics panel --
         Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(8.dp)) {
-            MetricsPanel(metrics, settings, panelExpanded) { panelExpanded = !panelExpanded }
+            MetricsPanel(metrics, settings, panelExpanded, onConfirmGround) { panelExpanded = !panelExpanded; onPanelExpandedChanged(panelExpanded) }
         }
     }
 }
@@ -194,7 +215,7 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
                     m.overflownCountry?.let { stringResource(R.string.over_country, it) }
                 ).joinToString("  \u00B7  "))
             } else {
-                val gnss = when (e.gnssQuality) {
+                val gnss = if (m.positionSource != null) stringResource(R.string.source_adsb) else when (e.gnssQuality) {
                     GnssQuality.GOOD -> stringResource(R.string.gnss_good, e.satsUsed)
                     GnssQuality.DEGRADED -> stringResource(R.string.gnss_degraded, e.satsUsed)
                     GnssQuality.NONE -> stringResource(R.string.gnss_none)
@@ -204,10 +225,16 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
                     FusionMode.ROUTE_CONSTRAINED -> stringResource(R.string.mode_constrained)
                     FusionMode.PREDICTED_ONLY -> stringResource(R.string.mode_predicted)
                 }
-                StripText("$mode  \u00B7  $gnss  \u00B7  ${stringResource(R.string.fix_age, Format.ageSeconds(e.lastFixAgeMs))}",
-                    MaterialTheme.colorScheme.primary)
+                val line1 = when {
+                    m.positionSource != null -> gnss
+                    e.mode == FusionMode.GNSS_TRACKING -> "$gnss  \u00B7  ${stringResource(R.string.accuracy_m, e.sigmaAlongM.toInt())}"
+                    e.mode == FusionMode.ROUTE_CONSTRAINED -> "${stringResource(R.string.gnss_none)}  \u00B7  ${Format.duration(m.gnssNoFixS)}  \u00B7  $mode"
+                    else -> mode
+                }
+                StripText(line1, MaterialTheme.colorScheme.primary)
                 val second = listOfNotNull(
                     stringResource(R.string.phase_label, phaseName(e.phase)),
+                    if (e.maneuvering) stringResource(R.string.maneuvering) else null,
                     m.overflownCountry?.let { stringResource(R.string.over_country, it) }
                 ).joinToString("  \u00B7  ")
                 StripText(second)
@@ -223,7 +250,7 @@ private fun StripText(text: String, color: androidx.compose.ui.graphics.Color = 
 }
 
 @Composable
-private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onToggle: () -> Unit) {
+private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onConfirmGround: () -> Unit, onToggle: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onToggle() },
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
@@ -237,6 +264,16 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onTo
             e.originMismatchM?.let { d ->
                 Text(stringResource(R.string.origin_mismatch, Format.distance(d, s.distanceUnit), m.origin.iata),
                     color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            // Before takeoff, in live mode: one-tap ground confirmation / altitude calibration.
+            if (!m.estimateOnly && e.phase == org.skytrack.sensors.FlightPhase.GROUND && expanded) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.OutlinedButton(onClick = onConfirmGround) { Text(stringResource(R.string.confirm_ground)) }
+                    Text(
+                        m.groundReference?.let { gr -> stringResource(R.string.ground_ref_done, gr.gnssBiasM?.let { Format.altitude(it, s.altitudeUnit) } ?: "--") }
+                            ?: stringResource(R.string.ground_ref_hint),
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                }
             }
             // Headline: three equal cells, values never wrap.
             Row(Modifier.fillMaxWidth()) {
@@ -260,12 +297,6 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onTo
                     LabeledValue(stringResource(R.string.time_at, m.origin.iata), Format.time(m.nowAtOrigin, s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
                     LabeledValue(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
                     LabeledValue(stringResource(R.string.time_at, m.destination.iata), Format.time(m.nowAtDestination, s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
-                }
-                val cross = e.measuredCrossM
-                if (cross != null && kotlin.math.abs(cross) >= 2_000.0) {
-                    Text(stringResource(R.string.measured_offset, Format.distance(kotlin.math.abs(cross), s.distanceUnit),
-                        e.deviationEvidence, e.deviationRequired),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 Text(stringResource(R.string.panel_expand_hint), style = MaterialTheme.typography.labelSmall,
@@ -370,4 +401,22 @@ private fun VisualFixDialog(
         },
         dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.back)) } }
     )
+}
+
+/**
+ * Escalating "no GNSS" warning: yellow after 30 s, orange after 3 min, red after 10 min, with
+ * the advice to hold the phone against the window; green relief once a fix is back.
+ */
+@Composable
+private fun GnssBanner(m: FlightMetrics, modifier: Modifier) {
+    val (color, text) = when {
+        m.gnssRelief -> androidx.compose.ui.graphics.Color(0xFF2E7D32) to stringResource(R.string.gnss_relief)
+        m.gnssWarnLevel >= 3 -> androidx.compose.ui.graphics.Color(0xFFC62828) to stringResource(R.string.gnss_warn3, Format.duration(m.gnssNoFixS))
+        m.gnssWarnLevel == 2 -> androidx.compose.ui.graphics.Color(0xFFEF6C00) to stringResource(R.string.gnss_warn2, Format.duration(m.gnssNoFixS))
+        else -> androidx.compose.ui.graphics.Color(0xFFF9A825) to stringResource(R.string.gnss_warn1)
+    }
+    Surface(modifier = modifier.clip(RoundedCornerShape(10.dp)), color = color) {
+        Text(text, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), color = androidx.compose.ui.graphics.Color.White,
+            style = MaterialTheme.typography.labelLarge, maxLines = 2)
+    }
 }

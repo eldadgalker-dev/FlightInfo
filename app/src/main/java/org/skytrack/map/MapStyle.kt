@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapStyle
-// Version 2.3
+// Version 4.0
 // Purpose : Offline map style. The style JSON holds only the background
 //           and the bundled glyph endpoint; all sources and layers are
 //           added programmatically from the bundled Natural Earth GeoJSON
@@ -90,8 +90,9 @@ object MapStyle {
     const val SRC_UNCERTAINTY = "uncertainty"
     const val SRC_AIRPORTS = "airports"
     const val SRC_AIRCRAFT = "aircraft"
-    const val IMG_AIRCRAFT_SOLID = "aircraft-solid"
-    const val IMG_AIRCRAFT_OUTLINE = "aircraft-outline"
+    /** Aircraft icon ids by sensor level 0..3: red (time only), orange (inertial), yellow (weak fix), green (good fix). */
+    val IMG_AIRCRAFT_LEVEL = arrayOf("aircraft-0", "aircraft-1", "aircraft-2", "aircraft-3")
+    val AIRCRAFT_LEVEL_COLORS = intArrayOf(Color.rgb(230, 57, 70), Color.rgb(255, 140, 0), Color.rgb(255, 214, 0), Color.rgb(76, 201, 106))
 
     fun styleJson(p: Palette): String = """
         {"version":8,"name":"skytrack",
@@ -116,8 +117,8 @@ object MapStyle {
      *                       outlines and all labels stay on top.
      */
     fun install(style: Style, p: Palette, base: Map<String, String>, hebrew: Boolean, aerialTileUrl: String? = null) {
-        // Label text: localised name when available, else the English name.
-        val nameExpr: Expression = if (hebrew) Expression.coalesce(Expression.get("name_he"), Expression.get("name")) else Expression.get("name")
+        // Labels are English only (decision 3.0): consistent with airport codes and aviation usage.
+        val nameExpr: Expression = Expression.get("name")
 
         // -- Static base layers --
         style.addSource(GeoJsonSource(SRC_LAND, base.getValue(SRC_LAND)))
@@ -166,52 +167,81 @@ object MapStyle {
         style.addLayer(LineLayer("route-original", SRC_ROUTE_ORIGINAL).withProperties(
             PropertyFactory.lineColor(p.routeOriginal), PropertyFactory.lineWidth(1.2f),
             PropertyFactory.lineDasharray(arrayOf(1f, 3f))))
+        // Dark casing under the route lines keeps them readable over satellite imagery.
+        style.addLayer(LineLayer("route-planned-casing", SRC_ROUTE_PLANNED).withProperties(
+            PropertyFactory.lineColor(p.placeHalo), PropertyFactory.lineWidth(4.5f), PropertyFactory.lineOpacity(0.6f)))
         style.addLayer(LineLayer("route-planned", SRC_ROUTE_PLANNED).withProperties(
-            PropertyFactory.lineColor(p.routePlanned), PropertyFactory.lineWidth(2f),
-            PropertyFactory.lineDasharray(arrayOf(2f, 2f))))
+            PropertyFactory.lineColor(p.routePlanned), PropertyFactory.lineWidth(2.5f),
+            PropertyFactory.lineDasharray(arrayOf(2f, 1.5f))))
+        style.addLayer(LineLayer("route-flown-casing", SRC_ROUTE_FLOWN).withProperties(
+            PropertyFactory.lineColor(p.placeHalo), PropertyFactory.lineWidth(5.5f), PropertyFactory.lineOpacity(0.6f)))
         style.addLayer(LineLayer("route-flown", SRC_ROUTE_FLOWN).withProperties(
-            PropertyFactory.lineColor(p.routeFlown), PropertyFactory.lineWidth(3f)))
+            PropertyFactory.lineColor(p.routeFlown), PropertyFactory.lineWidth(3.5f)))
         style.addLayer(LineLayer("track-actual", SRC_TRACK_ACTUAL).withProperties(
             PropertyFactory.lineColor(p.trackActual), PropertyFactory.lineWidth(2f)))
 
-        // Country names at Natural Earth's curated label points; more appear as you zoom in.
-        style.addLayer(SymbolLayer("country-label", SRC_COUNTRY_LABELS).withProperties(
+        // Country names at Natural Earth's curated label points. Density grows with zoom via
+        // separate layers per zoom band (filters must not contain zoom expressions).
+        val countryBands = listOf(Triple(1.5f, 3.0f, 2), Triple(3.0f, 4.5f, 4), Triple(4.5f, 6.0f, 6), Triple(6.0f, 24.0f, 99))
+        for ((i, band) in countryBands.withIndex()) {
+            val layer = SymbolLayer("country-label-$i", SRC_COUNTRY_LABELS).withProperties(
+                PropertyFactory.textField(nameExpr),
+                PropertyFactory.textFont(arrayOf("notosansbold")),
+                PropertyFactory.textSize(Expression.interpolate(Expression.linear(), Expression.zoom(),
+                    Expression.stop(2, 10f), Expression.stop(5, 13f), Expression.stop(8, 17f))),
+                PropertyFactory.textColor(p.countryText),
+                PropertyFactory.textHaloColor(p.placeHalo),
+                PropertyFactory.textHaloWidth(1.6f),
+                PropertyFactory.textLetterSpacing(0.12f),
+                PropertyFactory.textTransform(Property.TEXT_TRANSFORM_UPPERCASE),
+                PropertyFactory.textPadding(4f),
+                PropertyFactory.textAllowOverlap(false))
+                .withFilter(Expression.lte(Expression.get("labelrank"), Expression.literal(band.third)))
+            layer.minZoom = band.first; layer.maxZoom = band.second
+            style.addLayer(layer)
+        }
+
+        // Capitals and the largest cities are labelled at every zoom.
+        style.addLayer(SymbolLayer("places-capitals", SRC_PLACES).withProperties(
             PropertyFactory.textField(nameExpr),
             PropertyFactory.textFont(arrayOf("notosansbold")),
             PropertyFactory.textSize(Expression.interpolate(Expression.linear(), Expression.zoom(),
-                Expression.stop(2, 9f), Expression.stop(5, 13f), Expression.stop(8, 16f))),
-            PropertyFactory.textColor(p.countryText),
-            PropertyFactory.textHaloColor(p.placeHalo),
-            PropertyFactory.textHaloWidth(1.0f),
-            PropertyFactory.textLetterSpacing(if (hebrew) 0f else 0.15f),
-            PropertyFactory.textTransform(if (hebrew) Property.TEXT_TRANSFORM_NONE else Property.TEXT_TRANSFORM_UPPERCASE),
-            PropertyFactory.textPadding(6f))
-            .withFilter(Expression.lte(Expression.get("labelrank"),
-                Expression.interpolate(Expression.linear(), Expression.zoom(),
-                    Expression.stop(1.5, 2), Expression.stop(3, 4), Expression.stop(4.5, 6), Expression.stop(6, 10)))))
-
-        // Populated places: dot always, label filtered by scalerank per zoom (0 = largest cities).
-        val placeRankByZoom = Expression.interpolate(Expression.linear(), Expression.zoom(),
-            Expression.stop(2, 0), Expression.stop(3, 1), Expression.stop(4, 3), Expression.stop(5, 5),
-            Expression.stop(6, 6), Expression.stop(7, 7), Expression.stop(8, 8))
-        style.addLayer(CircleLayer("places-dot", SRC_PLACES).withProperties(
-            PropertyFactory.circleColor(p.placeDot),
-            PropertyFactory.circleRadius(Expression.interpolate(Expression.linear(), Expression.zoom(),
-                Expression.stop(3, 1.5f), Expression.stop(8, 3f))),
-            PropertyFactory.circleStrokeColor(p.placeHalo), PropertyFactory.circleStrokeWidth(0.8f))
-            .withFilter(Expression.lte(Expression.get("scalerank"), placeRankByZoom)))
-        style.addLayer(SymbolLayer("places-label", SRC_PLACES).withProperties(
-            PropertyFactory.textField(nameExpr),
-            PropertyFactory.textFont(arrayOf("notosans")),
-            PropertyFactory.textSize(Expression.interpolate(Expression.linear(), Expression.zoom(),
-                Expression.stop(3, 10f), Expression.stop(8, 13f))),
+                Expression.stop(1, 9f), Expression.stop(5, 12f), Expression.stop(8, 14f))),
             PropertyFactory.textColor(p.placeText),
             PropertyFactory.textHaloColor(p.placeHalo),
-            PropertyFactory.textHaloWidth(1.3f),
+            PropertyFactory.textHaloWidth(1.4f),
             PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
-            PropertyFactory.textOffset(arrayOf(0f, 0.5f)),
-            PropertyFactory.textOptional(true))
-            .withFilter(Expression.lte(Expression.get("scalerank"), placeRankByZoom)))
+            PropertyFactory.textOffset(arrayOf(0f, 0.5f)))
+            .withFilter(Expression.any(
+                Expression.gte(Expression.toNumber(Expression.get("adm0cap")), Expression.literal(1)),
+                Expression.lte(Expression.get("scalerank"), Expression.literal(1)))))
+
+        // Populated places: zoom bands select the scalerank cut-off (0 = largest cities).
+        val placeBands = listOf(Triple(0f, 3f, 0), Triple(3f, 4f, 1), Triple(4f, 5f, 3), Triple(5f, 6f, 5),
+            Triple(6f, 7f, 6), Triple(7f, 8f, 7), Triple(8f, 24f, 99))
+        for ((i, band) in placeBands.withIndex()) {
+            val f = Expression.lte(Expression.get("scalerank"), Expression.literal(band.third))
+            val dot = CircleLayer("places-dot-$i", SRC_PLACES).withProperties(
+                PropertyFactory.circleColor(p.placeDot),
+                PropertyFactory.circleRadius(Expression.interpolate(Expression.linear(), Expression.zoom(),
+                    Expression.stop(3, 1.5f), Expression.stop(8, 3f))),
+                PropertyFactory.circleStrokeColor(p.placeHalo), PropertyFactory.circleStrokeWidth(0.8f)).withFilter(f)
+            dot.minZoom = band.first; dot.maxZoom = band.second
+            style.addLayer(dot)
+            val label = SymbolLayer("places-label-$i", SRC_PLACES).withProperties(
+                PropertyFactory.textField(nameExpr),
+                PropertyFactory.textFont(arrayOf("notosans")),
+                PropertyFactory.textSize(Expression.interpolate(Expression.linear(), Expression.zoom(),
+                    Expression.stop(3, 10f), Expression.stop(8, 13f))),
+                PropertyFactory.textColor(p.placeText),
+                PropertyFactory.textHaloColor(p.placeHalo),
+                PropertyFactory.textHaloWidth(1.4f),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                PropertyFactory.textOffset(arrayOf(0f, 0.5f)),
+                PropertyFactory.textOptional(true)).withFilter(f)
+            label.minZoom = band.first; label.maxZoom = band.second
+            style.addLayer(label)
+        }
 
         style.addLayer(SymbolLayer("airports", SRC_AIRPORTS).withProperties(
             PropertyFactory.textField(Expression.get("code")),
@@ -227,8 +257,7 @@ object MapStyle {
             PropertyFactory.circleColor(p.airport), PropertyFactory.circleRadius(4f),
             PropertyFactory.circleStrokeColor(p.background), PropertyFactory.circleStrokeWidth(1.5f)))
 
-        style.addImage(IMG_AIRCRAFT_SOLID, aircraftBitmap(p.aircraft, p.aircraftOutline, solid = true))
-        style.addImage(IMG_AIRCRAFT_OUTLINE, aircraftBitmap(p.aircraft, p.aircraftOutline, solid = false))
+        for (i in 0..3) style.addImage(IMG_AIRCRAFT_LEVEL[i], aircraftBitmap(AIRCRAFT_LEVEL_COLORS[i], i >= 2))
         style.addLayer(SymbolLayer("aircraft", SRC_AIRCRAFT).withProperties(
             PropertyFactory.iconImage(Expression.get("icon")),
             PropertyFactory.iconRotate(Expression.get("bearing")),
@@ -242,12 +271,24 @@ object MapStyle {
      * Draw a top-down aircraft silhouette, nose pointing up (north), so that
      * icon-rotate = track works directly. 64 px canvas.
      */
-    fun aircraftBitmap(fill: Int, outline: Int, solid: Boolean): Bitmap {
-        val size = 64
+    /**
+     * Aircraft marker, 80 px: translucent dark disc, coloured ring (sensor level), white or
+     * outlined silhouette (solid = position measured, hollow = propagated).
+     */
+    fun aircraftBitmap(ringColor: Int, solid: Boolean): Bitmap {
+        val size = 80
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.style = Paint.Style.FILL; paint.color = Color.argb(150, 8, 16, 26)
+        c.drawCircle(size / 2f, size / 2f, size / 2f - 1f, paint)
+        paint.style = Paint.Style.STROKE; paint.strokeWidth = 4f; paint.color = ringColor
+        c.drawCircle(size / 2f, size / 2f, size / 2f - 3f, paint)
+        val scale = 0.70f
+        c.save()
+        c.translate((size - 64 * scale) / 2f, (size - 64 * scale) / 2f)
+        c.scale(scale, scale)
         val path = Path().apply {
-            // Fuselage and wings in a 64x64 box, nose at (32, 4).
             moveTo(32f, 4f)
             lineTo(36f, 10f); lineTo(36f, 26f)
             lineTo(60f, 40f); lineTo(60f, 45f); lineTo(36f, 38f)
@@ -258,18 +299,16 @@ object MapStyle {
             lineTo(28f, 10f)
             close()
         }
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         if (solid) {
-            paint.style = Paint.Style.FILL; paint.color = fill
+            paint.style = Paint.Style.FILL; paint.color = Color.WHITE
             c.drawPath(path, paint)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = 2f; paint.color = outline
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = 2.5f; paint.color = Color.rgb(8, 16, 26)
             c.drawPath(path, paint)
         } else {
-            paint.style = Paint.Style.FILL; paint.color = outline
-            c.drawPath(path, paint)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = 3f; paint.color = fill
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = 3.5f; paint.color = Color.WHITE
             c.drawPath(path, paint)
         }
+        c.restore()
         return bmp
     }
 }

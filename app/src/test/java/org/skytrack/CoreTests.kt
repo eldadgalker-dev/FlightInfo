@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - CoreTests
-// Version 2.3
+// Version 4.0
 // Purpose : JVM unit tests for Geodesy, Route projection and the
 //           Estimator (GNSS gap behaviour, reacquisition, off-route).
 //           These run without an emulator: ./gradlew test
@@ -19,9 +19,14 @@ import org.skytrack.route.GeoPoint
 import org.skytrack.route.Geodesy
 import org.skytrack.route.Route
 import org.skytrack.scan.Bcbp
+import org.skytrack.data.Airlines
+import org.skytrack.net.LiveFlightSource
+import org.skytrack.net.UpdateInfo
+import org.skytrack.fusion.Metrics
 import org.skytrack.sensors.FlightPhase
 import org.skytrack.sensors.GnssQuality
 import org.skytrack.sensors.GnssSample
+import org.skytrack.sensors.GyroSample
 import kotlin.math.abs
 
 class CoreTests {
@@ -103,79 +108,19 @@ class CoreTests {
             t += 1000
             val e = est.tick(t, FlightPhase.CRUISE, null)
             assertTrue(abs(e.alongTrackM - last.alongTrackM) < 2_000.0)   // no jumps
-            assertTrue(abs(r.project(GeoPoint(e.lat, e.lon)).crossM) < 200.0)  // drawn on the route
+            assertTrue(abs(est.route.project(GeoPoint(e.lat, e.lon)).crossM) < 200.0)  // drawn on the governing route
             if (t - gapStart > 12_000) assertEquals(FusionMode.ROUTE_CONSTRAINED, e.mode)
             last = e
         }
-        // Truth after the gap and reacquisition
-        val truthS = startS + v * t / 1000.0
-        val errBefore = abs(last.alongTrackM - truthS)
+        // Truth after the gap: compare positions (routes are re-anchored, so along-track values differ).
+        val truth = r.pointAt(startS + v * t / 1000.0)
+        val errBefore = Geodesy.distance(GeoPoint(last.lat, last.lon), truth)
         assertTrue("drift after 40 min = $errBefore m", errBefore < 40_000.0)
-        est.onGnss(fixAt(truthS, t), FlightPhase.CRUISE)
+        est.onGnss(fixAt(startS + v * t / 1000.0, t), FlightPhase.CRUISE)
         val e2 = est.tick(t + 1000, FlightPhase.CRUISE, null)
-        assertTrue("after reacquisition err=${abs(e2.alongTrackM - truthS)}", abs(e2.alongTrackM - truthS) < 3_000.0)
+        assertTrue("after reacquisition err=${Geodesy.distance(GeoPoint(e2.lat, e2.lon), truth)}", Geodesy.distance(GeoPoint(e2.lat, e2.lon), truth) < 3_000.0)
         assertEquals(FusionMode.GNSS_TRACKING, e2.mode)
-    }
-
-    @Test
-    fun aircraftStaysOnRouteUntilDeviationIsProven_thenReplans() {
-        val r = Route(tlv, jfk)
-        val est = Estimator(r)
-        val v = 235.0
-        val s0 = r.lengthM * 0.5
-        var t = 0L
-        // Fixes 25 km right of the route, heading 12 degrees off the route course.
-        fun fix(cross: Double, time: Long): GnssSample {
-            val s = s0 + v * time / 1000.0
-            val p = r.pointAtWithOffset(s, cross)
-            return GnssSample(time, p.lat, p.lon, 11_000.0, true, v, true,
-                Geodesy.wrapBearing(r.bearingAt(s) + (if (cross > 0) 12.0 else 0.0)), true, 10.0, 15.0, 9, 12, GnssQuality.GOOD)
-        }
-        // Five fixes over 100 s: below the 6-fix / 180 s threshold -> still on the planned route.
-        for (i in 0 until 5) { est.onGnss(fix(25_000.0, t), FlightPhase.CRUISE); t += 25_000 }
-        var e = est.tick(t, FlightPhase.CRUISE, null)
-        assertEquals(0, e.replanCount)
-        assertTrue(abs(r.project(GeoPoint(e.lat, e.lon)).crossM) < 200.0)        // drawn ON the route
-        assertTrue("measured offset exposed", abs((e.measuredCrossM ?: 0.0) - 25_000.0) < 1_500.0)
-        assertTrue(e.deviationEvidence >= 4)
-        // More consistent fixes -> proven deviation -> governing route re-planned to destination.
-        for (i in 0 until 6) { est.onGnss(fix(25_000.0, t), FlightPhase.CRUISE); t += 30_000 }
-        e = est.tick(t, FlightPhase.CRUISE, null)
-        assertEquals(1, e.replanCount)
-        assertTrue(est.route !== est.plannedRoute)
-        assertTrue(Geodesy.distance(est.route.destination, jfk) < 1.0)
-        assertTrue(abs(est.route.project(GeoPoint(e.lat, e.lon)).crossM) < 200.0) // on the NEW route
-        assertTrue(est.actualTrack.size >= 2)
-        // Total flown continues to count from the origin.
-        assertTrue(e.totalFlownM > s0 && e.totalFlownM < s0 + v * (t / 1000.0) + 5_000.0)
-    }
-
-    @Test
-    fun noisyOffsetsDoNotTriggerReplan() {
-        val r = Route(tlv, jfk)
-        val est = Estimator(r)
-        var t = 0L
-        val s0 = r.lengthM * 0.5
-        // Alternating sign, small heading disagreement: never consistent -> no re-plan.
-        for (i in 0 until 20) {
-            val cross = if (i % 2 == 0) 16_000.0 else -16_000.0
-            val s = s0 + 235.0 * t / 1000.0
-            val p = r.pointAtWithOffset(s, cross)
-            est.onGnss(GnssSample(t, p.lat, p.lon, 11_000.0, true, 235.0, true, r.bearingAt(s), true, 10.0, 15.0, 9, 12, GnssQuality.GOOD), FlightPhase.CRUISE)
-            t += 20_000
-        }
-        assertEquals(0, est.tick(t, FlightPhase.CRUISE, null).replanCount)
-    }
-
-    @Test
-    fun onGroundAircraftSitsAtOriginAndFlagsMismatch() {
-        val r = Route(tlv, jfk)
-        val est = Estimator(r)
-        val munich = GeoPoint(48.14, 11.58)
-        est.onGnss(GnssSample(1000, munich.lat, munich.lon, 500.0, true, 0.0, true, 0.0, false, 10.0, 15.0, 8, 12, GnssQuality.GOOD), FlightPhase.GROUND)
-        val e = est.tick(2000, FlightPhase.GROUND, null)
-        assertTrue(Geodesy.distance(GeoPoint(e.lat, e.lon), tlv) < 100.0)
-        assertTrue(e.originMismatchM != null && e.originMismatchM!! > 2_000_000.0)
+        assertEquals(3, e2.sensorLevel)
     }
 
     @Test
@@ -188,7 +133,7 @@ class CoreTests {
         est.onGnss(GnssSample(now, p.lat, p.lon, 11_000.0, true, 235.0, true, 0.0, false, 10.0, 15.0, 9, 12, GnssQuality.GOOD), FlightPhase.CRUISE)
         val e = est.tick(now, est.predictedPhase(now, takeoff), takeoff, sensorsLive = false)
         assertEquals(FusionMode.PREDICTED_ONLY, e.mode)
-        assertTrue(e.measuredCrossM == null)
+        assertEquals(0, e.sensorLevel)
         assertTrue(e.lastFixAgeMs == -1L)
         // 1 h after takeoff on a ~3,570 km route: 20 min climb + 40 min cruise = 180 km + 564 km
         assertTrue("along=${e.alongTrackM}", abs(e.alongTrackM - (180_000.0 + 40 * 60 * 235.0)) < 5_000.0)
@@ -250,8 +195,162 @@ class CoreTests {
         val after = est.tick(now + 1000, FlightPhase.CRUISE, takeoff)
         assertEquals(FusionMode.ROUTE_CONSTRAINED, after.mode)
         assertTrue("along=${after.alongTrackM}", abs(after.alongTrackM - truthS) < 15_000.0)  // within the fix sigma
-        assertTrue(abs(r.project(GeoPoint(after.lat, after.lon)).crossM) < 200.0)   // still drawn on the route
+        assertTrue(abs(r.project(GeoPoint(after.lat, after.lon)).crossM) < 200.0)   // drawn on the route (no fix ever)
+        assertEquals(1, after.sensorLevel)
         assertTrue(after.groundSpeedMps > 200.0)                                       // keeps moving at cruise speed
         assertEquals(1, after.visualFixCount)
+    }
+
+    @Test
+    fun callsignsDeriveIcaoPrefix() {
+        assertEquals(listOf("ELY315", "LY315"), Airlines.callsignsFor("LY315"))
+        assertEquals(listOf("ELY315", "LY315"), Airlines.callsignsFor("ly 0315"))
+        assertEquals(listOf("DLH400", "LH400"), Airlines.callsignsFor("LH400"))
+        assertEquals(listOf("ELY315"), Airlines.callsignsFor("ELY315"))
+        assertTrue(Airlines.callsignsFor("ZZ99").contains("ZZ99"))
+    }
+
+    @Test
+    fun adsbResponseParsesToFix() {
+        val body = """{"ac":[{"hex":"738a3b","flight":"ELY315  ","lat":45.12,"lon":15.34,"alt_baro":36000,"gs":460.5,"track":128.0,"seen_pos":3.2,"seen":0.5}],"now":1700000000000}"""
+        val fix = LiveFlightSource.parse(body, nowMs = 1_700_000_000_000L)
+        assertTrue(fix != null)
+        assertEquals(45.12, fix!!.lat, 1e-9)
+        assertTrue(abs(fix.altM - 36000 * 0.3048) < 1.0)
+        assertTrue(abs(fix.speedMps - 460.5 * 0.514444) < 0.1)
+        assertEquals(1_700_000_000_000L - 3200, fix.timeMs)
+        assertTrue(LiveFlightSource.parse("""{"ac":[],"now":1}""") == null)
+        assertTrue(LiveFlightSource.parse("""{"ac":[{"hex":"x","alt_baro":"ground"}]}""") == null)   // no position
+    }
+
+    @Test
+    fun versionComparisonHandlesBetas() {
+        assertTrue(UpdateInfo.compareVersions("3.0-beta2", "3.0-beta1") > 0)
+        assertTrue(UpdateInfo.compareVersions("3.0", "3.0-beta9") > 0)
+        assertTrue(UpdateInfo.compareVersions("2.10", "2.9") > 0)
+        assertTrue(UpdateInfo.compareVersions("v3.0-beta1", "3.0-beta1") == 0)
+        assertTrue(UpdateInfo.compareVersions("2.6", "3.0-beta1") < 0)
+    }
+
+    @Test
+    fun groundEteIncludesWaitUntilTakeoff() {
+        val r = Route(tlv, lhr)
+        val len = r.lengthM
+        val full = Metrics.profileDurationS(len)
+        assertTrue("profile ${full / 60} min", full > 3.5 * 3600 && full < 5.5 * 3600)   // TLV-LHR ~4.5 h
+    }
+
+    @Test
+    fun gyroHoldingPatternStopsAlongTrackProgress() {
+        val r = Route(tlv, jfk)
+        val est = Estimator(r)
+        val v = 235.0
+        var t = 0L
+        val s0 = r.lengthM * 0.4
+        fun fix(time: Long): GnssSample {
+            val p = r.pointAt(s0 + v * time / 1000.0)
+            return GnssSample(time, p.lat, p.lon, 11_000.0, true, v, true, r.bearingAt(s0), true, 10.0, 15.0, 9, 12, GnssQuality.GOOD)
+        }
+        for (i in 0 until 30) { est.onGnss(fix(t), FlightPhase.CRUISE); est.tick(t, FlightPhase.CRUISE, null); t += 1000 }
+        val sLoss = est.tick(t, FlightPhase.CRUISE, null).alongTrackM
+        // GNSS lost. Gyro reports a steady 1.5 deg/s right turn (a 360-degree hold every 4 minutes) at 10 Hz.
+        var maneuverSeen = false
+        for (i in 0 until 240 * 10) {
+            t += 100
+            est.onGyro(GyroSample(t, 1.5))
+            if (i % 10 == 9) { val e = est.tick(t, FlightPhase.CRUISE, null); if (e.maneuvering) maneuverSeen = true }
+        }
+        val e = est.tick(t, FlightPhase.CRUISE, null)
+        val progressed = e.alongTrackM - sLoss
+        // Full-speed propagation would be 240 s * 235 m/s = 56 km; the projected progress of a
+        // full circle is close to zero. Allow the 10 s before constrained mode plus tolerance.
+        assertTrue("progress during hold = $progressed m", abs(progressed) < 8_000.0)
+        assertTrue(maneuverSeen)
+        assertTrue("sigma=${e.sigmaAlongM}", e.sigmaAlongM > 2_500.0)   // ~1.7 km if straight; faster growth while manoeuvring
+    }
+
+    @Test
+    fun gyroStraightFlightKeepsFullProgress() {
+        val r = Route(tlv, jfk)
+        val est = Estimator(r)
+        val v = 235.0
+        var t = 0L
+        val s0 = r.lengthM * 0.4
+        for (i in 0 until 30) {
+            val p = r.pointAt(s0 + v * t / 1000.0)
+            est.onGnss(GnssSample(t, p.lat, p.lon, 11_000.0, true, v, true, r.bearingAt(s0 + v * t / 1000.0), true, 10.0, 15.0, 9, 12, GnssQuality.GOOD), FlightPhase.CRUISE)
+            est.tick(t, FlightPhase.CRUISE, null); t += 1000
+        }
+        val sLoss = est.tick(t, FlightPhase.CRUISE, null).alongTrackM
+        for (i in 0 until 120 * 10) {
+            t += 100
+            est.onGyro(GyroSample(t, 0.0))
+            if (i % 10 == 9) est.tick(t, FlightPhase.CRUISE, null)
+        }
+        val e = est.tick(t, FlightPhase.CRUISE, null)
+        assertTrue("straight progress = ${e.alongTrackM - sLoss}", abs((e.alongTrackM - sLoss) - 120 * v) < 3_000.0)
+        assertTrue(!e.maneuvering)
+    }
+
+    @Test
+    fun groundReferenceCorrectsAltitudeBias() {
+        val r = Route(tlv, jfk)
+        val est = Estimator(r)
+        // GNSS says 78 m at TLV (field elevation 41 m): bias +37 m.
+        est.onGnss(GnssSample(1000, tlv.lat, tlv.lon, 78.0, true, 0.0, true, 0.0, false, 10.0, 15.0, 9, 12, GnssQuality.GOOD), FlightPhase.GROUND)
+        est.setGroundReference(78.0, 41.0)
+        val e = est.tick(2000, FlightPhase.GROUND, null)
+        assertTrue(e.groundReferenced)
+        assertTrue("alt=${e.altM}", abs(e.altM - 41.0) < 0.5)
+        assertTrue(Geodesy.distance(GeoPoint(e.lat, e.lon), tlv) < 100.0)   // measured position, at the gate
+    }
+
+    @Test
+    fun aircraftIsDrawnAtMeasuredPositionAndRouteReanchors() {
+        val r = Route(tlv, jfk)
+        val est = Estimator(r)
+        val v = 235.0
+        var t = 0L
+        val s0 = r.lengthM * 0.5
+        // Weak fixes (hAcc 120 m, 4 satellites => DEGRADED) 48 km right of the plan.
+        for (i in 0 until 20) {
+            val p = r.pointAtWithOffset(s0 + v * t / 1000.0, 48_000.0)
+            est.onGnss(GnssSample(t, p.lat, p.lon, 11_000.0, true, v, true, r.bearingAt(s0), true, 120.0, 30.0, 4, 8, GnssQuality.DEGRADED), FlightPhase.CRUISE)
+            val e = est.tick(t, FlightPhase.CRUISE, null)
+            assertTrue("drawn at measured position", Geodesy.distance(GeoPoint(e.lat, e.lon), p) < 300.0)
+            assertEquals(2, e.sensorLevel)
+            t += 1000
+        }
+        val e = est.tick(t, FlightPhase.CRUISE, null)
+        assertTrue(est.route !== est.plannedRoute)                        // governing route re-anchored
+        assertTrue(Geodesy.distance(est.route.destination, jfk) < 1.0)
+        assertTrue(abs(est.route.project(GeoPoint(e.lat, e.lon)).crossM) < 1_500.0)   // aircraft on the governing route
+        assertTrue("track=${est.actualTrack.size}", est.actualTrack.size >= 6)   // 20 s * 235 m/s = 4.7 km / 500 m
+        assertTrue(e.replanCount >= 1)
+    }
+
+    @Test
+    fun uselessFixIsIgnoredAndTrackIsDecimated() {
+        val r = Route(tlv, lhr)
+        val est = Estimator(r)
+        val p = r.pointAt(100_000.0)
+        est.onGnss(GnssSample(1000, p.lat, p.lon, 0.0, false, 0.0, false, 0.0, false, 5_000.0, 0.0, 3, 5, GnssQuality.DEGRADED), FlightPhase.CRUISE)
+        assertTrue(est.actualTrack.isEmpty())                              // hAcc 5 km: ignored
+        for (i in 0 until 10) {                                            // 10 fixes 100 m apart -> ~2 track points
+            val q = r.pointAt(100_000.0 + i * 100.0)
+            est.onGnss(GnssSample(2000L + i * 1000, q.lat, q.lon, 0.0, false, 100.0, true, 0.0, false, 20.0, 0.0, 9, 12, GnssQuality.GOOD), FlightPhase.CRUISE)
+        }
+        assertTrue("track points=${est.actualTrack.size}", est.actualTrack.size <= 3)
+    }
+
+    @Test
+    fun onGroundMismatchIsFlaggedButPositionIsMeasured() {
+        val r = Route(tlv, jfk)
+        val est = Estimator(r)
+        val munich = GeoPoint(48.14, 11.58)
+        est.onGnss(GnssSample(1000, munich.lat, munich.lon, 500.0, true, 0.0, true, 0.0, false, 10.0, 15.0, 8, 12, GnssQuality.GOOD), FlightPhase.GROUND)
+        val e = est.tick(2000, FlightPhase.GROUND, null)
+        assertTrue(Geodesy.distance(GeoPoint(e.lat, e.lon), munich) < 100.0)
+        assertTrue(e.originMismatchM != null && e.originMismatchM!! > 2_000_000.0)
     }
 }

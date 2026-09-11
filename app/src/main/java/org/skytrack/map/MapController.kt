@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 2.3
+// Version 4.0
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -28,7 +28,6 @@ import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
 import org.skytrack.Parameters
-import org.skytrack.fusion.Confidence
 import org.skytrack.fusion.FlightMetrics
 import org.skytrack.route.GeoPoint
 import org.skytrack.route.Geodesy
@@ -36,7 +35,8 @@ import org.skytrack.route.Route
 import java.util.concurrent.Executors
 import kotlin.math.max
 
-class MapController(private val context: Context, private val map: MapLibreMap) {
+class MapController(private val context: Context, private val map: MapLibreMap,
+                    initialZoom: Double? = null, private val onZoomChanged: (Double) -> Unit = {}) {
 
     private var style: Style? = null
     private var palette: Palette = MapStyle.NIGHT
@@ -56,6 +56,7 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
     private var lastGestureMs = 0L
     private var lastRouteHash = 0
     private var pendingMetrics: FlightMetrics? = null
+    private var startZoom: Double? = initialZoom
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -72,6 +73,7 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
                 lastGestureMs = System.currentTimeMillis()
             }
         }
+        map.addOnCameraIdleListener { onZoomChanged(map.cameraPosition.zoom) }
     }
 
     fun setRotateGestures(enabled: Boolean) { map.uiSettings.isRotateGesturesEnabled = enabled }
@@ -117,13 +119,13 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
             )))
         }
         src(st, MapStyle.SRC_ROUTE_FLOWN)?.setGeoJson(lineFeature(route.polylineUpTo(m.estimate.alongTrackM)))
+        // Measured track: always drawn when there are at least two fixes.
         src(st, MapStyle.SRC_TRACK_ACTUAL)?.setGeoJson(
-            if (m.estimate.replanCount > 0 && m.actualTrack.size >= 2) FeatureCollection.fromFeature(lineFeature(m.actualTrack)) else emptyCollection())
+            if (m.actualTrack.size >= 2) FeatureCollection.fromFeature(lineFeature(m.actualTrack)) else emptyCollection())
         src(st, MapStyle.SRC_UNCERTAINTY)?.setGeoJson(uncertaintyFeature(m, route))
 
         val e = m.estimate
-        val icon = if (e.positionConfidence == Confidence.MEASURED || e.positionConfidence == Confidence.FUSED)
-            MapStyle.IMG_AIRCRAFT_SOLID else MapStyle.IMG_AIRCRAFT_OUTLINE
+        val icon = MapStyle.IMG_AIRCRAFT_LEVEL[e.sensorLevel.coerceIn(0, 3)]
         animateAircraft(e.lat, e.lon, e.trackDeg, icon, st)
         maybeFollow(e.lat, e.lon, e.trackDeg)
     }
@@ -160,8 +162,10 @@ class MapController(private val context: Context, private val map: MapLibreMap) 
         if (!followEnabled) return
         if (System.currentTimeMillis() - lastGestureMs < Parameters.FOLLOW_RESUME_S * 1000L) return
         val cp = map.cameraPosition
+        val zoom = startZoom ?: cp.zoom
+        startZoom = null   // the remembered zoom applies to the first camera move only
         map.easeCamera(CameraUpdateFactory.newCameraPosition(
-            CameraPosition.Builder().target(LatLng(lat, lon)).zoom(cp.zoom)
+            CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom)
                 .bearing(if (trackUp) bearing else 0.0).build()), Parameters.UI_INTERPOLATION_MS)
     }
 

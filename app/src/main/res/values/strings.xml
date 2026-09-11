@@ -38,14 +38,14 @@
     <string name="gnss_good">GNSS %1$d sats</string>
     <string name="gnss_degraded">GNSS weak (%1$d)</string>
     <string name="gnss_none">No GNSS</string>
-    <string name="mode_tracking">Tracking</string>
-    <string name="mode_constrained">Route estimate</string>
+    <string name="mode_tracking">GNSS</string>
+    <string name="mode_constrained">route estimate</string>
     <string name="mode_predicted">Predicted only</string>
     <string name="fix_age">fix %1$s ago</string>
 
     <!-- Values -->
-    <string name="remaining">Remaining</string>
-    <string name="flown">Flown</string>
+    <string name="remaining">Distance remaining</string>
+    <string name="flown">Distance flown</string>
     <string name="ete">Time to go</string>
     <string name="eta">Arrival (ETA)</string>
     <string name="eta_local">ETA %1$s</string>
@@ -69,7 +69,7 @@
     <string name="fix_age_label">Last fix</string>
     <string name="uncertainty_along">Along-track uncertainty</string>
     <string name="position">Position</string>
-    <string name="legend">Legend: \u25CF measured  \u25D0 fused  \u25CB predicted  \u25CC stale. Altitude comes from GNSS only; the barometer reads cabin pressure and is used solely to detect climb and descent.</string>
+    <string name="legend">Aircraft ring: green = good GPS, yellow = weak GPS / network, orange = inertial only, red = time only.\n\u25CF  measured now\n\u25D0  fused\n\u25CB  predicted\n\u25CC  stale\n\nAltitude comes from GPS only; the barometer reads cabin pressure and is used solely to detect climb and descent.</string>
 
     <!-- Settings -->
     <string name="distance_unit">Distance</string>
@@ -103,10 +103,7 @@
     <string name="estimate_only_hint">Ignore this phone\'s sensors and show where the flight should be, based on its departure time. Use for a flight you are not on.</string>
     <string name="error_estimate_needs_time">Estimate-only mode needs the scheduled departure time.</string>
     <string name="origin_mismatch">Your position is %1$s from %2$s. Check the flight plan.</string>
-    <string name="measured_offset">Measured lateral offset %1$s, not yet confirmed (%2$d/%3$d fixes)</string>
-    <string name="measured_offset_label">Measured lateral offset</string>
-    <string name="deviation_evidence">Deviation evidence</string>
-    <string name="replans">Route re-plans</string>
+    <string name="replans">Route re-anchors</string>
     <string name="phase_label">Phase: %1$s</string>
     <string name="phase_ground">on ground</string>
     <string name="phase_takeoff">takeoff</string>
@@ -131,23 +128,23 @@
     <string name="help_setup_title">Entering a flight</string>
     <string name="help_setup_body">Choose origin and destination by IATA code (TLV, LHR) or by city / airport name in English. Fastest: tap "Scan boarding pass" and point the camera at the barcode, or pick a screenshot of the pass; origin, destination and flight number are read from it. The scheduled departure time is optional and is used only when no GPS fix is available. Tap "Start flight". Return here any time with the aircraft button to correct the plan or end the flight.</string>
     <string name="help_map_title">Map controls</string>
-    <string name="help_map_body">Right column (map view): + / \u2212 zoom (also pinch or double-tap); arrows-out: show the whole route; crosshair: centre on the aircraft; compass / arrow: north-up or track-up. Left column (functions): pencil: flight setup; table: all values; gear: settings; question mark: this help; satellite / clock: live sensors or time-based estimate; eye: visual fix \u2014 pick a city or place you see out of the window, the side and a rough distance; the aircraft is moved along the route accordingly (about 15 km accuracy, useful only without GPS). Dragging the map pauses following for 20 seconds. The bottom panel expands on tap.</string>
+    <string name="help_map_body">Right column (map view):\n+ / \u2212  zoom (also pinch or double-tap)\narrows-out  show the whole route\ncrosshair  centre on the aircraft\ncompass / arrow  north-up or track-up\n\nLeft column (functions):\npencil  flight setup\ntable  all values\ngear  settings\nquestion mark  this help\nsatellite / clock  live sensors or time-based estimate\neye  visual fix: pick a city you see out of the window, the side and a rough distance (about 15 km accuracy, useful only without GPS)\n\nDragging the map pauses following for 20 seconds. The bottom panel expands on tap.</string>
     <string name="help_aerial_title">Aerial imagery</string>
     <string name="help_aerial_body">In Settings you can download once (on Wi-Fi, about 60\u201380 MB) the NASA Blue Marble satellite mosaic (public domain) and show it under the lines and labels. Resolution is about 1 km per pixel, matching what is visible from cruise altitude: mountains, coasts, deserts, lakes. This is the only download the app ever makes; in flight everything is local.</string>
     <string name="help_lines_title">Lines on the map</string>
-    <string name="help_lines_body">Dashed line: the remaining planned route. Solid orange line: the part already flown. Faint dotted line: the original plan, shown only after the route has been re-planned. Turquoise line: the actual measured track, shown only after a proven deviation. Shaded band: the along-route uncertainty of the position.</string>
+    <string name="help_lines_body">Blue dashed line: remaining planned route.\nOrange solid line: the part already flown.\nFaint dotted line: the original plan, shown only after a re-plan.\nTurquoise line: the measured track, shown only after a proven deviation.\nShaded band: along-route uncertainty of the position.</string>
     <string name="help_modes_title">Tracking modes</string>
     <string name="help_modes_body">Tracking: a GPS fix arrived within the last 10 seconds. Route estimate: GPS lost; the aircraft moves along the route at the last known speed, blending toward a typical cruise speed, and the uncertainty band grows about 3 % of the distance per second without a fix. Predicted only: no fix ever received; position follows a standard climb / cruise / descent profile from the takeoff time. Estimate only: you switched sensors off deliberately.</string>
     <string name="help_confidence_title">Confidence markers</string>
-    <string name="help_confidence_body">\u25CF measured now. \u25D0 fused: measured recently and propagated. \u25CB predicted from the route and time. \u25CC stale: the last measurement is old. The aircraft icon is solid when the position is measured or fused and hollow when it is predicted.</string>
-    <string name="help_deviation_title">Why the aircraft stays on the route</string>
-    <string name="help_deviation_body">The planned route is treated as the strongest information. A single or weak GPS fix cannot pull the aircraft off it; it only moves the aircraft along it. A measured lateral offset is shown as a number ("not yet confirmed"). When at least 6 good fixes over 3 minutes agree on an offset of 15 km or more, with a heading that disagrees with the route, the deviation is accepted: the route is re-planned from the proven position to the destination, the old plan is drawn faintly and the real track is drawn in turquoise. Near the destination (last 60 km) every good fix re-anchors, because approaches never follow the direct line.</string>
+    <string name="help_confidence_body">Aircraft ring colour = how much the position rests on:\ngreen  good GPS fix now\nyellow  weak GPS fix or network (ADS-B) fix\norange  no fix, inertial sensors and route only\nred  time-based estimate only\nSilhouette: solid when the position is measured, hollow when propagated.\n\nValue markers:\n\u25CF  measured now\n\u25D0  fused: measured recently and propagated\n\u25CB  predicted from route and time\n\u25CC  stale: last measurement is old</string>
+    <string name="help_deviation_title">Where the aircraft is drawn</string>
+    <string name="help_deviation_body">With a GPS fix, even a weak one, the aircraft is drawn where it was measured and the turquoise line records the real track at 0.5 km resolution, including turns around the airports.\nThe governing route (blue dashed) is always the direct line from the latest measured position to the destination; it re-anchors as you move, so the aircraft sits on it and the remaining distance is measured along it. The original plan stays as a faint dotted line.\nWithout a fix the aircraft moves along the governing route from the last measured position: speed from the last fix blending toward a typical cruise speed, heading from the gyroscope for 90 s, and progress scaled by the gyroscope-measured deviation for 5 minutes (a holding circle nets zero).\nWithout any fix at all: time-based profile along the plan.</string>
     <string name="help_estimate_title">Estimate-only mode</string>
     <string name="help_estimate_body">Turn on "Estimate only" in the setup screen, or tap the GPS button on the map. The phone\'s sensors are ignored and the aircraft is placed where a flight with that departure time should be (departure + 15 minutes taxi, then a standard profile). Use it to follow a flight you are not on. A scheduled time later than now is assumed to be yesterday\'s departure.</string>
     <string name="help_gnss_title">Getting a GPS fix on board</string>
-    <string name="help_gnss_body">Hold the phone against the window or on the tray table next to it. The first fix after takeoff can take 30\u201360 seconds. Aisle and middle seats often get no fix at all; the app then says "Predicted only" and works from time. Fewer than 4 satellites give no position; the status shows the count so you know the receiver is alive. Airplane mode does not affect GPS.</string>
+    <string name="help_gnss_body">Hold the phone against the window or on the tray table next to it. The first fix after takeoff can take 30\u201360 seconds. Aisle and middle seats often get no fix; the app then says &quot;Predicted only&quot; and works from time. Fewer than 4 satellites give no position; the status shows the count so you know the receiver is alive. Airplane mode does not affect GPS.\n\nIf the phone has internet (gate, onboard Wi-Fi, or when following a flight from home) and the option is on in Settings, the real position of the flight is fetched from community ADS-B data (adsb.lol) using the flight number, and shown as source &quot;ADS-B&quot;.</string>
     <string name="help_values_title">The values</string>
-    <string name="help_values_body">Remaining and flown distance are measured along the route. Time to go assumes cruise speed plus 20 minutes for descent. Arrival time is shown in the destination\'s local time; the panel also shows local time at origin, UTC and destination. Altitude comes from GPS only; the phone\'s barometer measures cabin pressure, which is used solely to detect climb and descent. Heading after GPS loss follows the gyroscope for 90 seconds, then the route course.</string>
+    <string name="help_values_body">"I am on the ground now" (panel, before takeoff): resets the phase, calibrates GPS altitude against the field elevation and fixes the reference pressure for cabin altitude.\nWithout GPS: the gyroscope scales along-route progress during turns and holds ("manoeuvring"), and the accelerometer detects the takeoff roll and the landing deceleration.\nDistance remaining and flown are measured along the route.\nTime to destination: airborne = remaining distance at cruise speed + 20 min descent; on the ground = wait until the (expected) takeoff + the full flight profile.\nArrival is shown in the destination\'s local time; the panel also shows local time at origin, UTC and destination.\nAltitude comes from GPS only; the barometer measures cabin pressure and only detects climb and descent.\nHeading after GPS loss follows the gyroscope for 90 seconds, then the route course.</string>
     <string name="help_logs_title">Flight logs</string>
     <string name="help_logs_body">When enabled in Settings, each live flight writes a CSV file on this phone (Android/data/com.galker.flightinfo/files/logs) with the estimate and the raw GPS, barometer and gyroscope readings, once per second. Nothing is uploaded. "Share latest log" sends the file through any app you choose; a real flight log is the best way to calibrate the estimator.</string>
     <string name="help_limits_title">Limitations</string>
@@ -196,7 +193,49 @@
     <string name="update_error">Update check failed: %1$s</string>
     <string name="update_install">Download and install</string>
     <string name="update_signature_mismatch">The new version is signed with a different key than the installed one, so Android will refuse the update. Uninstall FlightInfo once and install the downloaded file; later updates will install normally.</string>
-    <string name="update_install_hint">Needs internet. The first time, Android asks you to allow installing apps from FlightInfo; Play Protect may show a warning for a sideloaded app. Your settings and flight are kept.</string>
+    <string name="update_install_hint">Needs internet. Downloading inside the app avoids Chrome\'s "Dangerous download" warning that new APKs get in the browser. The first time, Android asks you to allow installing apps from FlightInfo; Play Protect may show a warning for a sideloaded app. Your settings and flight are kept.</string>
+
+    <!-- v3.0 beta -->
+    <string name="source_adsb">Position: ADS-B (network)</string>
+    <string name="use_network">Use the network when available</string>
+    <string name="use_network_hint">Never required. When internet exists: real position of the flight from community ADS-B data (adsb.lol) by flight number, and a silent update check. Nothing is sent except the flight number.</string>
+    <string name="update_available_tap">Version %1$s is available \u2014 tap to update in Settings</string>
+    <string name="about_beta">Beta build for testers. Please report problems via GitHub Issues with a screenshot and, if possible, a flight log.</string>
+    <string name="expected_takeoff">Expected takeoff</string>
+
+    <!-- v3.1: inertial and ground reference -->
+    <string name="confirm_ground">I am on the ground now</string>
+    <string name="ground_ref_hint">Tap at the gate: resets the flight phase and calibrates altitude and cabin pressure against the field elevation.</string>
+    <string name="ground_ref_done">Calibrated. GPS altitude bias %1$s.</string>
+    <string name="ground_ref_label">Ground calibration</string>
+    <string name="cabin_altitude">Cabin altitude (baro)</string>
+    <string name="maneuvering">manoeuvring</string>
+    <string name="maneuvering_label">Manoeuvring (gyro)</string>
+    <string name="absent_short">none</string>
+    <string name="yes">yes</string>
+    <string name="no">no</string>
+
+    <!-- v4.0 -->
+    <string name="accuracy_m">\u00B1%1$d m</string>
+    <string name="sensor_level">Position rests on</string>
+    <string name="sensor_level3">good GPS fix</string>
+    <string name="sensor_level2">weak GPS / network fix</string>
+    <string name="sensor_level1">inertial sensors + route</string>
+    <string name="sensor_level0">time only</string>
+    <string name="gnss_accuracy">GPS accuracy (1\u03C3)</string>
+    <string name="gnss_warn1">No GPS fix. Hold the phone against the window.</string>
+    <string name="gnss_warn2">No GPS for %1$s. Position is estimated. Hold the phone against the window.</string>
+    <string name="gnss_warn3">No GPS for %1$s. The estimate may be far off. Window seat: press the phone to the glass; middle seat: try the visual fix (eye).</string>
+    <string name="gnss_relief">GPS fix received. You can put the phone down.</string>
+    <string name="actual_takeoff_measured">Takeoff time (measured by sensors)</string>
+    <string name="actual_takeoff_measured_hint">Detected from the takeoff roll and cabin pressure. This is the time that really happened; a manual value here is replaced when the sensors detect the takeoff.</string>
+    <string name="language">Language</string>
+    <string name="exit_app">Exit</string>
+    <string name="exit_question">Keep tracking the flight in the background (notification stays) or stop everything?</string>
+    <string name="exit_keep_tracking">Keep tracking</string>
+    <string name="exit_close_all">Stop and exit</string>
+    <string name="help_terms_title">Terms in the metrics screen</string>
+    <string name="help_terms_body">Along-track uncertainty: 1\u03C3 of the position along the direction of flight; it equals the GPS accuracy while there is a fix and grows about 3 % of the distance per second without one, faster while manoeuvring.\nRoute re-anchors: how many times the governing route was re-drawn from a new measured position to the destination.\nVisual fixes: manual landmark fixes you applied.\nManoeuvring: the gyroscope shows the aircraft heading more than 60 degrees away from the route for 45 s (hold, vectoring).\nCabin altitude: pressure altitude of the cabin from the barometer, relative to the on-ground calibration; typically 1,800\u20132,400 m in cruise. It is not the aircraft altitude.\nGround calibration: difference between GPS altitude and the field elevation, taken when you pressed \u201cI am on the ground now\u201d, and subtracted from displayed altitudes.</string>
 
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>

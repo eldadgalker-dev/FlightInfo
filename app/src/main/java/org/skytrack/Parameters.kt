@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 2.4
+// Version 4.0
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -21,30 +21,38 @@ object Parameters {
     const val GNSS_INTERVAL_SCREEN_ON_MS  = 1_000L  // ms, requested update interval
     const val GNSS_INTERVAL_SCREEN_OFF_MS = 5_000L  // ms, interval when screen is off in cruise
     const val GNSS_MIN_SPEED_FOR_TRACK  = 20.0      // m/s, below this GNSS bearing is ignored
+    const val GNSS_SPEED_NOISE_MPS      = 1.5       // m/s, reported speed below this is receiver noise => 0
 
     // -- Fusion mode switching --
     const val GNSS_LOSS_TO_CONSTRAINED_MS = 10_000L // ms without fix before route-constrained mode
-    const val GYRO_TRUST_WINDOW_S       = 90.0      // s, gyro-integrated heading trusted after fix loss
+    const val GYRO_TRUST_WINDOW_S       = 90.0      // s, gyro-integrated heading DISPLAYED after fix loss
+    const val GYRO_PROGRESS_WINDOW_S    = 300.0     // s, gyro heading used to scale along-track progress (cos of deviation)
+    const val MANEUVER_HEADING_DEG      = 60.0      // deg, heading away from route course => manoeuvring (hold, vectoring)
+    const val MANEUVER_CONFIRM_S        = 45.0      // s, sustained before the manoeuvring flag is raised
+    const val MANEUVER_SIGMA_FACTOR     = 3.0       // uncertainty growth multiplier while manoeuvring
+    const val GYRO_TURN_EVIDENCE_DEG    = 15.0      // deg, integrated turn (60 s window) that widens the uncertainty
     const val SPEED_BLEND_TAU_S         = 600.0     // s, blend from last speed to phase-typical speed
     const val SPEED_AVG_WINDOW_S        = 60.0      // s, moving average window for reference speed
 
-    // -- Route anchoring and proven deviation (re-anchoring) --
-    // The aircraft is always drawn ON the governing route. A measured lateral
-    // offset becomes a "proven deviation" only when all of the following hold,
-    // after which the governing route is re-planned from the proven position
-    // to the destination and the actual track is drawn.
-    const val DEVIATION_MIN_CROSS_M     = 15_000.0  // m, minimum consistent lateral offset
-    const val DEVIATION_MIN_FIXES       = 6         // GOOD fixes with consistent offset sign
-    const val DEVIATION_MIN_FIXES_TURN  = 3         // ...when the gyro has recently recorded a turn
-    const val DEVIATION_MIN_DURATION_S  = 180.0     // s, span of the evidence window
-    const val DEVIATION_MIN_HEADING_DEG = 8.0       // deg, GNSS track vs route course, consistent
-    const val DEVIATION_SPEED_TOLERANCE = 0.30      // fraction, along-track progress vs measured speed
-    const val GYRO_TURN_EVIDENCE_DEG    = 15.0      // deg, integrated turn (60 s window) on a straight route
-    const val GYRO_TURN_MEMORY_S        = 600.0     // s, how long a recorded turn lowers the fix requirement
-    const val TERMINAL_AREA_M           = 60_000.0  // m, within this of destination every GOOD fix re-anchors
-    const val TERMINAL_REANCHOR_MIN_M   = 2_000.0   // m, lateral offset that triggers a terminal re-anchor
+    // -- Measured-first positioning (4.0) --
+    // With a fix the aircraft is drawn where it was measured; the governing route is the
+    // great circle from the latest measured position to the destination, re-anchored
+    // whenever the aircraft has moved away from the current one. Without a fix the aircraft
+    // propagates along that route.
+    const val REANCHOR_CROSS_M          = 1_000.0   // m, lateral offset from the governing route that re-anchors it
+    const val REANCHOR_MIN_INTERVAL_S   = 20.0      // s, do not rebuild the route more often than this
+    const val WEAK_FIX_MAX_HACC_M       = 2_000.0   // m, fixes worse than this are ignored entirely
+    const val TRACK_DECIMATION_M        = 500.0     // m, spacing of stored actual-track points
+    const val TRACK_MAX_POINTS          = 20_000    // memory bound (~10,000 km at 500 m)
     const val ORIGIN_MISMATCH_M         = 50_000.0  // m, ground fix farther than this from origin => warning
-    const val TRACK_DECIMATION_M        = 5_000.0   // m, spacing of stored actual-track points
+    const val TERMINAL_AREA_M           = 60_000.0  // m, within this of destination and descending => DESCENT phase
+    const val DESCENT_NEAR_DEST_M       = 150_000.0 // m, remaining distance below which a descent is expected
+
+    // -- GNSS warning escalation (live mode) --
+    const val GNSS_WARN_AFTER_S         = 30.0      // s without a fix before the first warning
+    const val GNSS_WARN_LEVEL2_S        = 180.0     // s, stronger warning
+    const val GNSS_WARN_LEVEL3_S        = 600.0     // s, strongest warning
+    const val GNSS_RELIEF_SHOW_S        = 20.0      // s, "you can put the phone down" notice after re-acquisition
 
     // -- Manual visual fix (user identifies a landmark out of the window) --
     const val VISUAL_FIX_SEARCH_RADIUS_M = 200_000.0 // m, landmarks offered around the current estimate
@@ -59,11 +67,6 @@ object Parameters {
     const val AERIAL_PACK_URL  = "https://github.com/eldadgalker-dev/FlightInfo/releases/download/data-v1/bluemarble_z0-6.mbtiles"
     const val AERIAL_PACK_FILE = "bluemarble_z0-6.mbtiles"
     const val AERIAL_MAX_ZOOM  = 6
-
-    // -- In-app update (manual check against GitHub Releases) --
-    const val UPDATE_REPO_OWNER = "eldadgalker-dev"
-    const val UPDATE_REPO_NAME  = "FlightInfo"
-    const val UPDATE_ASSET_NAME = "FlightInfo.apk"   // fixed-name asset published by the build workflow
 
     // -- Estimate-only mode --
     const val TAXI_ALLOWANCE_S          = 900.0     // s, scheduled departure -> assumed takeoff
@@ -91,8 +94,21 @@ object Parameters {
     const val PHASE_DESCENT_CONFIRM_S   = 120.0     // s, positive rate before CRUISE -> DESCENT
     const val PHASE_GNSS_VRATE_CLIMB    = 3.0       // m/s, GNSS vertical rate => climb (when GNSS good)
     const val PHASE_GNSS_VRATE_DESCENT  = -3.0      // m/s, GNSS vertical rate => descent
+    // -- Accelerometer: takeoff roll and landing deceleration --
+    const val ACCEL_GRAVITY_TAU_S       = 3.0       // s, low-pass for the gravity estimate
+    const val ACCEL_WINDOW_S            = 12.0      // s, averaging window for horizontal acceleration
+    const val ACCEL_TAKEOFF_MPS2        = 1.6       // m/s^2, sustained horizontal acceleration => takeoff roll
+    const val ACCEL_TAKEOFF_S           = 15.0      // s, minimum duration of the roll
+    const val ACCEL_LANDING_MPS2        = 1.6       // m/s^2, sustained deceleration after descent => landed
+    const val ACCEL_LANDING_S           = 8.0       // s
+    const val ACCEL_DIRECTION_STD_DEG   = 25.0      // deg, direction must be stable (phone at rest, not handled)
     const val BARO_LOWPASS_ALPHA        = 0.05      // dimensionless, pressure low-pass coefficient
     const val BARO_RATE_WINDOW_S        = 60.0      // s, pressure rate estimation window
+
+    // -- Ground reference (user confirms "on the ground now" before takeoff) --
+    const val GROUND_REF_MAX_AGE_H      = 18.0      // h, reference discarded after this
+    const val STD_ATMOS_SCALE_M         = 44_330.0  // m, barometric formula constant
+    const val STD_ATMOS_EXP             = 0.190263  // 1/5.2559, barometric formula exponent
 
     // -- Route model --
     const val ROUTE_SAMPLE_SPACING_M    = 20_000.0  // m, great-circle sample spacing

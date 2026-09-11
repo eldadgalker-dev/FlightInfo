@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MetricsAndSettingsScreens
-// Version 2.4
+// Version 4.0
 // Purpose : Full-page metrics view (Origin / Now / Destination columns)
 //           and the settings page (units, clock, theme, follow, gestures).
 // =============================================================
@@ -75,6 +75,7 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBac
                 Triple(stringResource(R.string.altitude), Format.altitude(e.altM, s.altitudeUnit), e.altitudeConfidence),
                 Triple(stringResource(R.string.track), Format.heading(e.trackDeg), e.trackConfidence),
                 Triple(stringResource(R.string.vertical_rate), Format.verticalRate(e.verticalRateMps, s.altitudeUnit), e.altitudeConfidence),
+                Triple(stringResource(R.string.cabin_altitude), m.cabinAltM?.let { Format.altitude(it, s.altitudeUnit) } ?: "--", null),
                 Triple(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), null),
                 Triple(stringResource(R.string.elapsed), Format.duration(m.elapsedS), null),
                 Triple(stringResource(R.string.total_flight_time), Format.duration(m.totalFlightS), m.eteConfidence),
@@ -84,7 +85,8 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBac
         Section("${stringResource(R.string.origin)}: ${m.origin.iata} ${m.origin.city}", Accent.time) {
             Grid(listOf(
                 Triple(stringResource(R.string.local_time), "${Format.time(m.nowAtOrigin, s.use24h)} ${Format.offset(m.nowAtOrigin)}", null),
-                Triple(stringResource(R.string.takeoff_time), Format.time(m.takeoffAtOrigin, s.use24h), null),
+                Triple(if (m.takeoffUtc != null) stringResource(R.string.takeoff_time) else stringResource(R.string.expected_takeoff),
+                    Format.time(m.takeoffAtOrigin ?: m.expectedTakeoffUtc?.atZone(m.originZone), s.use24h), null),
                 Triple(stringResource(R.string.flown), Format.distance(m.flownM, s.distanceUnit), e.positionConfidence),
                 Triple(stringResource(R.string.route_length), Format.distance(m.routeLengthM, s.distanceUnit), null)
             ), Accent.time)
@@ -103,21 +105,23 @@ fun MetricsScreen(m: FlightMetrics?, s: Settings, baroAvailable: Boolean?, onBac
                 FusionMode.ROUTE_CONSTRAINED -> stringResource(R.string.mode_constrained)
                 FusionMode.PREDICTED_ONLY -> stringResource(R.string.mode_predicted)
             }
-            val cross = e.measuredCrossM
             Grid(listOf(
                 Triple(stringResource(R.string.mode), mode, null),
                 Triple(stringResource(R.string.phase), phaseName(e.phase), null),
                 Triple(stringResource(R.string.satellites), "${e.satsUsed}/${e.satsVisible}", null),
                 Triple(stringResource(R.string.fix_age_label), Format.ageSeconds(e.lastFixAgeMs), null),
                 Triple(stringResource(R.string.uncertainty_along), Format.distance(e.sigmaAlongM * 2, s.distanceUnit), null),
-                Triple(stringResource(R.string.measured_offset_label),
-                    if (cross == null) "--" else Format.distance(kotlin.math.abs(cross), s.distanceUnit), null),
-                Triple(stringResource(R.string.deviation_evidence), "${e.deviationEvidence}/${e.deviationRequired}", null),
+                Triple(stringResource(R.string.sensor_level), stringResource(when (e.sensorLevel) {
+                    3 -> R.string.sensor_level3; 2 -> R.string.sensor_level2; 1 -> R.string.sensor_level1; else -> R.string.sensor_level0 }), null),
+                Triple(stringResource(R.string.gnss_accuracy), if (e.mode == FusionMode.GNSS_TRACKING) Format.altitude(e.sigmaAlongM, s.altitudeUnit) else "--", null),
                 Triple(stringResource(R.string.replans), "${e.replanCount}", null),
                 Triple(stringResource(R.string.visual_fixes), "${e.visualFixCount}", null),
                 Triple(stringResource(R.string.barometer), when (baroAvailable) {
                     null -> "--"; true -> stringResource(R.string.present); false -> stringResource(R.string.absent) }, null),
                 Triple(stringResource(R.string.over_country_label), m.overflownCountry ?: "--", null),
+                Triple(stringResource(R.string.ground_ref_label), m.groundReference?.let { gr ->
+                    gr.gnssBiasM?.let { Format.altitude(it, s.altitudeUnit) } ?: stringResource(R.string.present) } ?: stringResource(R.string.absent_short), null),
+                Triple(stringResource(R.string.maneuvering_label), stringResource(if (e.maneuvering) R.string.yes else R.string.no), null),
                 Triple(stringResource(R.string.position), String.format(java.util.Locale.US, "%.3f, %.3f", e.lat, e.lon), e.positionConfidence)
             ), Accent.status)
             if (baroAvailable == false) {
@@ -162,7 +166,9 @@ private fun Grid(items: List<Triple<String, String, Confidence?>>, accent: Color
 
 @Composable
 fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit, onHelp: () -> Unit,
-                   onShareLog: () -> Unit, onDeleteLogs: () -> Unit, logCount: Int, aerial: AerialPack, updater: Updater) {
+                   onShareLog: () -> Unit, onDeleteLogs: () -> Unit, logCount: Int, aerial: AerialPack, updater: Updater,
+                   onExit: (keepTracking: Boolean) -> Unit) {
+    var exitDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -182,11 +188,17 @@ fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit
         ChipRow(stringResource(R.string.theme), ThemeMode.values().map { it.name }, s.theme.name) {
             onChange(s.copy(theme = ThemeMode.valueOf(it)))
         }
+        ChipRow(stringResource(R.string.language), listOf("system", "he", "en"), s.language) {
+            onChange(s.copy(language = it))
+        }
         HorizontalDivider()
         ToggleRow(stringResource(R.string.clock_24h), s.use24h) { onChange(s.copy(use24h = it)) }
         ToggleRow(stringResource(R.string.auto_follow), s.autoFollow) { onChange(s.copy(autoFollow = it)) }
         ToggleRow(stringResource(R.string.track_up_default), s.trackUp) { onChange(s.copy(trackUp = it)) }
         ToggleRow(stringResource(R.string.rotate_gestures), s.rotateGestures) { onChange(s.copy(rotateGestures = it)) }
+        HorizontalDivider()
+        ToggleRow(stringResource(R.string.use_network), s.useNetwork) { onChange(s.copy(useNetwork = it)) }
+        Text(stringResource(R.string.use_network_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         HorizontalDivider()
         AerialSection(s, onChange, aerial)
         HorizontalDivider()
@@ -201,7 +213,17 @@ fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit
         UpdateSection(updater)
         HorizontalDivider()
         OutlinedButton(onClick = onHelp, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.help)) }
+        OutlinedButton(onClick = { exitDialog = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.exit_app)) }
         AboutBlock()
+        if (exitDialog) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { exitDialog = false },
+                title = { Text(stringResource(R.string.exit_app)) },
+                text = { Text(stringResource(R.string.exit_question)) },
+                confirmButton = { TextButton(onClick = { exitDialog = false; onExit(true) }) { Text(stringResource(R.string.exit_keep_tracking)) } },
+                dismissButton = { TextButton(onClick = { exitDialog = false; onExit(false) }) { Text(stringResource(R.string.exit_close_all)) } }
+            )
+        }
         Spacer(Modifier.height(24.dp))
     }
 }
@@ -218,6 +240,7 @@ private fun AboutBlock() {
         // Latin-only line: force LTR so the bidi algorithm cannot reverse its word order under a Hebrew locale.
         Text(stringResource(R.string.about_copyright), style = small.copy(textDirection = TextDirection.Ltr),
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
+        Text(stringResource(R.string.about_beta), style = small, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
         for (id in listOf(R.string.about_license, R.string.about_map, R.string.about_airports, R.string.about_fonts, R.string.about_offline)) {
             Text(stringResource(id), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())

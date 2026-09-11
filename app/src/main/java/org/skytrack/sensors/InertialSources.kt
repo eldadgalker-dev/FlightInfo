@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - InertialSources
-// Version 1.1
+// Version 4.0
 // Purpose : Barometer (cabin pressure and its rate), gyroscope yaw rate,
 //           and the flight-phase state machine that consumes them.
 //
@@ -33,6 +33,13 @@ data class BaroSample(val timeMs: Long, val pressureHpa: Double, val rateHpaPerM
 
 /** Yaw rate about the gravity axis, degrees per second, positive = turning right. */
 data class GyroSample(val timeMs: Long, val yawRateDps: Double)
+
+/**
+ * Horizontal (gravity-removed) acceleration averaged over ACCEL_WINDOW_S, and whether
+ * its direction was stable over the window. A stable, sustained value of ~2-3 m/s^2
+ * is a takeoff roll or a landing deceleration; an unstable one is the phone being handled.
+ */
+data class MotionSample(val timeMs: Long, val horizAccelMps2: Double, val directionStable: Boolean, val windowS: Double)
 
 class BaroSource(context: Context) {
     private val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -103,6 +110,55 @@ class GyroSource(context: Context) {
     }
 }
 
+class AccelSource(context: Context) {
+    private val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    val available: Boolean = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null
+
+    /** One MotionSample per second. */
+    fun samples(): Flow<MotionSample> = callbackFlow {
+        val accel = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        if (accel == null) { close(); return@callbackFlow }
+        val g = doubleArrayOf(0.0, 0.0, 9.81)
+        var lastMs = 0L
+        var lastEmitMs = 0L
+        // Window of horizontal acceleration vectors (in the phone frame, gravity removed).
+        val win = ArrayDeque<DoubleArray>()
+        val winT = ArrayDeque<Long>()
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(e: SensorEvent) {
+                val now = System.currentTimeMillis()
+                val dt = if (lastMs == 0L) 0.02 else ((now - lastMs) / 1000.0).coerceIn(0.001, 0.5)
+                lastMs = now
+                val a = 1.0 - Math.exp(-dt / Parameters.ACCEL_GRAVITY_TAU_S)
+                for (i in 0..2) g[i] += a * (e.values[i] - g[i])
+                val gn = sqrt(g[0] * g[0] + g[1] * g[1] + g[2] * g[2])
+                if (gn < 1.0) return
+                // Linear acceleration, then remove the component along gravity.
+                val lin = doubleArrayOf(e.values[0] - g[0], e.values[1] - g[1], e.values[2] - g[2])
+                val dot = (lin[0] * g[0] + lin[1] * g[1] + lin[2] * g[2]) / (gn * gn)
+                val h = doubleArrayOf(lin[0] - dot * g[0], lin[1] - dot * g[1], lin[2] - dot * g[2])
+                win.addLast(h); winT.addLast(now)
+                while (winT.isNotEmpty() && now - winT.first() > Parameters.ACCEL_WINDOW_S * 1000) { win.removeFirst(); winT.removeFirst() }
+                if (now - lastEmitMs < 1000 || win.size < 10) return
+                lastEmitMs = now
+                // Mean vector and mean magnitude; direction stability = |mean| / mean|.| close to 1.
+                var mx = 0.0; var my = 0.0; var mz = 0.0; var mag = 0.0
+                for (v in win) { mx += v[0]; my += v[1]; mz += v[2]; mag += sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) }
+                val n = win.size
+                mx /= n; my /= n; mz /= n; mag /= n
+                val meanVecMag = sqrt(mx * mx + my * my + mz * mz)
+                val coherence = if (mag > 1e-6) meanVecMag / mag else 0.0
+                // cos(std) ~ coherence for a narrow spread of directions.
+                val stable = coherence > Math.cos(Math.toRadians(Parameters.ACCEL_DIRECTION_STD_DEG))
+                trySend(MotionSample(now, meanVecMag, stable, (now - winT.first()) / 1000.0))
+            }
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+        sm.registerListener(listener, accel, SensorManager.SENSOR_DELAY_GAME)
+        awaitClose { sm.unregisterListener(listener) }
+    }
+}
+
 enum class FlightPhase { GROUND, TAKEOFF, CLIMB, CRUISE, DESCENT, LANDED }
 
 /**
@@ -124,6 +180,53 @@ class FlightPhaseDetector(initial: FlightPhase = FlightPhase.GROUND) {
     private var gnssTimeMs = 0L
     private var stableSinceMs = 0L
     private var descentSinceMs = 0L
+    private var accelSinceMs = 0L
+    private var decelSinceMs = 0L
+
+    /** Accelerometer: sustained, direction-stable horizontal acceleration. */
+    fun onMotion(m: MotionSample) {
+        val strong = m.directionStable && m.horizAccelMps2 >= Parameters.ACCEL_TAKEOFF_MPS2
+        when (phase) {
+            FlightPhase.GROUND -> {
+                if (strong) {
+                    if (accelSinceMs == 0L) accelSinceMs = m.timeMs
+                    if (m.timeMs - accelSinceMs >= Parameters.ACCEL_TAKEOFF_S * 1000) {
+                        // Roll started when the acceleration started, not when it was confirmed.
+                        phase = FlightPhase.TAKEOFF
+                        takeoffTimeMs = takeoffTimeMs ?: accelSinceMs
+                        accelSinceMs = 0L
+                    }
+                } else accelSinceMs = 0L
+            }
+            FlightPhase.DESCENT -> {
+                val decel = m.directionStable && m.horizAccelMps2 >= Parameters.ACCEL_LANDING_MPS2
+                if (decel) {
+                    if (decelSinceMs == 0L) decelSinceMs = m.timeMs
+                    if (m.timeMs - decelSinceMs >= Parameters.ACCEL_LANDING_S * 1000) { phase = FlightPhase.LANDED; decelSinceMs = 0L }
+                } else decelSinceMs = 0L
+            }
+            else -> { accelSinceMs = 0L; decelSinceMs = 0L }
+        }
+    }
+
+    private var nearDescentSinceMs = 0L
+
+    /**
+     * Route context from the engine: close to the destination a sustained GNSS descent rate
+     * (or entering the terminal area) means DESCENT even if the cabin-pressure signal is weak.
+     */
+    fun onRemaining(remainingM: Double, timeMs: Long) {
+        if (phase != FlightPhase.CRUISE) { nearDescentSinceMs = 0L; return }
+        val gnssFresh = gnssGood && timeMs - gnssTimeMs < 30_000
+        if (remainingM < Parameters.TERMINAL_AREA_M) { phase = FlightPhase.DESCENT; return }
+        if (remainingM < Parameters.DESCENT_NEAR_DEST_M && gnssFresh && gnssVRate < -2.0) {
+            if (nearDescentSinceMs == 0L) nearDescentSinceMs = timeMs
+            if (timeMs - nearDescentSinceMs > 60_000) phase = FlightPhase.DESCENT
+        } else nearDescentSinceMs = 0L
+    }
+
+    /** User confirmed the aircraft is on the ground: back to GROUND, forget any takeoff. */
+    fun confirmGround() { phase = FlightPhase.GROUND; takeoffTimeMs = null; stableSinceMs = 0L; descentSinceMs = 0L; accelSinceMs = 0L }
 
     fun onBaro(b: BaroSample) { baroRate = b.rateHpaPerMin; baroTimeMs = b.timeMs; step(b.timeMs) }
 

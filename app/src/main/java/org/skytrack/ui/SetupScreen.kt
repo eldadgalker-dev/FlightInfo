@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - SetupScreen
-// Version 2.3
+// Version 4.0
 // Purpose : Flight plan entry: origin (auto-suggested from the last ground
 //           fix), destination search, optional flight number and scheduled
 //           departure. Starts or clears the active flight.
@@ -65,13 +65,18 @@ fun SetupScreen(
     onBack: (() -> Unit)?,
     onScan: () -> Unit,
     onHelp: () -> Unit,
-    prefill: BoardingPass? = null
+    prefill: BoardingPass? = null,
+    updateAvailable: String? = null,
+    onOpenSettings: () -> Unit = {}
 ) {
     var origin by remember { mutableStateOf(existing?.let { airports.byCode(it.originIata) } ?: suggestedOrigin) }
     var destination by remember { mutableStateOf(existing?.let { airports.byCode(it.destinationIata) }) }
     var flightNumber by rememberSaveable { mutableStateOf(existing?.flightNumber ?: "") }
     var estimateOnly by rememberSaveable { mutableStateOf(existing?.estimateOnly ?: false) }
-    var takeoffText by rememberSaveable { mutableStateOf("") }
+    var takeoffText by rememberSaveable { mutableStateOf(existing?.takeoffMs?.let { ms ->
+        val zone = ZoneId.of((existing.let { airports.byCode(it.originIata) })?.tz ?: "UTC")
+        java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
+    } ?: "") }
     var departure by rememberSaveable { mutableStateOf(existing?.scheduledDepartureMs?.let { ms ->
         val zone = ZoneId.of(origin?.tz ?: "UTC")
         java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm", Locale.US))
@@ -102,6 +107,11 @@ fun SetupScreen(
             TextButton(onClick = onHelp) { Text(stringResource(R.string.help)) }
         }
 
+        updateAvailable?.let { v ->
+            Text(stringResource(R.string.update_available_tap, v), color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth().clickable { onOpenSettings() })
+        }
+
         OutlinedButton(onClick = onScan, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.scan_boarding_pass)) }
         scanInfo?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) }
 
@@ -122,8 +132,8 @@ fun SetupScreen(
 
         OutlinedTextField(
             value = takeoffText, onValueChange = { takeoffText = it.take(5) },
-            label = { Text(stringResource(R.string.actual_takeoff)) },
-            supportingText = { Text(stringResource(R.string.actual_takeoff_hint)) },
+            label = { Text(stringResource(if (existing?.takeoffMeasured == true) R.string.actual_takeoff_measured else R.string.actual_takeoff)) },
+            supportingText = { Text(stringResource(if (existing?.takeoffMeasured == true) R.string.actual_takeoff_measured_hint else R.string.actual_takeoff_hint)) },
             singleLine = true, modifier = Modifier.fillMaxWidth()
         )
 
@@ -153,7 +163,8 @@ fun SetupScreen(
                 error = null
                 val keepTakeoff = existing?.let { ex -> ex.takeoffMs?.takeIf { ex.originIata == o.iata && ex.destinationIata == d.iata } }
                 val takeoff = manualTakeoff ?: (if (estimateOnly) null else keepTakeoff)
-                onStart(FlightPlan(o.iata, d.iata, flightNumber.trim(), depMs, takeoff, estimateOnly))
+                val measuredKept = existing?.takeoffMeasured == true && takeoff == existing.takeoffMs
+                onStart(FlightPlan(o.iata, d.iata, flightNumber.trim(), depMs, takeoff, estimateOnly, measuredKept))
             },
             enabled = origin != null && destination != null && origin?.iata != destination?.iata,
             modifier = Modifier.fillMaxWidth()

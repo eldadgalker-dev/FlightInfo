@@ -3,22 +3,20 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Estimator
-// Version 2.3
-// Purpose : Route-anchored position estimator.
+// Version 4.0
+// Purpose : Measured-first position estimator.
 //
-//           Principle: the governing route is the strongest hypothesis. The
-//           aircraft is ALWAYS displayed on it. Measurements move the aircraft
-//           along the route (s) and are used to accumulate evidence of a
-//           lateral deviation; only a PROVEN deviation (consistent GOOD fixes
-//           over time, consistent heading disagreement, plausible progress)
-//           re-plans the governing route from the proven position to the
-//           destination and exposes the actual flown track for drawing.
+//           With a usable fix (any accuracy up to WEAK_FIX_MAX_HACC_M) the
+//           aircraft is where it was measured; the measured track is kept at
+//           TRACK_DECIMATION_M resolution. The governing route is the great
+//           circle from the latest measured position to the destination and
+//           is re-anchored whenever the aircraft leaves it laterally. Without
+//           a fix the aircraft propagates along the governing route from the
+//           last measured position, using the gyro to scale progress and the
+//           barometer-derived phase to pick a speed. Without any fix ever, a
+//           time-based profile along the planned route is used.
 //
-//           Modes:
-//             GNSS_TRACKING     - fix within GNSS_LOSS_TO_CONSTRAINED_MS
-//             ROUTE_CONSTRAINED - fix lost: propagate along the route
-//             PREDICTED_ONLY    - no fix ever (or estimate-only mode):
-//                                 time-since-takeoff profile
+//           Modes: GNSS_TRACKING / ROUTE_CONSTRAINED / PREDICTED_ONLY
 //           Pure Kotlin, JVM-testable.
 // Units   : metres, seconds, m/s, degrees true.
 // =============================================================
@@ -35,7 +33,6 @@ import org.skytrack.sensors.GyroSample
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sign
 import kotlin.math.sqrt
 
 enum class FusionMode { GNSS_TRACKING, ROUTE_CONSTRAINED, PREDICTED_ONLY }
@@ -43,22 +40,22 @@ enum class Confidence { MEASURED, FUSED, PREDICTED, STALE }
 
 data class PositionEstimate(
     val timeMs: Long,
-    val lat: Double,                    // always on the governing route
+    val lat: Double,
     val lon: Double,
     val altM: Double,
     val groundSpeedMps: Double,
     val trackDeg: Double,
     val verticalRateMps: Double,
-    val alongTrackM: Double,            // along the governing route
-    val totalFlownM: Double,            // along all routes since origin
-    val sigmaAlongM: Double,
-    val measuredCrossM: Double?,        // last measured lateral offset from the governing route, null if none
-    val measuredCrossAgeMs: Long,
-    val deviationEvidence: Int,         // consistent fixes accumulated toward a proven deviation
-    val deviationRequired: Int,
-    val replanCount: Int,
+    val alongTrackM: Double,            // along the governing route (from its anchor)
+    val totalFlownM: Double,            // measured track length + dead-reckoned distance
+    val sigmaAlongM: Double,            // 1-sigma position uncertainty along the direction of flight
+    val replanCount: Int,               // re-anchors of the governing route
     val visualFixCount: Int,
-    val originMismatchM: Double?,       // on ground: distance between fix and origin if beyond threshold
+    val maneuvering: Boolean,
+    val groundReferenced: Boolean,
+    val originMismatchM: Double?,
+    /** 0 = nothing (time only), 1 = inertial/baro only, 2 = weak fix or network fix, 3 = good fix now */
+    val sensorLevel: Int,
     val mode: FusionMode,
     val phase: FlightPhase,
     val lastFixAgeMs: Long,
@@ -73,11 +70,11 @@ data class PositionEstimate(
 
 class Estimator(val plannedRoute: Route) {
 
-    /** Governing route: the planned one until a proven deviation re-plans it. */
+    /** Governing route: planned until the first fix, then anchor -> destination. */
     var route: Route = plannedRoute
         private set
 
-    /** Actual positions from GOOD fixes, decimated, for drawing the flown track. */
+    /** Measured positions, decimated, oldest first. */
     val actualTrack: MutableList<GeoPoint> = ArrayList()
 
     var replanCount = 0
@@ -85,46 +82,59 @@ class Estimator(val plannedRoute: Route) {
     var visualFixCount = 0
         private set
 
-    // -- Kinematic state on the governing route --
-    private var s = 0.0
+    // -- State --
+    private var s = 0.0                  // along the governing route
     private var v = 0.0
     private var psi = plannedRoute.bearingAt(0.0)
     private var h = 0.0
     private var hdot = 0.0
     private var sigmaS = Parameters.SIGMA_S_INITIAL_M
-    private var flownBase = 0.0          // distance flown on previous governing routes
+    private var flownMeasured = 0.0      // length of the measured track
+    private var flownSinceFix = 0.0      // dead-reckoned distance since the last fix
+    private var pos: GeoPoint = plannedRoute.origin
+    private var anchor: GeoPoint? = null
+    private var lastReanchorMs = 0L
 
-    // -- GNSS bookkeeping --
+    // -- Fix bookkeeping --
     private var everFixed = false
     private var lastFixMs = 0L
+    private var lastFixPos: GeoPoint? = null
     private var lastAltMs = 0L
     private var lastAltM = 0.0
     private var satsUsed = 0
     private var satsVisible = 0
     private var lastQuality = GnssQuality.NONE
+    private var lastHAcc = 0.0
     private var vRef = 0.0
     private val speedWin = ArrayDeque<Pair<Long, Double>>()
-    private var lastCross: Double? = null
-    private var lastCrossMs = 0L
     private var originMismatch: Double? = null
-
-    // -- Deviation evidence --
-    private data class Evidence(val timeMs: Long, val crossM: Double, val alongM: Double, val speedMps: Double)
-    private val evidence = ArrayList<Evidence>()
-    private var lastTurnMs = 0L
 
     // -- Gyro --
     private var gyroDeltaDeg = 0.0
     private var lastGyroMs = 0L
-    private val turnWin = ArrayDeque<Pair<Long, Double>>()   // (time, heading delta) for the 60 s turn window
+    private var psiDR = plannedRoute.bearingAt(0.0)
+    private var maneuverSinceMs = 0L
+    private var maneuvering = false
+    private var lastTurnMs = 0L
+    private val turnWin = ArrayDeque<Pair<Long, Double>>()
+
+    // -- Ground reference --
+    private var altOffsetM = 0.0
+    private var groundReferenced = false
 
     private var lastTickMs = 0L
 
-    /** Restore persisted state after relaunch. */
+    /** Restore persisted state after relaunch (position on the planned route). */
     fun restore(alongM: Double, speedMps: Double, trackDeg: Double, altM: Double, timeMs: Long) {
-        s = alongM.coerceIn(0.0, route.lengthM); v = speedMps; psi = trackDeg; h = altM
-        vRef = speedMps; everFixed = true; lastFixMs = timeMs; lastAltMs = 0L
+        s = alongM.coerceIn(0.0, route.lengthM); pos = route.pointAt(s)
+        v = speedMps; psi = trackDeg; h = altM
+        vRef = speedMps; everFixed = true; lastFixMs = timeMs; lastFixPos = pos; lastAltMs = 0L
         sigmaS = max(Parameters.SIGMA_MIN_M, Parameters.ALONG_TRACK_DRIFT_RATE * speedMps * 60.0)
+    }
+
+    fun setGroundReference(gnssAltM: Double?, fieldElevM: Double) {
+        if (gnssAltM != null) { altOffsetM = gnssAltM - fieldElevM; groundReferenced = true }
+        sigmaS = Parameters.SIGMA_MIN_M
     }
 
     fun onGyro(g: GyroSample) {
@@ -133,12 +143,11 @@ class Estimator(val plannedRoute: Route) {
             if (dt > 0 && dt < 1.0) {
                 val d = g.yawRateDps * dt
                 gyroDeltaDeg += d
+                psiDR = Geodesy.wrapBearing(psiDR + d)
                 turnWin.addLast(Pair(g.timeMs, d))
                 while (turnWin.isNotEmpty() && g.timeMs - turnWin.first().first > 60_000) turnWin.removeFirst()
-                // A sustained turn on a straight route is evidence that the aircraft left it.
                 val turned = turnWin.sumOf { it.second }
-                val routeBend = abs(Geodesy.bearingDiff(route.bearingAt(min(route.lengthM, s + v * 60)), route.bearingAt(s)))
-                if (abs(turned) >= Parameters.GYRO_TURN_EVIDENCE_DEG && routeBend < 3.0) {
+                if (abs(turned) >= Parameters.GYRO_TURN_EVIDENCE_DEG) {
                     if (g.timeMs - lastTurnMs > 60_000) sigmaS *= 1.5
                     lastTurnMs = g.timeMs
                 }
@@ -147,22 +156,11 @@ class Estimator(val plannedRoute: Route) {
         lastGyroMs = g.timeMs
     }
 
-    /**
-     * Manual visual fix. The user identified a landmark out of the window.
-     * @param landmark      position of the identified object
-     * @param sideRight     true = seen out of the right-hand window, false = left, null = straight below
-     * @param distanceM     estimated slant-ground distance to the landmark
-     * @param sigmaM        1-sigma of the implied aircraft position
-     * The implied aircraft position is the landmark displaced perpendicular to
-     * the route course, toward the aircraft's side. Only the along-track
-     * component is applied (route anchoring); the lateral component is exposed
-     * as a measured offset like any other fix.
-     */
+    /** Manual visual fix: along-route Kalman update on the governing route, sigma as given. */
     fun onVisualFix(landmark: GeoPoint, sideRight: Boolean?, distanceM: Double, sigmaM: Double, now: Long, phase: FlightPhase) {
         val brg = route.bearingAt(s)
         val aircraft = when (sideRight) {
             null -> landmark
-            // Landmark on the right => aircraft lies to the LEFT of the landmark => bearing course - 90.
             true -> Geodesy.destination(landmark, Geodesy.wrapBearing(brg - 90.0), distanceM)
             false -> Geodesy.destination(landmark, Geodesy.wrapBearing(brg + 90.0), distanceM)
         }
@@ -171,11 +169,9 @@ class Estimator(val plannedRoute: Route) {
         val k = (sigmaS * sigmaS) / (sigmaS * sigmaS + r * r)
         s = (s + k * (proj.alongM - s)).coerceIn(0.0, route.lengthM)
         sigmaS = max(Parameters.SIGMA_MIN_M, sqrt((1 - k) * sigmaS * sigmaS))
-        lastCross = proj.crossM; lastCrossMs = now
+        pos = route.pointAt(s)
         if (vRef < Parameters.PHASE_GROUND_SPEED_MPS) vRef = phaseSpeed(phase)
         if (v < Parameters.PHASE_GROUND_SPEED_MPS) v = vRef
-        // A visual fix is a position observation: leave PREDICTED_ONLY, but as an aged fix so
-        // ROUTE_CONSTRAINED propagation takes over immediately.
         everFixed = true
         lastFixMs = now - Parameters.GNSS_LOSS_TO_CONSTRAINED_MS - 1
         visualFixCount++
@@ -183,100 +179,65 @@ class Estimator(val plannedRoute: Route) {
 
     fun onGnss(g: GnssSample, phase: FlightPhase) {
         satsUsed = g.satsUsed; satsVisible = g.satsVisible; lastQuality = g.quality
-        if (g.quality == GnssQuality.NONE) return
+        if (g.quality == GnssQuality.NONE || g.hAccM > Parameters.WEAK_FIX_MAX_HACC_M) return
         val p = GeoPoint(g.lat, g.lon)
+        lastHAcc = g.hAccM
 
-        // On the ground the aircraft sits at the origin; a fix only validates the plan.
-        if (phase == FlightPhase.GROUND) {
-            val dOrigin = Geodesy.distance(p, plannedRoute.origin)
-            originMismatch = if (dOrigin > Parameters.ORIGIN_MISMATCH_M) dOrigin else null
-            everFixed = true; lastFixMs = g.timeMs
-            if (g.hasSpeed) v = g.speedMps
-            updateAltitude(g)
-            return
+        // Origin plausibility while on the ground (plan check), but the position is still shown as measured.
+        originMismatch = if (phase == FlightPhase.GROUND) {
+            val d = Geodesy.distance(p, plannedRoute.origin)
+            if (d > Parameters.ORIGIN_MISMATCH_M) d else null
+        } else null
+
+        // Measured track and flown distance.
+        val prev = lastFixPos
+        if (prev != null) {
+            val step = Geodesy.distance(prev, p)
+            if (step < 50_000.0) flownMeasured += step        // ignore impossible jumps
         }
-        originMismatch = null
+        if (actualTrack.isEmpty() || Geodesy.distance(actualTrack.last(), p) >= Parameters.TRACK_DECIMATION_M) {
+            actualTrack.add(p)
+            if (actualTrack.size > Parameters.TRACK_MAX_POINTS) actualTrack.removeAt(0)
+        }
+        flownSinceFix = 0.0
 
+        // Governing route: anchor at the measured position when we left the current one.
         val proj = route.project(p)
-        lastCross = proj.crossM; lastCrossMs = g.timeMs
-
-        // Along-track Kalman update. Cross-track is NOT applied to the displayed position.
-        val r = max(g.hAccM, Parameters.SIGMA_MIN_M)
-        val ks = (sigmaS * sigmaS) / (sigmaS * sigmaS + r * r)
-        s = (s + ks * (proj.alongM - s)).coerceIn(0.0, route.lengthM)
-        sigmaS = max(Parameters.SIGMA_MIN_M, sqrt((1 - ks) * sigmaS * sigmaS))
+        val timeOk = g.timeMs - lastReanchorMs > Parameters.REANCHOR_MIN_INTERVAL_S * 1000
+        if (anchor == null || (abs(proj.crossM) > Parameters.REANCHOR_CROSS_M && timeOk)) {
+            reanchor(p, g.timeMs)
+        } else {
+            s = proj.alongM.coerceIn(0.0, route.lengthM)
+        }
+        pos = p
+        sigmaS = max(Parameters.SIGMA_MIN_M, g.hAccM)
 
         if (g.hasSpeed) {
-            v = if (everFixed) v + 0.5 * (g.speedMps - v) else g.speedMps
-            speedWin.addLast(Pair(g.timeMs, g.speedMps))
+            val spd = if (g.speedMps < Parameters.GNSS_SPEED_NOISE_MPS) 0.0 else g.speedMps
+            v = if (everFixed) v + 0.5 * (spd - v) else spd
+            speedWin.addLast(Pair(g.timeMs, spd))
             while (speedWin.isNotEmpty() && g.timeMs - speedWin.first().first > Parameters.SPEED_AVG_WINDOW_S * 1000) speedWin.removeFirst()
             vRef = speedWin.map { it.second }.average()
         }
-        val gnssTrackUsable = g.hasBearing && g.speedMps > Parameters.GNSS_MIN_SPEED_FOR_TRACK
-        if (gnssTrackUsable) {
+        if (g.hasBearing && g.speedMps > Parameters.GNSS_MIN_SPEED_FOR_TRACK) {
             psi = Geodesy.wrapBearing(psi + 0.6 * Geodesy.bearingDiff(g.bearingDeg, psi))
-            gyroDeltaDeg = 0.0
+            gyroDeltaDeg = 0.0; psiDR = psi
+            maneuverSinceMs = 0L; maneuvering = false
         }
         updateAltitude(g)
         everFixed = true
         lastFixMs = g.timeMs
-
-        if (g.quality == GnssQuality.GOOD) {
-            recordTrack(p)
-            val remaining = route.lengthM - s
-            if (remaining < Parameters.TERMINAL_AREA_M) {
-                // Terminal area: routes never follow the great circle here; re-anchor freely.
-                if (abs(proj.crossM) > Parameters.TERMINAL_REANCHOR_MIN_M) replan(p)
-                evidence.clear()
-            } else {
-                accumulateEvidence(g, p, proj, gnssTrackUsable)
-            }
-        }
+        lastFixPos = p
     }
 
-    private fun accumulateEvidence(g: GnssSample, p: GeoPoint, proj: Route.Projection, trackUsable: Boolean) {
-        val headingDiff = if (trackUsable) abs(Geodesy.bearingDiff(g.bearingDeg, route.bearingAt(proj.alongM))) else 0.0
-        val consistentSign = evidence.isEmpty() || sign(evidence.last().crossM) == sign(proj.crossM)
-        val far = abs(proj.crossM) >= Parameters.DEVIATION_MIN_CROSS_M
-        val headingOk = !trackUsable || headingDiff >= Parameters.DEVIATION_MIN_HEADING_DEG
-        var progressOk = true
-        if (evidence.isNotEmpty()) {
-            val e0 = evidence.last()
-            val dt = (g.timeMs - e0.timeMs) / 1000.0
-            if (dt > 0.5) {
-                val expected = 0.5 * (e0.speedMps + g.speedMps) * dt
-                val actual = abs(proj.alongM - e0.alongM)
-                progressOk = expected < 1.0 || abs(actual - expected) <= Parameters.DEVIATION_SPEED_TOLERANCE * expected + 200.0
-            }
-        }
-        if (far && consistentSign && headingOk && progressOk) {
-            evidence.add(Evidence(g.timeMs, proj.crossM, proj.alongM, g.speedMps))
-        } else {
-            evidence.clear()
-            return
-        }
-        val turnRecent = lastTurnMs != 0L && g.timeMs - lastTurnMs < Parameters.GYRO_TURN_MEMORY_S * 1000
-        val required = if (turnRecent) Parameters.DEVIATION_MIN_FIXES_TURN else Parameters.DEVIATION_MIN_FIXES
-        val span = (g.timeMs - evidence.first().timeMs) / 1000.0
-        if (evidence.size >= required && span >= Parameters.DEVIATION_MIN_DURATION_S) {
-            replan(p)
-        }
-    }
-
-    /** Proven deviation: new governing route from the proven position to the destination. */
-    private fun replan(from: GeoPoint) {
-        flownBase += s
-        route = Route(from, plannedRoute.destination)
+    private fun reanchor(p: GeoPoint, now: Long) {
+        val dest = plannedRoute.destination
+        if (Geodesy.distance(p, dest) < 1_000.0) return
+        route = Route(p, dest)
+        anchor = p
         s = 0.0
-        sigmaS = Parameters.SIGMA_MIN_M * 10
-        evidence.clear()
-        lastCross = 0.0
+        lastReanchorMs = now
         replanCount++
-        if (actualTrack.isEmpty() || Geodesy.distance(actualTrack.last(), from) > 100.0) actualTrack.add(from)
-    }
-
-    private fun recordTrack(p: GeoPoint) {
-        if (actualTrack.isEmpty() || Geodesy.distance(actualTrack.last(), p) >= Parameters.TRACK_DECIMATION_M) actualTrack.add(p)
     }
 
     private fun updateAltitude(g: GnssSample) {
@@ -290,82 +251,101 @@ class Estimator(val plannedRoute: Route) {
 
     /**
      * Propagate to `now` and emit an estimate.
-     * @param phase         current flight phase
-     * @param takeoffRefMs  takeoff time (measured or assumed) for PREDICTED_ONLY; null if unknown
-     * @param sensorsLive   false in estimate-only mode: fixes are ignored, mode is PREDICTED_ONLY
+     * @param sensorsLive false in estimate-only mode without a network fix: PREDICTED_ONLY on the planned route
      */
     fun tick(now: Long, phase: FlightPhase, takeoffRefMs: Long?, sensorsLive: Boolean = true): PositionEstimate {
         val dt = if (lastTickMs == 0L) 0.0 else ((now - lastTickMs) / 1000.0).coerceIn(0.0, 30.0)
         lastTickMs = now
         val age = if (everFixed && sensorsLive) now - lastFixMs else Long.MAX_VALUE
+        val ageS = age / 1000.0
+        val gyroFresh = lastGyroMs != 0L && now - lastGyroMs < 5_000
 
-        val onGround = phase == FlightPhase.GROUND
         val mode = when {
             !sensorsLive || !everFixed -> FusionMode.PREDICTED_ONLY
             age > Parameters.GNSS_LOSS_TO_CONSTRAINED_MS -> FusionMode.ROUTE_CONSTRAINED
             else -> FusionMode.GNSS_TRACKING
         }
 
-        if (onGround && sensorsLive) {
-            // Anchored at the origin until takeoff is detected.
-            s = 0.0; psi = route.bearingAt(0.0)
-            sigmaS = Parameters.SIGMA_MIN_M
-        } else when (mode) {
+        when (mode) {
             FusionMode.PREDICTED_ONLY -> {
                 val t = if (takeoffRefMs != null && now > takeoffRefMs) (now - takeoffRefMs) / 1000.0 else 0.0
-                val (ps, pv) = predictedProfile(t)
-                s = ps; v = pv; psi = route.bearingAt(s)
+                val (ps, pv) = predictedProfile(plannedRoute.lengthM, t)
+                route = plannedRoute; anchor = null
+                s = ps; v = pv; psi = route.bearingAt(s); pos = route.pointAt(s)
+                flownMeasured = 0.0; flownSinceFix = ps
                 sigmaS = if (t <= 0.0) Parameters.SIGMA_MIN_M else Parameters.SIGMA_S_INITIAL_M + Parameters.ALONG_TRACK_DRIFT_RATE * pv * t
+                maneuvering = false
             }
             FusionMode.GNSS_TRACKING -> {
-                s = (s + v * dt).coerceIn(0.0, route.lengthM)
-                sigmaS += Parameters.ALONG_TRACK_DRIFT_RATE * v * dt
+                // Between fixes: short dead reckoning from the measured position.
+                if (dt > 0 && v > 0) {
+                    val step = v * dt
+                    pos = Geodesy.destination(pos, psi, step)
+                    s = (s + step).coerceIn(0.0, route.lengthM)
+                    flownSinceFix += step
+                    sigmaS += Parameters.ALONG_TRACK_DRIFT_RATE * step
+                }
                 gyroDeltaDeg = 0.0
             }
             FusionMode.ROUTE_CONSTRAINED -> {
-                val ageS = age / 1000.0
+                val onGround = phase == FlightPhase.GROUND
                 val vPhase = phaseSpeed(phase)
                 val w = min(1.0, ageS / Parameters.SPEED_BLEND_TAU_S)
-                val vEff = if (vPhase == 0.0 && vRef < Parameters.PHASE_GROUND_SPEED_MPS) 0.0 else vRef * (1 - w) + vPhase * w
+                val vEff = if (onGround || (vPhase == 0.0 && vRef < Parameters.PHASE_GROUND_SPEED_MPS)) 0.0 else vRef * (1 - w) + vPhase * w
                 v = vEff
-                s = (s + vEff * dt).coerceIn(0.0, route.lengthM)
-                sigmaS += Parameters.ALONG_TRACK_DRIFT_RATE * vEff * dt
-                psi = if (ageS < Parameters.GYRO_TRUST_WINDOW_S && lastGyroMs != 0L && now - lastGyroMs < 5_000)
-                    Geodesy.wrapBearing(psi + gyroDeltaDeg) else route.bearingAt(s)
+                var factor = 1.0
+                if (gyroFresh && ageS < Parameters.GYRO_PROGRESS_WINDOW_S) {
+                    val dev = Geodesy.bearingDiff(psiDR, route.bearingAt(s))
+                    factor = kotlin.math.cos(Math.toRadians(dev))
+                    if (abs(dev) > Parameters.MANEUVER_HEADING_DEG) {
+                        if (maneuverSinceMs == 0L) maneuverSinceMs = now
+                        if (now - maneuverSinceMs > Parameters.MANEUVER_CONFIRM_S * 1000) maneuvering = true
+                    } else { maneuverSinceMs = 0L; maneuvering = false }
+                } else { maneuverSinceMs = 0L; maneuvering = false }
+                val step = vEff * dt * factor
+                s = (s + step).coerceIn(0.0, route.lengthM)
+                flownSinceFix += abs(step)
+                pos = route.pointAt(s)
+                sigmaS += Parameters.ALONG_TRACK_DRIFT_RATE * vEff * dt * (if (maneuvering) Parameters.MANEUVER_SIGMA_FACTOR else 1.0)
+                psi = if (ageS < Parameters.GYRO_TRUST_WINDOW_S && gyroFresh) Geodesy.wrapBearing(psi + gyroDeltaDeg) else route.bearingAt(s)
                 gyroDeltaDeg = 0.0
             }
         }
 
-        val pos = route.pointAt(s)
         val fresh = sensorsLive && everFixed && age < Parameters.GNSS_STALE_MS * 2
         val altFresh = sensorsLive && lastAltMs != 0L && now - lastAltMs < Parameters.GNSS_STALE_MS * 2
+        val goodNow = fresh && lastQuality == GnssQuality.GOOD
 
         val posConf = when (mode) {
-            FusionMode.GNSS_TRACKING -> if (!fresh) Confidence.PREDICTED else if (lastQuality == GnssQuality.GOOD) Confidence.MEASURED else Confidence.FUSED
+            FusionMode.GNSS_TRACKING -> if (!fresh) Confidence.FUSED else if (goodNow) Confidence.MEASURED else Confidence.FUSED
             FusionMode.ROUTE_CONSTRAINED -> if (age < 120_000) Confidence.FUSED else Confidence.PREDICTED
             FusionMode.PREDICTED_ONLY -> Confidence.PREDICTED
         }
         val speedConf = if (fresh) Confidence.MEASURED else if (mode == FusionMode.PREDICTED_ONLY) Confidence.PREDICTED else Confidence.FUSED
         val trackConf = when {
             fresh && v > Parameters.GNSS_MIN_SPEED_FOR_TRACK -> Confidence.MEASURED
-            mode == FusionMode.ROUTE_CONSTRAINED && age / 1000.0 < Parameters.GYRO_TRUST_WINDOW_S -> Confidence.FUSED
+            mode == FusionMode.ROUTE_CONSTRAINED && ageS < Parameters.GYRO_TRUST_WINDOW_S -> Confidence.FUSED
             else -> Confidence.PREDICTED
         }
         val altConf = if (altFresh) Confidence.MEASURED else if (lastAltMs != 0L && sensorsLive) Confidence.STALE else Confidence.PREDICTED
-        val turnRecent = lastTurnMs != 0L && now - lastTurnMs < Parameters.GYRO_TURN_MEMORY_S * 1000
+        val sensorLevel = when {
+            goodNow -> 3
+            fresh -> 2
+            mode == FusionMode.ROUTE_CONSTRAINED -> 1   // last fix + inertial / baro / visual propagation
+            else -> 0
+        }
 
         return PositionEstimate(
-            timeMs = now, lat = pos.lat, lon = pos.lon, altM = h,
+            timeMs = now, lat = pos.lat, lon = pos.lon,
+            altM = if (groundReferenced && lastAltMs != 0L) h - altOffsetM else h,
             groundSpeedMps = v, trackDeg = psi, verticalRateMps = if (altFresh) hdot else 0.0,
-            alongTrackM = s, totalFlownM = flownBase + s, sigmaAlongM = sigmaS,
-            measuredCrossM = if (sensorsLive && !onGround) lastCross else null,
-            measuredCrossAgeMs = if (lastCrossMs == 0L) -1L else now - lastCrossMs,
-            deviationEvidence = evidence.size,
-            deviationRequired = if (turnRecent) Parameters.DEVIATION_MIN_FIXES_TURN else Parameters.DEVIATION_MIN_FIXES,
-            replanCount = replanCount,
-            visualFixCount = visualFixCount,
-            originMismatchM = if (sensorsLive && onGround) originMismatch else null,
-            mode = mode, phase = phase, lastFixAgeMs = if (everFixed && sensorsLive) now - lastFixMs else -1L,
+            alongTrackM = s, totalFlownM = flownMeasured + flownSinceFix, sigmaAlongM = sigmaS,
+            replanCount = replanCount, visualFixCount = visualFixCount,
+            maneuvering = maneuvering && mode == FusionMode.ROUTE_CONSTRAINED,
+            groundReferenced = groundReferenced,
+            originMismatchM = if (sensorsLive && phase == FlightPhase.GROUND) originMismatch else null,
+            sensorLevel = sensorLevel,
+            mode = mode, phase = phase, lastFixAgeMs = if (everFixed && sensorsLive) age else -1L,
             satsUsed = satsUsed, satsVisible = satsVisible, gnssQuality = if (sensorsLive) lastQuality else GnssQuality.NONE,
             positionConfidence = posConf, altitudeConfidence = altConf,
             speedConfidence = speedConf, trackConfidence = trackConf
@@ -379,12 +359,8 @@ class Estimator(val plannedRoute: Route) {
         FlightPhase.DESCENT -> Parameters.SPEED_DESCENT_MPS
     }
 
-    /**
-     * Piecewise profile for PREDICTED_ONLY on the governing route: climb, cruise,
-     * descent over the last DESCENT_DISTANCE. Returns (along-track m, speed m/s).
-     */
-    private fun predictedProfile(tS: Double): Pair<Double, Double> {
-        val l = route.lengthM
+    /** Climb / cruise / descent profile along a route of length l. Returns (along m, speed m/s). */
+    private fun predictedProfile(l: Double, tS: Double): Pair<Double, Double> {
         if (tS <= 0.0) return Pair(0.0, 0.0)
         val climbDist = min(Parameters.SPEED_CLIMB_MPS * Parameters.CLIMB_DURATION_S, l * 0.4)
         val descentDist = min(Parameters.DESCENT_DISTANCE_M, l * 0.4)
@@ -400,15 +376,18 @@ class Estimator(val plannedRoute: Route) {
         }
     }
 
+    fun profileDurationS(lengthM: Double): Double = Metrics.profileDurationS(lengthM)
+
     /** Phase implied by elapsed time on the predicted profile (estimate-only mode). */
     fun predictedPhase(now: Long, takeoffRefMs: Long?): FlightPhase {
         if (takeoffRefMs == null || now <= takeoffRefMs) return FlightPhase.GROUND
         val t = (now - takeoffRefMs) / 1000.0
-        val (ps, pv) = predictedProfile(t)
+        val l = plannedRoute.lengthM
+        val (ps, pv) = predictedProfile(l, t)
         return when {
-            pv == 0.0 && ps >= route.lengthM -> FlightPhase.LANDED
+            pv == 0.0 && ps >= l -> FlightPhase.LANDED
             t < Parameters.CLIMB_DURATION_S -> FlightPhase.CLIMB
-            route.lengthM - ps <= min(Parameters.DESCENT_DISTANCE_M, route.lengthM * 0.4) + 1.0 -> FlightPhase.DESCENT
+            l - ps <= min(Parameters.DESCENT_DISTANCE_M, l * 0.4) + 1.0 -> FlightPhase.DESCENT
             else -> FlightPhase.CRUISE
         }
     }

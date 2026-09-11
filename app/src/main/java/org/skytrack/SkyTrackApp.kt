@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - SkyTrackApp
-// Version 2.3
+// Version 3.0
 // Purpose : Application entry point; owns the singletons (manual DI, no
 //           framework) and initialises MapLibre. Resumes the previous
 //           flight automatically so the map is populated on relaunch.
@@ -32,13 +32,24 @@ class SkyTrackApp : Application() {
     val hebrew: Boolean
         get() { val l = resources.configuration.locales[0].language; return l == "he" || l == "iw" }
 
+    /** Result of the automatic update check (only when online and allowed), for the UI to show. */
+    val updateInfo = kotlinx.coroutines.flow.MutableStateFlow<org.skytrack.net.UpdateInfo?>(null)
+
+    /** True when a validated internet connection exists right now. */
+    fun isOnline(): Boolean = try {
+        val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    } catch (e: Exception) { false }
+
     override fun onCreate() {
         super.onCreate()
         MapLibre.getInstance(this)
         airports = AirportRepository(this)
         stores = Stores(this)
         geo = GeoData(this)
-        engine = FlightEngine(airports, stores, FlightLogger(this), geo, hebrew)
+        engine = FlightEngine(airports, stores, FlightLogger(this), geo, hebrew, ::isOnline)
         stores.plan.value?.let { engine.start(it) }
     }
 }
