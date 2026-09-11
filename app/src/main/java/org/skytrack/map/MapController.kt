@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 4.0
+// Version 4.2
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -129,6 +129,9 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         animateAircraft(e.lat, e.lon, e.trackDeg, icon, st)
         maybeFollow(e.lat, e.lon, e.trackDeg)
     }
+
+    /** Render the current map view to a bitmap (used once at landing for the flight log). */
+    fun snapshot(cb: (android.graphics.Bitmap) -> Unit) { map.snapshot { bmp -> cb(bmp) } }
 
     fun zoomIn() = map.animateCamera(CameraUpdateFactory.zoomIn())
     fun zoomOut() = map.animateCamera(CameraUpdateFactory.zoomOut())

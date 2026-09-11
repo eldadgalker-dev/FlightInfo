@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Estimator
-// Version 4.0
+// Version 4.2
 // Purpose : Measured-first position estimator.
 //
 //           With a usable fix (any accuracy up to WEAK_FIX_MAX_HACC_M) the
@@ -130,6 +130,29 @@ class Estimator(val plannedRoute: Route) {
         v = speedMps; psi = trackDeg; h = altM
         vRef = speedMps; everFixed = true; lastFixMs = timeMs; lastFixPos = pos; lastAltMs = 0L
         sigmaS = max(Parameters.SIGMA_MIN_M, Parameters.ALONG_TRACK_DRIFT_RATE * speedMps * 60.0)
+    }
+
+    /** Restore the measured track after a restart; the governing route re-anchors at its last point. */
+    fun restoreTrack(points: List<GeoPoint>, flownM: Double, timeMs: Long) {
+        if (points.isEmpty()) return
+        actualTrack.clear(); actualTrack.addAll(points.takeLast(Parameters.TRACK_MAX_POINTS))
+        flownMeasured = flownM
+        val last = points.last()
+        lastFixPos = last; pos = last
+        reanchor(last, timeMs)
+        everFixed = true; lastFixMs = timeMs
+        sigmaS = max(Parameters.SIGMA_MIN_M, Parameters.ALONG_TRACK_DRIFT_RATE * 235.0 * 60.0)
+    }
+
+    /** Restore the measured track after a restart; the last point becomes the anchor. */
+    fun restoreTrack(points: List<GeoPoint>) {
+        if (points.isEmpty()) return
+        actualTrack.clear(); actualTrack.addAll(points.takeLast(Parameters.TRACK_MAX_POINTS))
+        flownMeasured = 0.0
+        for (i in 1 until actualTrack.size) flownMeasured += Geodesy.distance(actualTrack[i - 1], actualTrack[i])
+        val last = actualTrack.last()
+        lastFixPos = last; pos = last
+        reanchor(last, lastFixMs)
     }
 
     fun setGroundReference(gnssAltM: Double?, fieldElevM: Double) {

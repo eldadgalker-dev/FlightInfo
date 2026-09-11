@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 4.1
+// Version 4.2
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -79,6 +79,8 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     private var phaseDetector = FlightPhaseDetector()
     private var plan: FlightPlan? = null
     private var lastPersistMs = 0L
+    private var lastTrackSaved = 0
+    private var lastTrackSizeSaved = -1
     private var lastGnssVRate = 0.0
     private var lastGnssAltMs = 0L
     private var lastGnssAlt = 0.0
@@ -106,8 +108,12 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         phaseDetector = FlightPhaseDetector()
 
         val saved = stores.loadEstimate()
+        val samePlanAsBefore = stores.plan.value?.let { it.originIata == p.originIata && it.destinationIata == p.destinationIata } ?: false
+        if (!samePlanAsBefore) stores.clearTrack()
         if (!p.estimateOnly && saved != null && System.currentTimeMillis() - saved.timeMs < 12 * 3600_000L && p.takeoffMs != null) {
             est.restore(saved.alongM, saved.speedMps, saved.trackDeg, saved.altM, saved.timeMs)
+            if (samePlanAsBefore) est.restoreTrack(stores.loadTrack())
+            stores.loadTrack()?.let { (pts, flown) -> est.restoreTrack(pts, flown, saved.timeMs) }
             val ph = try { FlightPhase.valueOf(saved.phase) } catch (e: Exception) { FlightPhase.CRUISE }
             phaseDetector.restore(ph, p.takeoffMs)
         } else if (!p.estimateOnly && p.takeoffMs != null) {
@@ -176,7 +182,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     @Synchronized
     fun clearFlight() {
         stop()
-        stores.savePlan(null); stores.clearEstimate()
+        stores.savePlan(null); stores.clearEstimate(); stores.clearTrack()
         _metrics.value = null
         estimator = null; origin = null; destination = null; plan = null
     }
@@ -318,6 +324,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         if (live && now - lastPersistMs > Parameters.PERSIST_INTERVAL_MS) {
             lastPersistMs = now
             stores.saveEstimate(SavedEstimate(now, e.alongTrackM, e.groundSpeedMps, e.trackDeg, e.altM, e.phase.name))
+            if (est.actualTrack.size != lastTrackSizeSaved) { lastTrackSizeSaved = est.actualTrack.size; stores.saveTrack(est.actualTrack.toList(), e.totalFlownM) }
         }
     }
 }

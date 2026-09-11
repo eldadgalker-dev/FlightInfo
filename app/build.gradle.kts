@@ -16,8 +16,8 @@ android {
         applicationId = "com.galker.flightinfo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 19
-        versionName = "4.1-beta4"
+        versionCode = 20
+        versionName = "4.2-beta5"
         vectorDrawables.useSupportLibrary = true
     }
 

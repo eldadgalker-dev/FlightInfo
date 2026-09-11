@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Stores
-// Version 4.0
+// Version 4.2
 // Purpose : SharedPreferences-backed persistence for the flight plan,
 //           the last position estimate (instant restore on relaunch),
 //           the last ground fix (origin auto-detection) and user settings.
@@ -85,7 +85,7 @@ data class Settings(
     val language: String = "system"     // "system", "he", "en"
 )
 
-class Stores(context: Context) {
+class Stores(private val context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("skytrack", Context.MODE_PRIVATE)
 
@@ -100,9 +100,36 @@ class Stores(context: Context) {
         _plan.value = p
     }
 
+    /** Measured track (decimated points) as "lat,lon" lines, so the green line survives a process restart. */
+    fun saveTrack(points: List<org.skytrack.route.GeoPoint>, flownM: Double) {
+        try {
+            val f = java.io.File(context.filesDir, TRACK_FILE)
+            f.bufferedWriter().use { w ->
+                w.write("# flown_m=${flownM.toLong()}"); w.newLine()
+                for (p in points) { w.write(String.format(java.util.Locale.US, "%.5f,%.5f", p.lat, p.lon)); w.newLine() }
+            }
+        } catch (e: Exception) { }
+    }
+
+    /** Returns (points, flownM) or null. */
+    fun loadTrack(): Pair<List<org.skytrack.route.GeoPoint>, Double>? = try {
+        val f = java.io.File(context.filesDir, TRACK_FILE)
+        if (!f.exists()) null else {
+            var flown = 0.0
+            val pts = ArrayList<org.skytrack.route.GeoPoint>()
+            f.forEachLine { ln ->
+                if (ln.startsWith("# flown_m=")) flown = ln.substringAfter('=').toDoubleOrNull() ?: 0.0
+                else { val a = ln.split(','); if (a.size == 2) pts.add(org.skytrack.route.GeoPoint(a[0].toDouble(), a[1].toDouble())) }
+            }
+            Pair(pts, flown)
+        }
+    } catch (e: Exception) { null }
+
+    fun clearTrack() { java.io.File(context.filesDir, TRACK_FILE).delete() }
+
     fun saveEstimate(e: SavedEstimate) = prefs.edit().putString(KEY_EST, e.toJson()).apply()
     fun loadEstimate(): SavedEstimate? = SavedEstimate.fromJson(prefs.getString(KEY_EST, null))
-    fun clearEstimate() = prefs.edit().remove(KEY_EST).apply()
+    fun clearEstimate() { prefs.edit().remove(KEY_EST).apply(); clearTrack() }
 
     fun saveGroundFix(f: GroundFix) = prefs.edit()
         .putLong(KEY_GF_LAT, f.lat.toBits()).putLong(KEY_GF_LON, f.lon.toBits()).putLong(KEY_GF_T, f.timeMs).apply()
@@ -159,6 +186,7 @@ class Stores(context: Context) {
         private const val KEY_GF_LAT = "gf_lat"
         private const val KEY_GF_LON = "gf_lon"
         private const val KEY_GF_T = "gf_t"
+        private const val TRACK_FILE = "track.txt"
         private const val KEY_ZOOM = "last_zoom"
         private const val KEY_PANEL = "panel_expanded"
     }

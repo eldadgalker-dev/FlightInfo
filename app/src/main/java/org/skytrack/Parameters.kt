@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 4.1
+// Version 4.2
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -14,9 +14,9 @@ package org.skytrack
 object Parameters {
 
     // -- GNSS quality classification --
-    const val GNSS_GOOD_HACC_M          = 30.0      // m, horizontal accuracy for GOOD
+    const val GNSS_GOOD_HACC_M          = 100.0     // m, horizontal accuracy for GOOD (in-flight median was 57 m; 30 m never happened)
     const val GNSS_GOOD_MIN_SATS        = 5         // satellites used in fix for GOOD
-    const val GNSS_DEGRADED_HACC_M      = 200.0     // m, horizontal accuracy for DEGRADED
+    const val GNSS_DEGRADED_HACC_M      = 2_000.0   // m, horizontal accuracy for DEGRADED (still positions the aircraft)
     const val GNSS_STALE_MS             = 5_000L    // ms, fix older than this counts as NONE
     const val GNSS_INTERVAL_SCREEN_ON_MS  = 1_000L  // ms, requested update interval
     const val GNSS_INTERVAL_SCREEN_OFF_MS = 5_000L  // ms, interval when screen is off in cruise
@@ -68,12 +68,24 @@ object Parameters {
     const val AERIAL_PACK_FILE = "bluemarble_z0-6.mbtiles"
     const val AERIAL_MAX_ZOOM  = 6
 
+    // -- Online enrichment (only when a network happens to be available; never required) --
+    const val LIVE_ADSB_URL_TEMPLATE  = "https://api.adsb.lol/v2/callsign/%s"   // %s = ICAO callsign, e.g. ELY315
+    const val LIVE_POLL_INTERVAL_MS   = 30_000L    // ms between ADS-B queries
+    const val LIVE_FIX_HACC_M         = 150.0      // m, assumed accuracy of an ADS-B position
+    const val LIVE_MAX_AGE_S          = 120.0      // s, ADS-B report older than this is ignored
+    const val LIVE_ONLY_WHEN_GNSS_OLDER_MS = 60_000L // ms, in live mode use ADS-B only when GNSS is this stale
+
+    // -- In-app update (manual check against GitHub Releases) --
+    const val UPDATE_REPO_OWNER = "eldadgalker-dev"
+    const val UPDATE_REPO_NAME  = "FlightInfo"
+    const val UPDATE_ASSET_NAME = "FlightInfo.apk"   // fixed-name asset published by the build workflow
+
     // -- Estimate-only mode --
     const val TAXI_ALLOWANCE_S          = 900.0     // s, scheduled departure -> assumed takeoff
     const val DEPARTURE_FUTURE_GRACE_S  = 1_800.0   // s, scheduled time this far ahead => flight left yesterday
 
     // -- Uncertainty growth --
-    const val ALONG_TRACK_DRIFT_RATE    = 0.03      // fraction of speed per second since last fix
+    const val ALONG_TRACK_DRIFT_RATE    = 0.06      // fraction of distance flown since the last fix (MUC-TLV: 34 km after 24 min = 10 % of 346 km; 2-sigma covers)
     const val SIGMA_S_INITIAL_M         = 50_000.0  // m, prior along-track sigma (predicted-only)
     const val SIGMA_MIN_M               = 10.0      // m, floor to keep Kalman gains finite
 

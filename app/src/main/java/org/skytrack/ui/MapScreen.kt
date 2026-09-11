@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 4.0
+// Version 4.2
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -132,7 +132,7 @@ fun MapScreen(
         LaunchedEffect(metrics?.estimate?.phase) {
             if (!snapshotTaken && metrics?.estimate?.phase == org.skytrack.sensors.FlightPhase.LANDED && !metrics.estimateOnly) {
                 snapshotTaken = true
-                try { mapView.snapshot { bmp -> onSnapshot(bmp) } } catch (e: Exception) { }
+                try { controller?.snapshot { bmp -> onSnapshot(bmp) } } catch (e: Exception) { }
             }
         }
 
