@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Format
-// Version 1.2
+// Version 1.3
 // Purpose : Convert SI values to display units at the point of emission.
 //           Numbers are always rendered LTR with Latin digits.
 // =============================================================
@@ -63,10 +63,14 @@ object Format {
         return String.format(Locale.US, "%d:%02d", h, m)
     }
 
-    /** H:MM:SS for elapsed spans shown in lists. */
+    /** Date-time for lists: DD/MM/YYYY HH:MM.SS (project convention). */
+    private val fDateTime = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm.ss", Locale.US)
+    fun dateTime(t: ZonedDateTime): String = fDateTime.format(t)
+
+    /** HH:MM.SS for elapsed spans shown in lists. */
     fun durationHms(s: Long?): String {
         if (s == null || s < 0) return "--:--:--"
-        return String.format(Locale.US, "%02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
+        return String.format(Locale.US, "%02d:%02d.%02d", s / 3600, (s % 3600) / 60, s % 60)
     }
 
     fun time(t: ZonedDateTime?, use24h: Boolean): String =

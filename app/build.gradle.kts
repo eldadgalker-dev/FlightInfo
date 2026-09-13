@@ -1,7 +1,10 @@
 // Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
 // This software is released under the BSD 3-Clause License.
 // See the LICENSE.txt file in the project root for full license information.
-// FlightInfo app module build - Version 4.0
+// FlightInfo app module build - Version 4.8
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -16,11 +19,11 @@ android {
         applicationId = "com.galker.flightinfo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 26
-        versionName = "4.8-beta11"
+        versionCode = 27
+        versionName = "4.8-beta12"
         vectorDrawables.useSupportLibrary = true
         // Release (build) date shown in the help title; UTC, set at build time.
-        buildConfigField("String", "BUILD_DATE", "\"${java.time.LocalDate.now(java.time.ZoneOffset.UTC)}\"")
+        buildConfigField("String", "BUILD_DATE", "\"" + LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "\"")
     }
 
     // One stable signing key for every build (see keystore/README.md). Environment

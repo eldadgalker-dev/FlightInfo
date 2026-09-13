@@ -89,7 +89,6 @@ fun LogsScreen(
         selected.value = selected.value.filter { n -> summaries.any { it.file.name == n } }.toSet()
         loading = false
     }
-    val fmt = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss", Locale.US) }
     val sel = summaries.filter { it.file.name in selected.value }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
@@ -121,7 +120,7 @@ fun LogsScreen(
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                         Text("${s.originIata ?: "?"} \u2192 ${s.destinationIata ?: "?"}  ${s.flightNumber ?: ""}" + (if (isSel) "  \u2713" else ""),
                             style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                        Text(fmt.format(Instant.ofEpochMilli(s.startMs).atZone(ZoneId.systemDefault())) +
+                        Text(Format.dateTime(Instant.ofEpochMilli(s.startMs).atZone(ZoneId.systemDefault())) +
                                 "  \u00B7  " + stringResource(R.string.logs_duration) + " " + Format.durationHms(s.durationS) +
                                 "  \u00B7  ${s.fixes} " + stringResource(R.string.logs_fixes) +
                                 (s.appVersion?.let { "  \u00B7  v$it" } ?: "") +
