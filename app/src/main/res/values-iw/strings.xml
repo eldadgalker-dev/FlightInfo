@@ -273,6 +273,8 @@
     <string name="logs_select_hint">הקש על יומן לבחירה; הפעולות מופיעות למטה. בחר כמה כדי לשתף, לאחד או למחוק יחד.</string>
     <string name="logs_selected">%1$d נבחרו</string>
     <string name="logs_merge_selected">אחד %1$d</string>
+    <string name="replay_playing">מנגן</string>
+    <string name="replay_paused">מושהה</string>
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

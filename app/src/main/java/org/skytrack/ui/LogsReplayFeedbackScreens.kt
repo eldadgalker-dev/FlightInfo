@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 2.0
+// Version 2.1
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -159,7 +159,7 @@ fun LogsScreen(
 
 // ------------------------------------------------------------------ Replay
 
-/** Compact transport bar over the map: slider plus one row (close, play/pause, speeds). */
+/** Transport bar over the map: one row of labelled buttons plus a seek slider. */
 @Composable
 fun ReplayOverlay(engine: ReplayEngine, onClose: () -> Unit) {
     val playing by engine.playing.collectAsStateWithLifecycle()
@@ -171,29 +171,29 @@ fun ReplayOverlay(engine: ReplayEngine, onClose: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Surface(
             Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 64.dp, end = 64.dp, top = 92.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
         ) {
-            Column(Modifier.padding(horizontal = 8.dp, vertical = 2.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { engine.stop(); onClose() }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)) { Text("\u2715") }
-                    TextButton(onClick = { if (playing) engine.pause() else engine.play() }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)) {
-                        Text(if (playing) "\u275A\u275A" else "\u25B6")
+            Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.replay_title, engine.summary?.let { "${it.originIata} \u2192 ${it.destinationIata}" } ?: "") +
+                        "  \u00B7  " + (if (playing) stringResource(R.string.replay_playing) else stringResource(R.string.replay_paused)) +
+                        "  \u00B7  ${speed}\u00D7",
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button(onClick = { if (playing) engine.pause() else engine.play() }, modifier = Modifier.weight(1.3f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
+                        Text(stringResource(if (playing) R.string.replay_pause else R.string.replay_play))
                     }
                     for (x in listOf(30, 120, 600)) {
-                        TextButton(onClick = { engine.setSpeed(x) }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)) {
-                            Text("${x}\u00D7", color = if (speed == x) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = if (speed == x) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium)
-                        }
+                        FilterChip(selected = speed == x, onClick = { engine.setSpeed(x) }, label = { Text("${x}\u00D7") }, modifier = Modifier.weight(1f))
                     }
-                    Spacer(Modifier.weight(1f))
-                    Text(engine.summary?.let { "${it.originIata}\u2192${it.destinationIata}" } ?: "", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = { engine.stop(); onClose() }, modifier = Modifier.weight(1f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.replay_close)) }
                 }
                 Slider(
                     value = seeking ?: progress,
                     onValueChange = { seeking = it },
                     onValueChangeFinished = { seeking?.let { engine.seek(it) }; seeking = null },
-                    modifier = Modifier.fillMaxWidth().height(24.dp)
+                    modifier = Modifier.fillMaxWidth().height(28.dp)
                 )
                 error?.let { Text(stringResource(R.string.replay_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
             }

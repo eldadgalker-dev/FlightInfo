@@ -73,7 +73,6 @@ private fun Root(app: SkyTrackApp) {
     var pendingPlan by remember { mutableStateOf<FlightPlan?>(null) }
     var scanned by remember { mutableStateOf<BoardingPass?>(null) }
     val replay = remember { org.skytrack.service.ReplayEngine(app.airports) }
-    }
     var reportLog by remember { mutableStateOf<java.io.File?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val resourceMonitor = remember { org.skytrack.data.ResourceMonitor(context) }
