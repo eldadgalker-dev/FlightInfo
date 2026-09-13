@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Theme
-// Version 2.4
+// Version 3.0
 // Purpose : Material 3 colour schemes (night default) and small shared
 //           composables: confidence marker, labelled value.
 // =============================================================
@@ -39,13 +39,15 @@ private val NightScheme = darkColorScheme(
     surface = Color(0xFF13202D),
     onSurface = Color(0xFFE6ECF2),
     surfaceVariant = Color(0xFF1F2A36),
-    onSurfaceVariant = Color(0xFFB8C4D0)
+    onSurfaceVariant = Color(0xFFB8C4D0),
+    error = Color(0xFF8FB3F0)
 )
 
 private val DayScheme = lightColorScheme(
-    primary = Color(0xFFD9581E),
-    secondary = Color(0xFF2E5F8A),
+    primary = Color(0xFF2F6FB0),
+    secondary = Color(0xFF5A8FD0),
     tertiary = Color(0xFF0F8F83),
+    error = Color(0xFF3A5FA0),
     background = Color(0xFFF4F1EA),
     surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF1A1A1A),

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 4.6
+// Version 4.8
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -66,6 +66,24 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     /** null = unknown yet; set by TrackingService from the sensor manager. */
     val baroAvailable = MutableStateFlow<Boolean?>(null)
 
+    /** Flight-log recording is started and stopped only by the user (REC button on the map). */
+    private val _recording = MutableStateFlow(false)
+    val recording: StateFlow<Boolean> = _recording
+
+    @Synchronized
+    fun setRecording(on: Boolean) {
+        val p = plan
+        if (on && p != null && !p.estimateOnly) {
+            logger.enabled = true
+            logger.start(p.originIata, p.destinationIata, p.flightNumber)
+            loggingStopped = false
+            _recording.value = true
+        } else {
+            logger.stop()
+            _recording.value = false
+        }
+    }
+
     private var geoReady = false
     private var lastCountryCheckMs = 0L
     private var lastCountry: String? = null
@@ -124,8 +142,10 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         stores.savePlan(p)
         startMs = System.currentTimeMillis(); lastWarnLevel = 0; reliefUntilMs = 0L; landedSinceMs = 0L; loggingStopped = false
         if (!geoReady) scope.launch { geo.warmUp(); geoReady = true }
-        logger.enabled = stores.settings.value.logFlights
-        if (!p.estimateOnly) logger.start(p.originIata, p.destinationIata, p.flightNumber) else logger.stop()
+        // Recording does not start by itself: the REC button decides. Keep it running across a
+        // restart of the same live flight (re-uses the file), stop it when the plan changes.
+        val keepRecording = _recording.value && samePlanAsBefore && !p.estimateOnly
+        if (keepRecording) logger.start(p.originIata, p.destinationIata, p.flightNumber) else { logger.stop(); _recording.value = false }
         _active.value = true
         publish(System.currentTimeMillis())
         tickJob = scope.launch {
@@ -175,7 +195,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         tickJob?.cancel(); tickJob = null
         pollJob?.cancel(); pollJob = null
         _active.value = false
-        logger.stop()
+        logger.stop(); _recording.value = false
     }
 
     /** Clear the active flight entirely (return to setup). */
@@ -325,8 +345,8 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         if (e.phase == FlightPhase.LANDED) { if (landedSinceMs == 0L) landedSinceMs = now } else landedSinceMs = 0L
         val groundTooLong = e.phase == FlightPhase.GROUND && p.takeoffMs == null && now - startMs > Parameters.LOG_MAX_GROUND_MS
         val landedLong = landedSinceMs != 0L && now - landedSinceMs > Parameters.LOG_AFTER_LANDING_MS
-        if (!loggingStopped && (groundTooLong || landedLong)) { loggingStopped = true; logger.stop() }
-        if (live && !loggingStopped) logger.log(fm, lastGnss, lastBaro, lastGyro)
+        if (!loggingStopped && _recording.value && (groundTooLong || landedLong)) { loggingStopped = true; logger.stop(); _recording.value = false }
+        if (live && _recording.value && !loggingStopped) logger.log(fm, lastGnss, lastBaro, lastGyro)
         if (live && now - lastPersistMs > Parameters.PERSIST_INTERVAL_MS) {
             lastPersistMs = now
             stores.saveEstimate(SavedEstimate(now, e.alongTrackM, e.groundSpeedMps, e.trackDeg, e.altM, e.phase.name))

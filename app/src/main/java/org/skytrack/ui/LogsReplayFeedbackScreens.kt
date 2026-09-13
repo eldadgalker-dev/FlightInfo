@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 1.2
+// Version 2.0
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -72,63 +72,86 @@ fun LogsScreen(
     onShare: (List<File>) -> Unit,
     onDelete: (File) -> Unit,
     onReport: (File) -> Unit,
+    onImport: () -> Unit,
+    importTick: Int,
     onBack: () -> Unit
 ) {
     var summaries by remember { mutableStateOf<List<LogSummary>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var reload by remember { mutableStateOf(0) }
-    LaunchedEffect(reload) {
+    val selected = remember { mutableStateOf(setOf<String>()) }      // file names
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    LaunchedEffect(reload, importTick) {
         loading = true
         summaries = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             files().mapNotNull { FlightLogReader.summarize(it) }.sortedByDescending { it.startMs }
         }
+        selected.value = selected.value.filter { n -> summaries.any { it.file.name == n } }.toSet()
         loading = false
     }
-    val groups = remember(summaries) { summaries.groupBy { FlightLogReader.groupKey(it) } }
-    val fmt = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.US) }
+    val fmt = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss", Locale.US) }
+    val sel = summaries.filter { it.file.name in selected.value }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.logs_title), style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            Row {
+                TextButton(onClick = onImport) { Text(stringResource(R.string.logs_import)) }
+                TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            }
         }
+        Text(stringResource(R.string.logs_select_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (loading) {
             androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 16.dp))
             Text(stringResource(R.string.logs_loading), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
         } else if (summaries.isEmpty()) {
             Text(stringResource(R.string.logs_none), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 16.dp))
         }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+        // Compact list: one line per log, tap to select (multi-select allowed).
+        LazyColumn(Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(summaries, key = { it.file.name }) { s ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("${s.originIata ?: "?"} \u2192 ${s.destinationIata ?: "?"}  ${s.flightNumber ?: ""}",
-                            style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                val isSel = s.file.name in selected.value
+                Card(
+                    Modifier.fillMaxWidth().clickable {
+                        selected.value = if (isSel) selected.value - s.file.name else selected.value + s.file.name
+                    },
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = if (isSel) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        Text("${s.originIata ?: "?"} \u2192 ${s.destinationIata ?: "?"}  ${s.flightNumber ?: ""}" + (if (isSel) "  \u2713" else ""),
+                            style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                         Text(fmt.format(Instant.ofEpochMilli(s.startMs).atZone(ZoneId.systemDefault())) +
                                 "  \u00B7  " + stringResource(R.string.logs_duration) + " " + Format.durationHms(s.durationS) +
                                 "  \u00B7  ${s.fixes} " + stringResource(R.string.logs_fixes) +
                                 (s.appVersion?.let { "  \u00B7  v$it" } ?: "") +
                                 (if (s.snapshot != null) "  \u00B7  " + stringResource(R.string.logs_has_map) else ""),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Button(onClick = { onReplay(s.file) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_replay)) }
-                            OutlinedButton(onClick = { onShare(listOfNotNull(s.file, s.snapshot)) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_share)) }
-                        }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            OutlinedButton(onClick = { onReport(s.file) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_report)) }
-                            OutlinedButton(onClick = { onDelete(s.file); s.snapshot?.delete(); reload++ }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_delete)) }
-                        }
-                        val group = groups[FlightLogReader.groupKey(s)] ?: emptyList()
-                        if (group.size > 1 && group.first() === s) {
-                            val scope = androidx.compose.runtime.rememberCoroutineScope()
-                            OutlinedButton(onClick = {
-                                scope.launch {
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { FlightLogReader.merge(group.map { it.file }) }
-                                    reload++
-                                }
-                            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.logs_merge, group.size)) }
-                        }
                     }
+                }
+            }
+        }
+        // Action bar for the selection.
+        if (sel.isNotEmpty()) {
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.logs_selected, sel.size), style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Button(onClick = { onReplay(sel.first().file) }, enabled = sel.size == 1, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_replay)) }
+                    OutlinedButton(onClick = { onShare(sel.flatMap { listOfNotNull(it.file, it.snapshot) }) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_share)) }
+                    OutlinedButton(onClick = { onReport(sel.first().file) }, enabled = sel.size == 1, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_report)) }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { FlightLogReader.merge(sel.map { it.file }) }
+                                selected.value = emptySet(); reload++
+                            }
+                        },
+                        enabled = sel.size >= 2, modifier = Modifier.weight(1f)
+                    ) { Text(stringResource(R.string.logs_merge_selected, sel.size)) }
+                    OutlinedButton(onClick = { sel.forEach { onDelete(it.file); it.snapshot?.delete() }; selected.value = emptySet(); reload++ },
+                        modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_delete)) }
                 }
             }
         }
@@ -137,7 +160,7 @@ fun LogsScreen(
 
 // ------------------------------------------------------------------ Replay
 
-/** Transport controls drawn over the normal map screen while a log is replayed. */
+/** Compact transport bar over the map: slider plus one row (close, play/pause, speeds). */
 @Composable
 fun ReplayOverlay(engine: ReplayEngine, onClose: () -> Unit) {
     val playing by engine.playing.collectAsStateWithLifecycle()
@@ -148,30 +171,32 @@ fun ReplayOverlay(engine: ReplayEngine, onClose: () -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         Surface(
-            Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 64.dp, end = 64.dp, top = 96.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 64.dp, end = 64.dp, top = 92.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
         ) {
-            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.replay_title, engine.summary?.let { "${it.originIata} \u2192 ${it.destinationIata}" } ?: ""),
-                        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    TextButton(onClick = { engine.stop(); onClose() }) { Text(stringResource(R.string.replay_close)) }
+            Column(Modifier.padding(horizontal = 8.dp, vertical = 2.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { engine.stop(); onClose() }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)) { Text("\u2715") }
+                    TextButton(onClick = { if (playing) engine.pause() else engine.play() }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)) {
+                        Text(if (playing) "\u275A\u275A" else "\u25B6")
+                    }
+                    for (x in listOf(30, 120, 600)) {
+                        TextButton(onClick = { engine.setSpeed(x) }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)) {
+                            Text("${x}\u00D7", color = if (speed == x) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = if (speed == x) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Text(engine.summary?.let { "${it.originIata}\u2192${it.destinationIata}" } ?: "", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                error?.let { Text(stringResource(R.string.replay_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 Slider(
                     value = seeking ?: progress,
                     onValueChange = { seeking = it },
                     onValueChangeFinished = { seeking?.let { engine.seek(it) }; seeking = null },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(24.dp)
                 )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Button(onClick = { if (playing) engine.pause() else engine.play() }) {
-                        Text(stringResource(if (playing) R.string.replay_pause else R.string.replay_play))
-                    }
-                    for (x in listOf(30, 120, 600)) {
-                        FilterChip(selected = speed == x, onClick = { engine.setSpeed(x) }, label = { Text("${x}\u00D7") })
-                    }
-                }
+                error?.let { Text(stringResource(R.string.replay_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
             }
         }
     }

@@ -146,7 +146,7 @@
     <string name="help_values_title">The values</string>
     <string name="help_values_body">"I am on the ground now" (panel, before takeoff): resets the phase, calibrates GPS altitude against the field elevation and fixes the reference pressure for cabin altitude.\nWithout GPS: the gyroscope scales along-route progress during turns and holds ("manoeuvring"), and the accelerometer detects the takeoff roll and the landing deceleration.\nDistance remaining and flown are measured along the route.\nTime to destination: airborne = remaining distance at cruise speed + 20 min descent; on the ground = wait until the (expected) takeoff + the full flight profile.\nArrival is shown in the destination\'s local time; the panel also shows local time at origin, UTC and destination.\nAltitude comes from GPS only; the barometer measures cabin pressure and only detects climb and descent.\nHeading after GPS loss follows the gyroscope for 90 seconds, then the route course.</string>
     <string name="help_logs_title">Flight logs</string>
-    <string name="help_logs_body">When enabled in Settings, each live flight writes a CSV file on this phone (Android/data/com.galker.flightinfo/files/logs) with the estimate and the raw GPS, barometer and gyroscope readings, once per second. Nothing is uploaded. "Share latest log" sends the file through any app you choose; a real flight log is the best way to calibrate the estimator.</string>
+    <string name="help_logs_body">Recording starts only when you press the REC button on the map (blue when recording) and stops when you press it again, 10 minutes after landing, or after 3 hours on the ground. While recording, the flight writes a CSV file on this phone (Android/data/com.galker.flightinfo/files/logs) with the estimate and the raw GPS, barometer and gyroscope readings, once per second. Nothing is uploaded. "Share latest log" sends the file through any app you choose; a real flight log is the best way to calibrate the estimator.</string>
     <string name="help_limits_title">Limitations</string>
     <string name="help_limits_body">Without GPS the aircraft follows the direct route; real routing may differ by hundreds of kilometres for weather or airspace, and the app cannot know until GPS returns. No flight-number lookup: there is no free offline schedule database, hence the boarding-pass scan. Local time at the current position is shown as UTC. The Earth is modelled as a sphere (0.3 % distance error).</string>
 
@@ -283,6 +283,11 @@
     <string name="logs_loading">Reading logs\u2026</string>
     <string name="logs_duration">duration</string>
     <string name="logs_merge">Merge %1$d logs of this flight</string>
+    <string name="recording">Flight-log recording</string>
+    <string name="logs_import">Import</string>
+    <string name="logs_select_hint">Tap a log to select it; actions appear below. Select several to share, merge or delete together.</string>
+    <string name="logs_selected">%1$d selected</string>
+    <string name="logs_merge_selected">Merge %1$d</string>
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>

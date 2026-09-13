@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapStyle
-// Version 4.0
+// Version 4.8
 // Purpose : Offline map style. The style JSON holds only the background
 //           and the bundled glyph endpoint; all sources and layers are
 //           added programmatically from the bundled Natural Earth GeoJSON
@@ -70,8 +70,8 @@ object MapStyle {
         countryFills = listOf("#f2e6c9", "#e4efd2", "#f5dfd4", "#e2e6f4", "#f0e2ea", "#e6f0ea", "#f4ecd8"),
         countryText = "#5a5a5a",
         placeDot = "#333333", placeText = "#222222", placeHalo = "#ffffff",
-        routeOriginal = "#a9b4c0", routePlanned = "#2e5f8a", routeFlown = "#d9581e", trackActual = "#0f8f83",
-        uncertainty = "#d9581e",
+        routeOriginal = "#a9b4c0", routePlanned = "#5a8fd0", routeFlown = "#2f6fb0", trackActual = "#0f8f83",
+        uncertainty = "#2f6fb0",
         airport = "#111111", airportText = "#111111",
         aircraft = Color.rgb(20, 20, 20), aircraftOutline = Color.WHITE
     )
@@ -92,7 +92,8 @@ object MapStyle {
     const val SRC_AIRCRAFT = "aircraft"
     /** Aircraft icon ids by sensor level 0..3: red (time only), orange (inertial), yellow (weak fix), green (good fix). */
     val IMG_AIRCRAFT_LEVEL = arrayOf("aircraft-0", "aircraft-1", "aircraft-2", "aircraft-3")
-    val AIRCRAFT_LEVEL_COLORS = intArrayOf(Color.rgb(230, 57, 70), Color.rgb(255, 140, 0), Color.rgb(255, 214, 0), Color.rgb(76, 201, 106))
+    // Level colours: time only = deep blue, inertial = light blue, weak fix = yellow, good fix = green (no red hues).
+    val AIRCRAFT_LEVEL_COLORS = intArrayOf(Color.rgb(46, 90, 168), Color.rgb(120, 170, 235), Color.rgb(255, 214, 0), Color.rgb(76, 201, 106))
 
     fun styleJson(p: Palette): String = """
         {"version":8,"name":"skytrack",

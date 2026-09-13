@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MainActivity
-// Version 4.5.1
+// Version 4.8
 // Purpose : Single-activity host. Simple state-based navigation between
 //           Setup / Map / Metrics / Settings, runtime permission requests,
 //           and foreground-service start/stop tied to the active flight.
@@ -69,10 +69,25 @@ private fun Root(app: SkyTrackApp) {
     val plan by app.stores.plan.collectAsStateWithLifecycle()
     val active by app.engine.active.collectAsStateWithLifecycle()
 
-    var screen by rememberSaveable { mutableStateOf(if (plan == null) Screen.SETUP else Screen.MAP) }
+    var screen by rememberSaveable { mutableStateOf(Screen.MAP) }   // the map is the home screen, flight or not
     var pendingPlan by remember { mutableStateOf<FlightPlan?>(null) }
     var scanned by remember { mutableStateOf<BoardingPass?>(null) }
     val replay = remember { org.skytrack.service.ReplayEngine(app.airports) }
+    var importTick by remember { mutableStateOf(0) }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            // Copy an external CSV log (e.g. from another phone or an e-mail) into the logs folder.
+            try {
+                val name = android.provider.OpenableColumns.DISPLAY_NAME.let { col ->
+                    context.contentResolver.query(uri, arrayOf(col), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+                } ?: "imported_${System.currentTimeMillis()}.csv"
+                val dest = java.io.File(java.io.File(context.getExternalFilesDir(null) ?: context.filesDir, "logs"), name.substringAfterLast('/'))
+                dest.parentFile?.mkdirs()
+                context.contentResolver.openInputStream(uri)?.use { i -> dest.outputStream().use { o -> i.copyTo(o) } }
+                importTick++
+            } catch (e: Exception) { }
+        }
+    }
     var reportLog by remember { mutableStateOf<java.io.File?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val resourceMonitor = remember { org.skytrack.data.ResourceMonitor(context) }
@@ -138,7 +153,7 @@ private fun Root(app: SkyTrackApp) {
                     suggestedOrigin = remember { app.engine.suggestOrigin() },
                     onStart = { startFlight(it) },
                     onClear = { TrackingService.stop(context); app.engine.clearFlight(); screen = Screen.SETUP },
-                    onBack = if (plan != null) ({ screen = Screen.MAP }) else null,
+                    onBack = { screen = Screen.MAP },
                     onScan = { screen = Screen.SCAN },
                     onHelp = { screen = Screen.HELP },
                     prefill = scanned,
@@ -156,7 +171,10 @@ private fun Root(app: SkyTrackApp) {
                 }
                 Screen.MAP -> {
                     BackHandler(enabled = false) {}
+                    val recording by app.engine.recording.collectAsStateWithLifecycle()
                     MapScreen(
+                        recording = recording,
+                        onToggleRecording = { app.engine.setRecording(!recording) },
                         metrics = metrics, settings = settings, night = night,
                         onOpenMetrics = { screen = Screen.METRICS },
                         onOpenSettings = { screen = Screen.SETTINGS },
@@ -219,6 +237,8 @@ private fun Root(app: SkyTrackApp) {
                         onShare = { files -> shareFiles(context, files) },
                         onDelete = { f -> f.delete() },
                         onReport = { f -> reportLog = f; screen = Screen.FEEDBACK },
+                        onImport = { importLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "*/*")) },
+                        importTick = importTick,
                         onBack = { screen = Screen.SETTINGS }
                     )
                 }
@@ -244,11 +264,11 @@ private fun Root(app: SkyTrackApp) {
                     FeedbackScreen(settings, latest, snap, reportLog) { screen = Screen.SETTINGS }
                 }
                 Screen.HELP -> {
-                    BackHandler { screen = if (plan == null) Screen.SETUP else Screen.MAP }
-                    HelpScreen { screen = if (plan == null) Screen.SETUP else Screen.MAP }
+                    BackHandler { screen = Screen.MAP }
+                    HelpScreen { screen = Screen.MAP }
                 }
             }
-            if (screen == Screen.SETUP && plan != null) {
+            if (screen == Screen.SETUP) {
                 BackHandler { screen = Screen.MAP }
             }
         }

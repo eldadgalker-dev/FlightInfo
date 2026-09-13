@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - HelpScreen
-// Version 2.0
+// Version 2.1
 // Purpose : In-app manual. Shows the app version in the title and lets the
 //           reader switch the help language (English default, Hebrew)
 //           independently of the app language, by resolving the strings
@@ -84,7 +84,11 @@ fun HelpScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("${lc.getString(R.string.help)} \u2014 FlightInfo $version", style = MaterialTheme.typography.headlineSmall)
+                Column {
+                    Text(lc.getString(R.string.help), style = MaterialTheme.typography.headlineSmall)
+                    Text("FlightInfo $version  \u00B7  ${org.skytrack.BuildConfig.BUILD_DATE}", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 4.5
+// Version 4.8
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.SatelliteAlt
 import androidx.compose.material.icons.filled.Schedule
@@ -92,7 +94,9 @@ fun MapScreen(
     onZoomChanged: (Double) -> Unit,
     panelExpandedInitial: Boolean,
     onPanelExpandedChanged: (Boolean) -> Unit,
-    hebrew: Boolean
+    hebrew: Boolean,
+    recording: Boolean = false,
+    onToggleRecording: (() -> Unit)? = null
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val context = LocalContext.current
@@ -169,6 +173,16 @@ fun MapScreen(
             SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.TableChart, stringResource(R.string.metrics)) }
             SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
             SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Help, stringResource(R.string.help)) }
+            if (metrics != null && onToggleRecording != null && !metrics.estimateOnly) {
+                // Flight-log recording: only this button starts or stops it.
+                SmallFloatingActionButton(
+                    onClick = onToggleRecording,
+                    containerColor = if (recording) androidx.compose.ui.graphics.Color(0xFF2F6FB0) else MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Icon(if (recording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord, stringResource(R.string.recording),
+                        tint = if (recording) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             if (metrics != null) {
                 // Live sensing (satellite) vs time-based estimate (clock)
                 SmallFloatingActionButton(onClick = onToggleEstimateOnly) {
@@ -193,7 +207,7 @@ fun MapScreen(
 
         // -- Metrics panel --
         Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(8.dp)) {
-            MetricsPanel(metrics, settings, panelExpanded, onConfirmGround) { panelExpanded = !panelExpanded; onPanelExpandedChanged(panelExpanded) }
+            MetricsPanel(metrics, settings, panelExpanded, onConfirmGround, onOpenSetup) { panelExpanded = !panelExpanded; onPanelExpandedChanged(panelExpanded) }
         }
     }
 }
@@ -217,7 +231,7 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
                 else -> stringResource(R.string.gnss_none)
             }
             val level = e.sensorLevel
-            val color = when (level) { 3 -> androidx.compose.ui.graphics.Color(0xFF4CC96A); 2 -> androidx.compose.ui.graphics.Color(0xFFE0B400); 1 -> androidx.compose.ui.graphics.Color(0xFFFF8C00); else -> androidx.compose.ui.graphics.Color(0xFFE63946) }
+            val color = when (level) { 3 -> androidx.compose.ui.graphics.Color(0xFF4CC96A); 2 -> androidx.compose.ui.graphics.Color(0xFFE0B400); 1 -> androidx.compose.ui.graphics.Color(0xFF78AAEB); else -> androidx.compose.ui.graphics.Color(0xFF2E5AA8) }
             StripText("\u25CF  $line1", color)
             // Line 2: how the position is computed
             val line2 = when {
@@ -240,13 +254,16 @@ private fun StripText(text: String, color: androidx.compose.ui.graphics.Color = 
 }
 
 @Composable
-private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onConfirmGround: () -> Unit, onToggle: () -> Unit) {
+private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onConfirmGround: () -> Unit, onStartFlight: () -> Unit, onToggle: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onToggle() },
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
     ) {
         if (m == null) {
-            Text(stringResource(R.string.no_flight_hint), Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.no_flight_hint), style = MaterialTheme.typography.bodyMedium)
+                androidx.compose.material3.Button(onClick = onStartFlight, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.start_flight)) }
+            }
             return@Surface
         }
         val e = m.estimate
@@ -404,9 +421,9 @@ private fun VisualFixDialog(
 private fun GnssBanner(m: FlightMetrics, modifier: Modifier) {
     val (color, text) = when {
         m.gnssRelief -> androidx.compose.ui.graphics.Color(0xFF2E7D32) to stringResource(R.string.gnss_relief)
-        m.gnssWarnLevel >= 3 -> androidx.compose.ui.graphics.Color(0xFFC62828) to stringResource(R.string.gnss_warn3, Format.duration(m.gnssNoFixS))
-        m.gnssWarnLevel == 2 -> androidx.compose.ui.graphics.Color(0xFFEF6C00) to stringResource(R.string.gnss_warn2, Format.duration(m.gnssNoFixS))
-        else -> androidx.compose.ui.graphics.Color(0xFFF9A825) to stringResource(R.string.gnss_warn1)
+        m.gnssWarnLevel >= 3 -> androidx.compose.ui.graphics.Color(0xFF1E4F9C) to stringResource(R.string.gnss_warn3, Format.duration(m.gnssNoFixS))
+        m.gnssWarnLevel == 2 -> androidx.compose.ui.graphics.Color(0xFF2F6FB0) to stringResource(R.string.gnss_warn2, Format.duration(m.gnssNoFixS))
+        else -> androidx.compose.ui.graphics.Color(0xFF5A8FD0) to stringResource(R.string.gnss_warn1)
     }
     Surface(modifier = modifier.clip(RoundedCornerShape(10.dp)), color = color) {
         Text(text, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), color = androidx.compose.ui.graphics.Color.White,

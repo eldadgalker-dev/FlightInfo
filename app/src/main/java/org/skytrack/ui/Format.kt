@@ -66,7 +66,7 @@ object Format {
     /** H:MM:SS for elapsed spans shown in lists. */
     fun durationHms(s: Long?): String {
         if (s == null || s < 0) return "--:--:--"
-        return String.format(Locale.US, "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
+        return String.format(Locale.US, "%02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
     }
 
     fun time(t: ZonedDateTime?, use24h: Boolean): String =

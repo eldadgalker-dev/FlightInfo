@@ -16,9 +16,11 @@ android {
         applicationId = "com.galker.flightinfo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 25
-        versionName = "4.7-beta10"
+        versionCode = 26
+        versionName = "4.8-beta11"
         vectorDrawables.useSupportLibrary = true
+        // Release (build) date shown in the help title; UTC, set at build time.
+        buildConfigField("String", "BUILD_DATE", "\"${java.time.LocalDate.now(java.time.ZoneOffset.UTC)}\"")
     }
 
     // One stable signing key for every build (see keystore/README.md). Environment
@@ -52,6 +54,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
