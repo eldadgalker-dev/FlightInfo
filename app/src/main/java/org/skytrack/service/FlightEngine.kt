@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 4.5
+// Version 4.6
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -88,6 +88,8 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     @Volatile private var lastGyro: GyroSample? = null
     @Volatile private var groundRef: GroundReference? = null
     private var startMs = 0L
+    private var landedSinceMs = 0L
+    private var loggingStopped = false
     private var warnActiveSinceMs = 0L
     private var reliefUntilMs = 0L
     private var lastWarnLevel = 0
@@ -120,7 +122,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
             stores.clearEstimate()
         }
         stores.savePlan(p)
-        startMs = System.currentTimeMillis(); lastWarnLevel = 0; reliefUntilMs = 0L
+        startMs = System.currentTimeMillis(); lastWarnLevel = 0; reliefUntilMs = 0L; landedSinceMs = 0L; loggingStopped = false
         if (!geoReady) scope.launch { geo.warmUp(); geoReady = true }
         logger.enabled = stores.settings.value.logFlights
         if (!p.estimateOnly) logger.start(p.originIata, p.destinationIata, p.flightNumber) else logger.stop()
@@ -318,7 +320,13 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
             o, dst, takeoffForMetrics, lastCountry, takeoffRef, source, cabinAlt, gr, warn, relief, noFixS)
         phaseDetector.onRemaining(fm.remainingM, now)
         _metrics.value = fm
-        if (live) logger.log(fm, lastGnss, lastBaro, lastGyro)
+        // Logging window: stop LOG_AFTER_LANDING_MS after landing, or after LOG_MAX_GROUND_MS on the ground
+        // without a takeoff (the phone left running at home). Tracking itself continues.
+        if (e.phase == FlightPhase.LANDED) { if (landedSinceMs == 0L) landedSinceMs = now } else landedSinceMs = 0L
+        val groundTooLong = e.phase == FlightPhase.GROUND && p.takeoffMs == null && now - startMs > Parameters.LOG_MAX_GROUND_MS
+        val landedLong = landedSinceMs != 0L && now - landedSinceMs > Parameters.LOG_AFTER_LANDING_MS
+        if (!loggingStopped && (groundTooLong || landedLong)) { loggingStopped = true; logger.stop() }
+        if (live && !loggingStopped) logger.log(fm, lastGnss, lastBaro, lastGyro)
         if (live && now - lastPersistMs > Parameters.PERSIST_INTERVAL_MS) {
             lastPersistMs = now
             stores.saveEstimate(SavedEstimate(now, e.alongTrackM, e.groundSpeedMps, e.trackDeg, e.altM, e.phase.name))

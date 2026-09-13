@@ -265,6 +265,9 @@
 
     <string name="still_on_ground">עדיין על הקרקע: כייל עכשיו</string>
     <string name="ground_ref_done2">כויל: הטיית גובה GPS %1$s, %2$d לוויינים, \u00B1%3$d מ׳. הקש שוב לרענון לפני ההמראה.</string>
+    <string name="logs_loading">קורא יומנים\u2026</string>
+    <string name="logs_duration">משך</string>
+    <string name="logs_merge">אחד %1$d יומנים של טיסה זו</string>
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

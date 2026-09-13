@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightLogReader
-// Version 1.0
+// Version 1.1
 // Purpose : Parse the CSV flight logs written by FlightLogger, tolerant of
 //           column sets from older versions (columns are looked up by name)
 //           and of the duplicated header rows older versions produced.
@@ -69,6 +69,52 @@ object FlightLogReader {
         val snap = File(f.parentFile, f.nameWithoutExtension + "_map.png").takeIf { it.exists() }
         if (rows == 0) null else LogSummary(f, origin, dest, fn, first, last, rows, fixes, ver, snap)
     } catch (e: Exception) { null }
+
+    /** Grouping key for logs of the same flight on the same day. */
+    fun groupKey(s: LogSummary): String =
+        "${s.originIata}_${s.destinationIata}_${s.flightNumber}_" + java.time.Instant.ofEpochMilli(s.startMs).atZone(java.time.ZoneOffset.UTC).toLocalDate()
+
+    /**
+     * Merge several logs of the same flight into the earliest file: header comments and column
+     * row from the first file, data rows from all files sorted by epoch and de-duplicated.
+     * Column sets may differ between app versions; rows are re-mapped onto the first file's header.
+     * Returns the merged file; the other files (and their snapshots) are deleted.
+     */
+    fun merge(files: List<File>): File? {
+        if (files.size < 2) return files.firstOrNull()
+        val sorted = files.sortedBy { it.name }
+        val target = sorted.first()
+        var header: List<String>? = null
+        val comments = ArrayList<String>()
+        val rows = java.util.TreeMap<Long, String>()
+        for (f in sorted) {
+            var h: List<String>? = null
+            f.bufferedReader().useLines { lines ->
+                for (ln in lines) {
+                    if (ln.startsWith("#")) { if (header == null) comments.add(ln); continue }
+                    if (ln.startsWith("time_utc")) { h = ln.split(','); if (header == null) header = h; continue }
+                    val hh = h ?: continue
+                    val target = header ?: continue
+                    val c = ln.split(',')
+                    val t = c.getOrNull(hh.indexOf("epoch_ms"))?.toLongOrNull() ?: continue
+                    val line = if (hh == target) ln else target.joinToString(",") { col -> c.getOrNull(hh.indexOf(col)) ?: "" }
+                    rows.putIfAbsent(t, line)
+                }
+            }
+        }
+        val hdr = header ?: return null
+        val tmp = File(target.parentFile, target.name + ".merge")
+        tmp.bufferedWriter().use { w ->
+            for (c in comments) { w.write(c); w.newLine() }
+            w.write("# merged from ${sorted.size} files: ${sorted.joinToString(" ") { it.name }}"); w.newLine()
+            w.write(hdr.joinToString(",")); w.newLine()
+            for (line in rows.values) { w.write(line); w.newLine() }
+        }
+        for (f in sorted.drop(1)) { f.delete(); File(f.parentFile, f.nameWithoutExtension + "_map.png").delete() }
+        target.delete()
+        tmp.renameTo(target)
+        return target
+    }
 
     /** Full pass for replay. Consecutive rows repeating the same fix carry gnss = null. */
     fun rows(f: File): List<ReplayRow> {

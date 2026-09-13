@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 4.2
+// Version 4.6
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -57,6 +57,8 @@ class MapController(private val context: Context, private val map: MapLibreMap,
     private var lastRouteHash = 0
     private var pendingMetrics: FlightMetrics? = null
     private var startZoom: Double? = initialZoom
+    private var lastEstimateMs = 0L
+    private var lastUpdateWallMs = 0L
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -126,7 +128,13 @@ class MapController(private val context: Context, private val map: MapLibreMap,
 
         val e = m.estimate
         val icon = MapStyle.IMG_AIRCRAFT_LEVEL[e.sensorLevel.coerceIn(0, 3)]
-        animateAircraft(e.lat, e.lon, e.trackDeg, icon, st)
+        // Replay runs faster than real time: then the 1 s tween would lag behind; place the marker directly.
+        val wall = System.currentTimeMillis()
+        val flightDt = e.timeMs - lastEstimateMs
+        val wallDt = wall - lastUpdateWallMs
+        val fast = lastEstimateMs != 0L && wallDt > 0 && flightDt > 3 * wallDt
+        lastEstimateMs = e.timeMs; lastUpdateWallMs = wall
+        animateAircraft(e.lat, e.lon, e.trackDeg, icon, st, instant = fast || flightDt < 0)
         maybeFollow(e.lat, e.lon, e.trackDeg)
     }
 
@@ -172,10 +180,10 @@ class MapController(private val context: Context, private val map: MapLibreMap,
                 .bearing(if (trackUp) bearing else 0.0).build()), Parameters.UI_INTERPOLATION_MS)
     }
 
-    private fun animateAircraft(lat: Double, lon: Double, bearing: Double, icon: String, st: Style) {
+    private fun animateAircraft(lat: Double, lon: Double, bearing: Double, icon: String, st: Style, instant: Boolean = false) {
         val s = src(st, MapStyle.SRC_AIRCRAFT) ?: return
         animator?.cancel()
-        if (!hasShown) {
+        if (!hasShown || instant) {
             hasShown = true
             shownLat = lat; shownLon = lon; shownBearing = bearing
             s.setGeoJson(aircraftFeature(lat, lon, bearing, icon))

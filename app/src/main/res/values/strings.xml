@@ -280,6 +280,9 @@
 
     <string name="still_on_ground">Still on the ground: calibrate now</string>
     <string name="ground_ref_done2">Calibrated: GPS altitude bias %1$s, %2$d satellites, \u00B1%3$d m. Tap again to refresh before takeoff.</string>
+    <string name="logs_loading">Reading logs\u2026</string>
+    <string name="logs_duration">duration</string>
+    <string name="logs_merge">Merge %1$d logs of this flight</string>
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>

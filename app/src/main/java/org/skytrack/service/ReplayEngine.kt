@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - ReplayEngine
-// Version 1.0
+// Version 1.1
 // Purpose : Play a recorded flight log back through a fresh Estimator at
 //           30x .. 600x real time, publishing FlightMetrics exactly like the
 //           live engine so the normal map screen can display it. Because the
@@ -82,13 +82,18 @@ class ReplayEngine(private val airports: AirportRepository) {
         if (_playing.value || rows.isEmpty()) return
         _playing.value = true
         job = scope.launch {
+            var lastPublishWall = 0L
             while (isActive && index < rows.size) {
                 val t0 = rows[index].timeMs
-                step(index)
+                // Publish to the UI at most ~10 times per second; the estimator still sees every row.
+                val wall = System.currentTimeMillis()
+                val publish = wall - lastPublishWall >= 100 || index == rows.size - 1
+                step(index, publish)
+                if (publish) lastPublishWall = wall
                 index++
                 if (index >= rows.size) { _playing.value = false; break }
                 val dtMs = (rows[index].timeMs - t0).coerceIn(0L, 60_000L)
-                delay(maxOf(5L, dtMs / _speed.value))
+                delay(maxOf(1L, dtMs / _speed.value))
             }
         }
     }
@@ -103,14 +108,15 @@ class ReplayEngine(private val airports: AirportRepository) {
         pause()
         val target = (fraction.coerceIn(0f, 1f) * (rows.size - 1)).toInt()
         reset()
-        for (i in 0 until target) step(i)
+        for (i in 0 until target) step(i, publish = false)     // silent fast-forward
         index = target
+        if (target > 0) step(target - 1, publish = true)
         if (wasPlaying) play()
     }
 
     fun stop() { pause(); rows = emptyList(); _metrics.value = null; summary = null; est = null }
 
-    private fun step(i: Int) {
+    private fun step(i: Int, publish: Boolean = true) {
         val e = est ?: return
         val o = origin ?: return; val d = destination ?: return
         val r = rows[i]
@@ -118,6 +124,7 @@ class ReplayEngine(private val airports: AirportRepository) {
         r.gyro?.let { e.onGyro(it) }
         if (takeoffMs == null && r.phase != org.skytrack.sensors.FlightPhase.GROUND) takeoffMs = r.timeMs
         val pe = e.tick(r.timeMs, r.phase, takeoffMs, r.liveTracking)
+        if (!publish) return
         _metrics.value = Metrics.compute(pe, e.route, e.plannedRoute, e.actualTrack.toList(), !r.liveTracking, o, d, takeoffMs)
         _progress.value = if (rows.size > 1) i.toFloat() / (rows.size - 1) else 1f
     }

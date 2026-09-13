@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 4.4
+// Version 4.6
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -137,6 +137,8 @@ object Parameters {
     const val ENGINE_TICK_MS            = 1_000L    // ms, estimator propagation period
     const val UI_INTERPOLATION_MS       = 1_000     // ms, marker animation between engine ticks
     const val PERSIST_INTERVAL_MS       = 10_000L   // ms, estimate persistence period
+    const val LOG_AFTER_LANDING_MS      = 600_000L  // ms, keep logging this long after LANDED, then close the file
+    const val LOG_MAX_GROUND_MS         = 3 * 3600_000L // ms, on the ground without takeoff: stop logging (phone left at home)
 
     // -- Map --
     const val MAP_MIN_ZOOM              = 1.5

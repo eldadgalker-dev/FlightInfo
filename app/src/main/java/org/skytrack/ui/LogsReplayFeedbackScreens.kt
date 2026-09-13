@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 1.0
+// Version 1.2
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import org.skytrack.R
 import org.skytrack.data.Settings
 import org.skytrack.net.Feedback
@@ -74,8 +75,16 @@ fun LogsScreen(
     onBack: () -> Unit
 ) {
     var summaries by remember { mutableStateOf<List<LogSummary>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
     var reload by remember { mutableStateOf(0) }
-    LaunchedEffect(reload) { summaries = files().mapNotNull { FlightLogReader.summarize(it) } }
+    LaunchedEffect(reload) {
+        loading = true
+        summaries = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            files().mapNotNull { FlightLogReader.summarize(it) }.sortedByDescending { it.startMs }
+        }
+        loading = false
+    }
+    val groups = remember(summaries) { summaries.groupBy { FlightLogReader.groupKey(it) } }
     val fmt = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.US) }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
@@ -83,7 +92,10 @@ fun LogsScreen(
             Text(stringResource(R.string.logs_title), style = MaterialTheme.typography.headlineSmall)
             TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
         }
-        if (summaries.isEmpty()) {
+        if (loading) {
+            androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 16.dp))
+            Text(stringResource(R.string.logs_loading), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+        } else if (summaries.isEmpty()) {
             Text(stringResource(R.string.logs_none), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 16.dp))
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
@@ -93,7 +105,7 @@ fun LogsScreen(
                         Text("${s.originIata ?: "?"} \u2192 ${s.destinationIata ?: "?"}  ${s.flightNumber ?: ""}",
                             style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                         Text(fmt.format(Instant.ofEpochMilli(s.startMs).atZone(ZoneId.systemDefault())) +
-                                "  \u00B7  " + Format.duration(s.durationS) +
+                                "  \u00B7  " + stringResource(R.string.logs_duration) + " " + Format.durationHms(s.durationS) +
                                 "  \u00B7  ${s.fixes} " + stringResource(R.string.logs_fixes) +
                                 (s.appVersion?.let { "  \u00B7  v$it" } ?: "") +
                                 (if (s.snapshot != null) "  \u00B7  " + stringResource(R.string.logs_has_map) else ""),
@@ -105,6 +117,16 @@ fun LogsScreen(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             OutlinedButton(onClick = { onReport(s.file) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_report)) }
                             OutlinedButton(onClick = { onDelete(s.file); s.snapshot?.delete(); reload++ }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_delete)) }
+                        }
+                        val group = groups[FlightLogReader.groupKey(s)] ?: emptyList()
+                        if (group.size > 1 && group.first() === s) {
+                            val scope = androidx.compose.runtime.rememberCoroutineScope()
+                            OutlinedButton(onClick = {
+                                scope.launch {
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { FlightLogReader.merge(group.map { it.file }) }
+                                    reload++
+                                }
+                            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.logs_merge, group.size)) }
                         }
                     }
                 }
@@ -126,7 +148,7 @@ fun ReplayOverlay(engine: ReplayEngine, onClose: () -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         Surface(
-            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 8.dp, end = 8.dp, bottom = 150.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)),
+            Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 64.dp, end = 64.dp, top = 96.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
         ) {
             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightLogger
-// Version 2.1
+// Version 2.2
 // Purpose : Write one CSV row per engine tick with the estimate AND the raw
 //           sensor inputs (GNSS, barometer, gyro), so real flights can be
 //           replayed offline to calibrate Parameters (taxi time, speed
@@ -43,9 +43,12 @@ class FlightLogger(private val context: Context) {
         try {
             dir.mkdirs()
             rotate()
-            val stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmm", Locale.US).format(Instant.now().atZone(ZoneOffset.UTC))
             val fn = flightNumber.ifBlank { "flight" }
-            val f = File(dir, "${stamp}_${originIata}_${destinationIata}_$fn.csv")
+            // Same flight restarted within REUSE_HOURS: continue the existing file instead of opening a new one.
+            val recent = allFiles().firstOrNull { it.name.endsWith("_${originIata}_${destinationIata}_$fn.csv") &&
+                    System.currentTimeMillis() - it.lastModified() < REUSE_HOURS * 3600_000L }
+            val stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmm", Locale.US).format(Instant.now().atZone(ZoneOffset.UTC))
+            val f = recent ?: File(dir, "${stamp}_${originIata}_${destinationIata}_$fn.csv")
             val fresh = !f.exists() || f.length() == 0L
             writer = BufferedWriter(FileWriter(f, true))
             if (!fresh) { currentFile = f; rows = 0; return }   // same file re-opened within the minute: no second header
@@ -130,6 +133,7 @@ class FlightLogger(private val context: Context) {
 
     companion object {
         private const val MAX_FILES = 20
+        private const val REUSE_HOURS = 6L
         private val ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
         const val HEADER = "time_utc,epoch_ms,tracking,mode,phase,est_lat,est_lon,along_m,total_flown_m,remaining_m," +
                 "sigma_s_m,speed_mps,track_deg,alt_m,ete_s,maneuvering,cabin_alt_m,sensor_level,reanchors,position_source," +
