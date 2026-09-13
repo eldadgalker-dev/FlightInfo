@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MainActivity
-// Version 4.8.1
+// Version 4.9
 // Purpose : Single-activity host. Simple state-based navigation between
 //           Setup / Map / Metrics / Settings, runtime permission requests,
 //           and foreground-service start/stop tied to the active flight.
@@ -41,7 +41,7 @@ import org.skytrack.scan.BoardingPass
 import org.skytrack.ui.FeedbackScreen
 import org.skytrack.ui.HelpScreen
 import org.skytrack.ui.LogsScreen
-import org.skytrack.ui.ReplayOverlay
+import org.skytrack.ui.ReplayPanel
 import kotlinx.coroutines.launch
 import org.skytrack.ui.MapScreen
 import org.skytrack.ui.ScanScreen
@@ -248,17 +248,15 @@ private fun Root(app: SkyTrackApp) {
                 Screen.REPLAY -> {
                     BackHandler { replay.stop(); screen = Screen.LOGS }
                     val rm by replay.metrics.collectAsStateWithLifecycle()
-                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-                        MapScreen(
-                            metrics = rm, settings = settings, night = night,
-                            onOpenMetrics = {}, onOpenSettings = {}, onOpenSetup = {}, onOpenHelp = {},
-                            visualFixCandidates = { emptyList() }, onVisualFix = { _, _, _ -> }, onConfirmGround = {},
-                            onSnapshot = {}, initialZoom = app.stores.loadLastZoom(), onZoomChanged = {},
-                            panelExpandedInitial = true, onPanelExpandedChanged = {},
-                            hebrew = app.hebrew, onToggleEstimateOnly = {}
-                        )
-                        ReplayOverlay(replay) { screen = Screen.LOGS }
-                    }
+                    MapScreen(
+                        metrics = rm, settings = settings, night = night,
+                        onOpenMetrics = {}, onOpenSettings = {}, onOpenSetup = {}, onOpenHelp = {},
+                        visualFixCandidates = { emptyList() }, onVisualFix = { _, _, _ -> }, onConfirmGround = {},
+                        onSnapshot = {}, initialZoom = app.stores.loadLastZoom(), onZoomChanged = {},
+                        panelExpandedInitial = true, onPanelExpandedChanged = {},
+                        hebrew = app.hebrew, onToggleEstimateOnly = {},
+                        replayPanel = { ReplayPanel(replay, settings) { screen = Screen.LOGS } }
+                    )
                 }
                 Screen.FEEDBACK -> {
                     BackHandler { screen = Screen.SETTINGS }

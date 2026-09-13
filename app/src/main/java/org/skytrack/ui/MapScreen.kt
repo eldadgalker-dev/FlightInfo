@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapScreen
-// Version 4.8
+// Version 4.9
 // Purpose : Full-screen MapLibre view hosted in Compose, with floating
 //           zoom / fit / recenter / orientation controls, a status strip
 //           (GNSS, mode, fix age) and a collapsible metrics panel.
@@ -96,7 +96,9 @@ fun MapScreen(
     onPanelExpandedChanged: (Boolean) -> Unit,
     hebrew: Boolean,
     recording: Boolean = false,
-    onToggleRecording: (() -> Unit)? = null
+    onToggleRecording: (() -> Unit)? = null,
+    /** Replay mode: this content replaces the bottom panel and the top status strip is hidden. */
+    replayPanel: (@Composable () -> Unit)? = null
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val context = LocalContext.current
@@ -140,13 +142,15 @@ fun MapScreen(
             }
         }
 
-        // -- Status strip --
-        StatusStrip(metrics, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 8.dp, start = 64.dp, end = 64.dp).fillMaxWidth())
+        if (replayPanel == null) {
+            // -- Status strip --
+            StatusStrip(metrics, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 8.dp, start = 64.dp, end = 64.dp).fillMaxWidth())
 
-        // -- GNSS warning / relief banner (live mode) --
-        metrics?.let { m ->
-            if (m.gnssWarnLevel > 0 || m.gnssRelief) {
-                GnssBanner(m, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 62.dp, start = 64.dp, end = 64.dp).fillMaxWidth())
+            // -- GNSS warning / relief banner (live mode) --
+            metrics?.let { m ->
+                if (m.gnssWarnLevel > 0 || m.gnssRelief) {
+                    GnssBanner(m, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 62.dp, start = 64.dp, end = 64.dp).fillMaxWidth())
+                }
             }
         }
 
@@ -205,9 +209,10 @@ fun MapScreen(
             )
         }
 
-        // -- Metrics panel --
+        // -- Bottom: metrics panel, or the replay panel in replay mode --
         Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(8.dp)) {
-            MetricsPanel(metrics, settings, panelExpanded, onConfirmGround, onOpenSetup) { panelExpanded = !panelExpanded; onPanelExpandedChanged(panelExpanded) }
+            if (replayPanel != null) replayPanel()
+            else MetricsPanel(metrics, settings, panelExpanded, onConfirmGround, onOpenSetup) { panelExpanded = !panelExpanded; onPanelExpandedChanged(panelExpanded) }
         }
     }
 }

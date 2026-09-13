@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 2.1
+// Version 3.0
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -159,44 +159,57 @@ fun LogsScreen(
 
 // ------------------------------------------------------------------ Replay
 
-/** Transport bar over the map: one row of labelled buttons plus a seek slider. */
+/**
+ * Replay panel: replaces the metrics panel at the bottom of the map while a log is replayed.
+ * Transport controls plus the key values of the replayed moment.
+ */
 @Composable
-fun ReplayOverlay(engine: ReplayEngine, onClose: () -> Unit) {
+fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
     val playing by engine.playing.collectAsStateWithLifecycle()
     val progress by engine.progress.collectAsStateWithLifecycle()
     val speed by engine.speed.collectAsStateWithLifecycle()
     val error by engine.error.collectAsStateWithLifecycle()
+    val m by engine.metrics.collectAsStateWithLifecycle()
     var seeking by remember { mutableStateOf<Float?>(null) }
 
-    Box(Modifier.fillMaxSize()) {
-        Surface(
-            Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 64.dp, end = 64.dp, top = 92.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
-        ) {
-            Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.replay_title, engine.summary?.let { "${it.originIata} \u2192 ${it.destinationIata}" } ?: "") +
-                        "  \u00B7  " + (if (playing) stringResource(R.string.replay_playing) else stringResource(R.string.replay_paused)) +
-                        "  \u00B7  ${speed}\u00D7",
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Button(onClick = { if (playing) engine.pause() else engine.play() }, modifier = Modifier.weight(1.3f),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
-                        Text(stringResource(if (playing) R.string.replay_pause else R.string.replay_play))
-                    }
-                    for (x in listOf(30, 120, 600)) {
-                        FilterChip(selected = speed == x, onClick = { engine.setSpeed(x) }, label = { Text("${x}\u00D7") }, modifier = Modifier.weight(1f))
-                    }
-                    OutlinedButton(onClick = { engine.stop(); onClose() }, modifier = Modifier.weight(1f),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.replay_close)) }
-                }
-                Slider(
-                    value = seeking ?: progress,
-                    onValueChange = { seeking = it },
-                    onValueChangeFinished = { seeking?.let { engine.seek(it) }; seeking = null },
-                    modifier = Modifier.fillMaxWidth().height(28.dp)
-                )
-                error?.let { Text(stringResource(R.string.replay_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
+    Surface(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.replay_title, engine.summary?.let { "${it.originIata} \u2192 ${it.destinationIata} ${it.flightNumber ?: ""}" } ?: ""),
+                    style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Text(if (playing) stringResource(R.string.replay_playing) else stringResource(R.string.replay_paused),
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            m?.let { fm ->
+                val e = fm.estimate
+                Row(Modifier.fillMaxWidth()) {
+                    LabeledValue(stringResource(R.string.utc_time), Format.time(fm.nowUtc.atZone(java.time.ZoneOffset.UTC), true), modifier = Modifier.weight(1f), accent = Accent.time)
+                    LabeledValue(stringResource(R.string.remaining), Format.distance(fm.remainingM, settings.distanceUnit), e.positionConfidence, modifier = Modifier.weight(1f), accent = Accent.distance)
+                    LabeledValue(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, settings.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(stringResource(R.string.altitude), Format.altitude(e.altM, settings.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                }
+                Text(listOfNotNull(phaseName(e.phase), fm.overflownCountry,
+                    if (e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING) stringResource(R.string.strip_gnss, e.satsUsed, e.sigmaAlongM.toInt()) else stringResource(R.string.gnss_none))
+                    .joinToString("  \u00B7  "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Slider(
+                value = seeking ?: progress,
+                onValueChange = { seeking = it },
+                onValueChangeFinished = { seeking?.let { engine.seek(it) }; seeking = null },
+                modifier = Modifier.fillMaxWidth().height(28.dp)
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = { if (playing) engine.pause() else engine.play() }, modifier = Modifier.weight(1.3f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
+                    Text(stringResource(if (playing) R.string.replay_pause else R.string.replay_play))
+                }
+                for (x in listOf(30, 120, 600)) {
+                    FilterChip(selected = speed == x, onClick = { engine.setSpeed(x) }, label = { Text("${x}\u00D7") }, modifier = Modifier.weight(1f))
+                }
+                OutlinedButton(onClick = { engine.stop(); onClose() }, modifier = Modifier.weight(1f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.replay_close)) }
+            }
+            error?.let { Text(stringResource(R.string.replay_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
         }
     }
 }
