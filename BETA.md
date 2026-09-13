@@ -1,4 +1,4 @@
-# FlightInfo 4.8-beta11 — Tester notes
+# FlightInfo 4.8-beta12 — Tester notes
 
 <div dir="rtl">
 
