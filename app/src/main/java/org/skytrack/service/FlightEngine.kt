@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 4.8
+// Version 4.9
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -338,6 +338,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         val relief = now < reliefUntilMs
         val fm = Metrics.compute(e, est.route, est.plannedRoute, est.actualTrack.toList(), p.estimateOnly && !externalFresh,
             o, dst, takeoffForMetrics, lastCountry, takeoffRef, source, cabinAlt, gr, warn, relief, noFixS)
+            .copy(estimatedTrack = est.estimatedSegments.map { it.toList() })
         phaseDetector.onRemaining(fm.remainingM, now)
         _metrics.value = fm
         // Logging window: stop LOG_AFTER_LANDING_MS after landing, or after LOG_MAX_GROUND_MS on the ground

@@ -1,8 +1,10 @@
 # FlightInfo
 
-> **Status: 4.9-beta14 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
+> **Status: 5.0-beta25 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
 
 **Docs:** [INSTALL](INSTALL.md) · [BETA testers](BETA.md) · [Help (all in-app help pages)](docs/HELP.md) · [How it works](docs/TECHNOLOGY.md) · [Development process & decisions](docs/DEVELOPMENT.md) · [Full development prompt](docs/PROMPT.md) · [Screenshots](docs/SCREENSHOTS.md) · [Tools & components, licences, risk](TOOLS.md) · [Installation page](https://eldadgalker-dev.github.io/FlightInfo/)
+
+**Desktop replay (any browser, no install):** [docs/replay/index.html](docs/replay/index.html) — open the file or https://eldadgalker-dev.github.io/FlightInfo/replay/ and drop a flight-log CSV. Same layout, colours and panel as the phone; plays the recorded flight at 30/120/600x.
 
 **Install (Android):** https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk — or scan the QR on the [installation page](https://eldadgalker-dev.github.io/FlightInfo/) ([INSTALL.md](INSTALL.md)).
 
@@ -29,7 +31,7 @@ Offline in-flight position tracker for Android. Shows your aircraft on a map usi
 
 ## How position is estimated
 
-**Measured first.** With a usable GPS fix (any accuracy up to 2 km) the aircraft is drawn where it was measured and the turquoise track records the real path at 0.5 km resolution, including manoeuvres around the airports. The governing route (blue dashed) is the great circle from the latest measured position to the destination and re-anchors as the aircraft moves; the remaining distance is measured along it, and the original plan stays as a faint dotted line.
+**Measured first.** With a usable GPS fix (any accuracy up to 2 km) the aircraft is drawn where it was measured and the turquoise track records the real path at 0.5 km resolution, including manoeuvres around the airports. While no fix is available the aircraft keeps moving along the governing route at the last known speed and the track continues as a dashed turquoise line, so there are never holes; replay fills recording gaps the same way, at the speed implied by the positions before and after the gap. The governing route (blue dashed) is the great circle from the latest measured position to the destination and re-anchors as the aircraft moves; the remaining distance is measured along it, and the original plan stays as a faint dotted line.
 
 | Mode | When | Behaviour |
 |------|------|-----------|
@@ -79,6 +81,10 @@ All builds are signed with the committed key `keystore/flightinfo.jks` (see `key
 ### Aerial imagery pack
 
 `.github/workflows/bluemarble.yml` (run manually from the Actions tab) builds `bluemarble_z0-6.mbtiles` and attaches it to the release `data-v1`. Default mode fetches ready-made Web Mercator tiles from NASA GIBS (`tools/build_bluemarble_gibs.py`, layer `BlueMarble_ShadedRelief_Bathymetry`); the alternative mode reprojects an equirectangular image with `tools/build_bluemarble.py`. NASA's `eoimages` image server refuses connections from GitHub-hosted runners, hence the GIBS default. The app downloads that file on demand from Settings (`Parameters.AERIAL_PACK_URL`) and reads it locally through MapLibre's `mbtiles://` scheme. The default source URL is on NASA's Visible Earth image server; if NASA moves it, pass another equirectangular Blue Marble URL as the workflow input.
+
+### Desktop replay app
+
+`desktop/src/` (index.html, app.js, style.css) is a phone-shaped single-page app that replays a FlightInfo CSV log on MapLibre GL JS: recorded aircraft position with the same sensor-level ring colours, GNSS track, planned route, the same bottom replay panel, units/theme/language settings. `tools/build_desktop.py <maplibre-dist-dir>` embeds MapLibre GL JS 4.7.1 (BSD-3), the Natural Earth layers, the airports table and the Noto glyphs into one 5.8 MB file, `docs/replay/index.html`, which works by double-click (file://) and on GitHub Pages. Only the optional NASA GIBS imagery needs a network. Nothing is recomputed: the desktop shows what the phone recorded.
 
 ### Keeping the documents in sync
 

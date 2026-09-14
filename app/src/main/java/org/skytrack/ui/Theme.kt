@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Theme
-// Version 3.0
+// Version 3.1
 // Purpose : Material 3 colour schemes (night default) and small shared
 //           composables: confidence marker, labelled value.
 // =============================================================
@@ -117,4 +117,11 @@ fun LabeledValue(label: String, value: String, confidence: Confidence? = null, b
             )
         }
     }
+}
+
+/** Resources resolved for English regardless of the app language (replay panel is always English). */
+fun englishContext(context: android.content.Context): android.content.Context {
+    val cfg = android.content.res.Configuration(context.resources.configuration)
+    cfg.setLocale(java.util.Locale.ENGLISH)
+    return context.createConfigurationContext(cfg)
 }

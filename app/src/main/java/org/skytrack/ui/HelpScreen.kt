@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - HelpScreen
-// Version 2.1
+// Version 2.2
 // Purpose : In-app manual. Shows the app version in the title and lets the
 //           reader switch the help language (English default, Hebrew)
 //           independently of the app language, by resolving the strings
@@ -13,6 +13,7 @@ package org.skytrack.ui
 
 import android.content.Context
 import android.content.res.Configuration
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -95,6 +96,11 @@ fun HelpScreen(onBack: () -> Unit) {
                 FilterChip(selected = lang == "en", onClick = { lang = "en" }, label = { Text("English") })
                 FilterChip(selected = lang == "he", onClick = { lang = "he" }, label = { Text("\u05E2\u05D1\u05E8\u05D9\u05EA") })
             }
+            Text(lc.getString(R.string.project_page) + "  " + org.skytrack.Parameters.PROJECT_PAGE_URL,
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth().clickable {
+                    try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(org.skytrack.Parameters.PROJECT_PAGE_URL))) } catch (e: Exception) { }
+                })
             for ((title, body) in sections) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {

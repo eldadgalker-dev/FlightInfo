@@ -1,6 +1,6 @@
 # FlightInfo — Tools and components in the package
 
-Status as of version 4.9-beta14 (11 Sep 2026). "Last update" is the version of the component used by this project; "Security" and "Risk" are the project author's assessment, not the vendor's.
+Status as of version 5.0-beta25 (11 Sep 2026). "Last update" is the version of the component used by this project; "Security" and "Risk" are the project author's assessment, not the vendor's.
 
 ## Scripts and workflows shipped in this repository
 
@@ -12,6 +12,8 @@ Status as of version 4.9-beta14 (11 Sep 2026). "Last update" is the version of t
 | `tools/build_bluemarble.py` | 1.0 | 2026-09-09 | BSD-3 | Alternative: reprojects an equirectangular image to MBTiles | Public data | Low |
 | `.github/workflows/build.yml` | 2.1 | 2026-09-09 | BSD-3 | Tests, builds and publishes the APK to GitHub Releases on every push | Signs with the committed key unless secrets are present | Medium: committed signing key (see `keystore/README.md`) |
 | `.github/workflows/bluemarble.yml` | 2.0 | 2026-09-09 | BSD-3 | Manual: builds and publishes the aerial imagery pack | Public data | Low |
+| `tools/build_desktop.py` + `desktop/src/*` | 1.1 | 2026-09-14 | BSD-3 | Builds the single-file desktop replay app (`docs/replay/index.html`) | No network at build; app itself online only for optional imagery | Low |
+| MapLibre GL JS (embedded in the desktop app) | 4.7.1 | 2026-09-14 | BSD-3 | Browser map rendering | Mainstream | Low |
 | `keystore/flightinfo.jks` | — | 2026-09-09 | — | Stable APK signing key so updates install in place | **Public** private key | Medium: anyone can sign an APK Android accepts as an update; it still needs the user to install it |
 
 ## Third-party libraries compiled into the APK

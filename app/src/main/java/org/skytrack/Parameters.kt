@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 4.6
+// Version 5.0
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -42,8 +42,9 @@ object Parameters {
     const val REANCHOR_CROSS_M          = 1_000.0   // m, lateral offset from the governing route that re-anchors it
     const val REANCHOR_MIN_INTERVAL_S   = 20.0      // s, do not rebuild the route more often than this
     const val WEAK_FIX_MAX_HACC_M       = 2_000.0   // m, fixes worse than this are ignored entirely
-    const val TRACK_DECIMATION_M        = 500.0     // m, spacing of stored actual-track points
-    const val TRACK_MAX_POINTS          = 20_000    // memory bound (~10,000 km at 500 m)
+    const val TRACK_DECIMATION_M        = 100.0     // m, spacing of stored actual-track points (turns always add a point)
+    const val TRACK_TURN_DEG            = 12.0      // deg, heading change that forces a track point regardless of spacing
+    const val TRACK_MAX_POINTS          = 60_000    // memory bound (~6,000 km at 100 m)
     const val ORIGIN_MISMATCH_M         = 50_000.0  // m, ground fix farther than this from origin => warning
     const val TERMINAL_AREA_M           = 60_000.0  // m, within this of destination and descending => DESCENT phase
     const val DESCENT_NEAR_DEST_M       = 150_000.0 // m, remaining distance below which a descent is expected
@@ -80,6 +81,7 @@ object Parameters {
     const val UPDATE_REPO_NAME  = "FlightInfo"
     const val UPDATE_ASSET_NAME = "FlightInfo.apk"   // fixed-name asset published by the build workflow
     const val FEEDBACK_EMAIL    = "eldad@galker.com"  // in-app feedback (bug / improvement / flight log)
+    const val PROJECT_PAGE_URL  = "https://eldadgalker-dev.github.io/FlightInfo/"   // explanations, downloads, documents
 
     // -- Estimate-only mode --
     const val TAXI_ALLOWANCE_S          = 900.0     // s, scheduled departure -> assumed takeoff

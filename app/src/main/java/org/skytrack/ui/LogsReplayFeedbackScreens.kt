@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 3.0
+// Version 3.2
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -171,26 +171,34 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
     val error by engine.error.collectAsStateWithLifecycle()
     val m by engine.metrics.collectAsStateWithLifecycle()
     var seeking by remember { mutableStateOf<Float?>(null) }
+    // Always English, LTR, fixed columns: unambiguous and steady at 600x.
+    val en = remember { englishContext(LocalContext.current) }
 
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
     Surface(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.replay_title, engine.summary?.let { "${it.originIata} \u2192 ${it.destinationIata} ${it.flightNumber ?: ""}" } ?: ""),
+                Text(en.getString(R.string.replay_title, engine.summary?.let { "${it.originIata} \u2192 ${it.destinationIata} ${it.flightNumber ?: ""}" } ?: ""),
                     style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                Text(if (playing) stringResource(R.string.replay_playing) else stringResource(R.string.replay_paused),
+                Text(if (playing) en.getString(R.string.replay_playing) else en.getString(R.string.replay_paused),
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             m?.let { fm ->
                 val e = fm.estimate
                 Row(Modifier.fillMaxWidth()) {
-                    LabeledValue(stringResource(R.string.utc_time), Format.time(fm.nowUtc.atZone(java.time.ZoneOffset.UTC), true), modifier = Modifier.weight(1f), accent = Accent.time)
-                    LabeledValue(stringResource(R.string.remaining), Format.distance(fm.remainingM, settings.distanceUnit), e.positionConfidence, modifier = Modifier.weight(1f), accent = Accent.distance)
-                    LabeledValue(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, settings.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
-                    LabeledValue(stringResource(R.string.altitude), Format.altitude(e.altM, settings.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(en.getString(R.string.utc_time), Format.time(fm.nowUtc.atZone(java.time.ZoneOffset.UTC), true), modifier = Modifier.weight(1f), accent = Accent.time)
+                    LabeledValue(en.getString(R.string.remaining), Format.distance(fm.remainingM, settings.distanceUnit), e.positionConfidence, modifier = Modifier.weight(1f), accent = Accent.distance)
+                    LabeledValue(en.getString(R.string.ground_speed), Format.speed(e.groundSpeedMps, settings.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(en.getString(R.string.altitude), Format.altitude(e.altM, settings.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
                 }
-                Text(listOfNotNull(phaseName(e.phase), fm.overflownCountry,
-                    if (e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING) stringResource(R.string.strip_gnss, e.satsUsed, e.sigmaAlongM.toInt()) else stringResource(R.string.gnss_none))
-                    .joinToString("  \u00B7  "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Labelled, two lines: phase / country / GPS, then elapsed log time.
+                val gps = if (e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING) en.getString(R.string.gps_short, e.satsUsed, e.sigmaAlongM.toInt()) else en.getString(R.string.gnss_none)
+                Text("${en.getString(R.string.phase)}: ${en.getString(when (e.phase) { org.skytrack.sensors.FlightPhase.GROUND -> R.string.phase_ground; org.skytrack.sensors.FlightPhase.TAKEOFF -> R.string.phase_takeoff; org.skytrack.sensors.FlightPhase.CLIMB -> R.string.phase_climb; org.skytrack.sensors.FlightPhase.CRUISE -> R.string.phase_cruise; org.skytrack.sensors.FlightPhase.DESCENT -> R.string.phase_descent; org.skytrack.sensors.FlightPhase.LANDED -> R.string.phase_landed })}" + (fm.overflownCountry?.let { "  \u00B7  $it" } ?: "") + "  \u00B7  GPS: $gps",
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                engine.summary?.let { sum ->
+                    Text("${en.getString(R.string.log_time)}: ${Format.durationHms((fm.nowUtc.toEpochMilli() - sum.startMs) / 1000)} ${en.getString(R.string.of)} ${Format.durationHms(sum.durationS)}",
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             Slider(
                 value = seeking ?: progress,
@@ -201,16 +209,17 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Button(onClick = { if (playing) engine.pause() else engine.play() }, modifier = Modifier.weight(1.3f),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
-                    Text(stringResource(if (playing) R.string.replay_pause else R.string.replay_play))
+                    Text(en.getString(if (playing) R.string.replay_pause else R.string.replay_play))
                 }
                 for (x in listOf(30, 120, 600)) {
                     FilterChip(selected = speed == x, onClick = { engine.setSpeed(x) }, label = { Text("${x}\u00D7") }, modifier = Modifier.weight(1f))
                 }
                 OutlinedButton(onClick = { engine.stop(); onClose() }, modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.replay_close)) }
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) { Text(en.getString(R.string.replay_close)) }
             }
-            error?.let { Text(stringResource(R.string.replay_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
+            error?.let { Text(en.getString(R.string.replay_error, it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
         }
+    }
     }
 }
 

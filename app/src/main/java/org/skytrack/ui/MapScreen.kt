@@ -10,6 +10,7 @@
 // =============================================================
 package org.skytrack.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -104,6 +106,7 @@ fun MapScreen(
     val context = LocalContext.current
     val aerial = remember { AerialPack(context) }
     var showVisualFix by remember { mutableStateOf(false) }
+    var metersPerPx by remember { mutableStateOf(0.0) }
     var snapshotTaken by rememberSaveable { mutableStateOf(false) }
     var controller by remember { mutableStateOf<MapController?>(null) }
     var trackUp by rememberSaveable { mutableStateOf(settings.trackUp) }
@@ -116,7 +119,7 @@ fun MapScreen(
             update = { mv ->
                 if (controller == null) {
                     mv.getMapAsync { map ->
-                        val c = MapController(mv.context, map, initialZoom, onZoomChanged)
+                        val c = MapController(mv.context, map, initialZoom, onZoomChanged) { mpp -> metersPerPx = mpp }
                         c.followEnabled = settings.autoFollow
                         c.trackUp = trackUp
                         c.setRotateGestures(settings.rotateGestures)
@@ -209,6 +212,9 @@ fun MapScreen(
             )
         }
 
+        // -- Scale bar: above the panel, start side --
+        if (metersPerPx > 0) ScaleBar(metersPerPx, settings.distanceUnit, Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 12.dp, bottom = 236.dp))
+
         // -- Bottom: metrics panel, or the replay panel in replay mode --
         Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(8.dp)) {
             if (replayPanel != null) replayPanel()
@@ -236,7 +242,7 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
                 else -> stringResource(R.string.gnss_none)
             }
             val level = e.sensorLevel
-            val color = when (level) { 3 -> androidx.compose.ui.graphics.Color(0xFF4CC96A); 2 -> androidx.compose.ui.graphics.Color(0xFFE0B400); 1 -> androidx.compose.ui.graphics.Color(0xFF78AAEB); else -> androidx.compose.ui.graphics.Color(0xFF2E5AA8) }
+            val color = when (level) { 3 -> androidx.compose.ui.graphics.Color(0xFF2E7D32); 2 -> androidx.compose.ui.graphics.Color(0xFFF57C00); else -> androidx.compose.ui.graphics.Color(0xFFC62828) }
             StripText("\u25CF  $line1", color)
             // Line 2: how the position is computed
             val line2 = when {
@@ -426,12 +432,37 @@ private fun VisualFixDialog(
 private fun GnssBanner(m: FlightMetrics, modifier: Modifier) {
     val (color, text) = when {
         m.gnssRelief -> androidx.compose.ui.graphics.Color(0xFF2E7D32) to stringResource(R.string.gnss_relief)
-        m.gnssWarnLevel >= 3 -> androidx.compose.ui.graphics.Color(0xFF1E4F9C) to stringResource(R.string.gnss_warn3, Format.duration(m.gnssNoFixS))
-        m.gnssWarnLevel == 2 -> androidx.compose.ui.graphics.Color(0xFF2F6FB0) to stringResource(R.string.gnss_warn2, Format.duration(m.gnssNoFixS))
-        else -> androidx.compose.ui.graphics.Color(0xFF5A8FD0) to stringResource(R.string.gnss_warn1)
+        m.gnssWarnLevel >= 3 -> androidx.compose.ui.graphics.Color(0xFFC62828) to stringResource(R.string.gnss_warn3, Format.duration(m.gnssNoFixS))
+        m.gnssWarnLevel == 2 -> androidx.compose.ui.graphics.Color(0xFFEF6C00) to stringResource(R.string.gnss_warn2, Format.duration(m.gnssNoFixS))
+        else -> androidx.compose.ui.graphics.Color(0xFFF9A825) to stringResource(R.string.gnss_warn1)
     }
     Surface(modifier = modifier.clip(RoundedCornerShape(10.dp)), color = color) {
         Text(text, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), color = androidx.compose.ui.graphics.Color.White,
             style = MaterialTheme.typography.labelLarge, maxLines = 2)
+    }
+}
+
+/**
+ * Scale bar in the selected distance unit: picks a "nice" length (1, 2, 5 x 10^n) that fits
+ * within ~120 dp and draws a bar of the matching pixel width with a white halo.
+ */
+@Composable
+private fun ScaleBar(metersPerPx: Double, unit: org.skytrack.data.DistanceUnit, modifier: Modifier) {
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val unitM = when (unit) { org.skytrack.data.DistanceUnit.NM -> 1852.0; org.skytrack.data.DistanceUnit.MI -> 1609.344; else -> 1000.0 }
+    val label = when (unit) { org.skytrack.data.DistanceUnit.NM -> "nm"; org.skytrack.data.DistanceUnit.MI -> "mi"; else -> "km" }
+    val maxPx = 120.0 * density
+    val maxUnits = maxPx * metersPerPx / unitM
+    // nice number <= maxUnits
+    val pow = Math.pow(10.0, Math.floor(Math.log10(maxUnits.coerceAtLeast(1e-6))))
+    val nice = listOf(5.0, 2.0, 1.0).map { it * pow }.firstOrNull { it <= maxUnits } ?: pow
+    val widthDp = (nice * unitM / metersPerPx / density).toFloat()
+    val text = if (nice >= 1) "${nice.toInt()} $label" else "${(nice * 1000).toInt()} " + (if (unit == org.skytrack.data.DistanceUnit.KM) "m" else label)
+    Column(modifier, horizontalAlignment = Alignment.Start) {
+        Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp))
+        Box(Modifier.width(widthDp.dp).height(6.dp).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)).padding(1.dp)) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.onSurface))
+        }
     }
 }

@@ -4,7 +4,7 @@
 # See the LICENSE.txt file in the project root for full license information.
 # =============================================================
 # FlightInfo - build_docs.py
-# Version 1.0
+# Version 1.1
 # Purpose : Keep the companion documents in sync with the product:
 #           - regenerate docs/HELP.md from the Hebrew help strings
 #           - stamp the current versionName into README, BETA.md, TOOLS.md,
@@ -91,8 +91,25 @@ def stamp_versions(ver):
     return changed
 
 
+def stamp_page(ver):
+    """docs/index.html: current version and date in the 'version-line' paragraph."""
+    p = os.path.join(ROOT, "docs", "index.html")
+    if not os.path.isfile(p):
+        return False
+    s = open(p, encoding="utf-8").read()
+    import datetime
+    today = datetime.date.today().isoformat()
+    new = re.sub(r'(<p class="sub" id="version-line">)(.*?)(</p>)',
+                 lambda m: m.group(1) + m.group(2).split("<b>")[0] + "<b>" + ver + "</b> \u00b7 " + m.group(2).split("\u00b7")[-1].split(" ")[1] + " " + today + m.group(3)
+                 if "<b>" in m.group(2) else m.group(0), s, flags=re.S)
+    if new != s:
+        open(p, "w", encoding="utf-8").write(new); return True
+    return False
+
+
 def main():
     ver = version()
+    stamp_page(ver)
     a = build_help(ver)
     b = stamp_versions(ver)
     print(f"version {ver}: HELP.md {'updated' if a else 'unchanged'}, version stamps {'updated' if b else 'unchanged'}")

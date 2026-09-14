@@ -336,11 +336,16 @@ class CoreTests {
         val p = r.pointAt(100_000.0)
         est.onGnss(GnssSample(1000, p.lat, p.lon, 0.0, false, 0.0, false, 0.0, false, 5_000.0, 0.0, 3, 5, GnssQuality.DEGRADED), FlightPhase.CRUISE)
         assertTrue(est.actualTrack.isEmpty())                              // hAcc 5 km: ignored
-        for (i in 0 until 10) {                                            // 10 fixes 100 m apart -> ~2 track points
+        for (i in 0 until 10) {                                            // 10 fixes 100 m apart on a straight line -> one point per 100 m
             val q = r.pointAt(100_000.0 + i * 100.0)
             est.onGnss(GnssSample(2000L + i * 1000, q.lat, q.lon, 0.0, false, 100.0, true, 0.0, false, 20.0, 0.0, 9, 12, GnssQuality.GOOD), FlightPhase.CRUISE)
         }
-        assertTrue("track points=${est.actualTrack.size}", est.actualTrack.size <= 3)
+        assertTrue("track points=${est.actualTrack.size}", est.actualTrack.size in 5..11)   // ~one vertex per 100-200 m
+        // Same distance with 40 m steps and no turn: decimated to the 100 m spacing.
+        val est2 = Estimator(r)
+        for (i in 0 until 25) { val q = r.pointAt(100_000.0 + i * 40.0)
+            est2.onGnss(GnssSample(2000L + i * 1000, q.lat, q.lon, 0.0, false, 40.0, true, 0.0, false, 20.0, 0.0, 9, 12, GnssQuality.GOOD), FlightPhase.CRUISE) }
+        assertTrue("decimated=${est2.actualTrack.size}", est2.actualTrack.size <= 12)
     }
 
     @Test

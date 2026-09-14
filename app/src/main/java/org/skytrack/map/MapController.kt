@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 4.6
+// Version 5.0
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -36,7 +36,8 @@ import java.util.concurrent.Executors
 import kotlin.math.max
 
 class MapController(private val context: Context, private val map: MapLibreMap,
-                    initialZoom: Double? = null, private val onZoomChanged: (Double) -> Unit = {}) {
+                    initialZoom: Double? = null, private val onZoomChanged: (Double) -> Unit = {},
+                    private val onScaleChanged: (Double) -> Unit = {}) {      // metres per screen pixel at the map centre
 
     private var style: Style? = null
     private var palette: Palette = MapStyle.NIGHT
@@ -75,7 +76,13 @@ class MapController(private val context: Context, private val map: MapLibreMap,
                 lastGestureMs = System.currentTimeMillis()
             }
         }
-        map.addOnCameraIdleListener { onZoomChanged(map.cameraPosition.zoom) }
+        map.addOnCameraIdleListener { onZoomChanged(map.cameraPosition.zoom); reportScale() }
+        map.addOnCameraMoveListener { reportScale() }
+    }
+
+    private fun reportScale() {
+        val lat = map.cameraPosition.target?.latitude ?: 0.0
+        onScaleChanged(map.projection.getMetersPerPixelAtLatitude(lat))
     }
 
     fun setRotateGestures(enabled: Boolean) { map.uiSettings.isRotateGesturesEnabled = enabled }
@@ -121,9 +128,11 @@ class MapController(private val context: Context, private val map: MapLibreMap,
             )))
         }
         src(st, MapStyle.SRC_ROUTE_FLOWN)?.setGeoJson(lineFeature(route.polylineUpTo(m.estimate.alongTrackM)))
-        // Measured track: always drawn when there are at least two fixes.
+        // Measured track (solid) and estimated continuation (dashed).
         src(st, MapStyle.SRC_TRACK_ACTUAL)?.setGeoJson(
             if (m.actualTrack.size >= 2) FeatureCollection.fromFeature(lineFeature(m.actualTrack)) else emptyCollection())
+        src(st, MapStyle.SRC_TRACK_EST)?.setGeoJson(FeatureCollection.fromFeatures(
+            m.estimatedTrack.filter { it.size >= 2 }.map { lineFeature(it) }))
         src(st, MapStyle.SRC_UNCERTAINTY)?.setGeoJson(uncertaintyFeature(m, route))
 
         val e = m.estimate

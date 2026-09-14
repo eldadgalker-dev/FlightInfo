@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapStyle
-// Version 4.8
+// Version 5.0
 // Purpose : Offline map style. The style JSON holds only the background
 //           and the bundled glyph endpoint; all sources and layers are
 //           added programmatically from the bundled Natural Earth GeoJSON
@@ -87,13 +87,14 @@ object MapStyle {
     const val SRC_ROUTE_PLANNED = "route-planned"
     const val SRC_ROUTE_FLOWN = "route-flown"
     const val SRC_TRACK_ACTUAL = "track-actual"
+    const val SRC_TRACK_EST = "track-estimated"
     const val SRC_UNCERTAINTY = "uncertainty"
     const val SRC_AIRPORTS = "airports"
     const val SRC_AIRCRAFT = "aircraft"
     /** Aircraft icon ids by sensor level 0..3: red (time only), orange (inertial), yellow (weak fix), green (good fix). */
     val IMG_AIRCRAFT_LEVEL = arrayOf("aircraft-0", "aircraft-1", "aircraft-2", "aircraft-3")
-    // Level colours: time only = deep blue, inertial = light blue, weak fix = yellow, good fix = green (no red hues).
-    val AIRCRAFT_LEVEL_COLORS = intArrayOf(Color.rgb(46, 90, 168), Color.rgb(120, 170, 235), Color.rgb(255, 214, 0), Color.rgb(76, 201, 106))
+    // Level colours follow GPS quality: red (time only / estimated), orange (weak fix), green (good fix).
+    val AIRCRAFT_LEVEL_COLORS = intArrayOf(Color.rgb(198, 40, 40), Color.rgb(229, 57, 53), Color.rgb(245, 124, 0), Color.rgb(46, 125, 50))
 
     fun styleJson(p: Palette): String = """
         {"version":8,"name":"skytrack",
@@ -160,6 +161,7 @@ object MapStyle {
         style.addSource(GeoJsonSource(SRC_ROUTE_PLANNED))
         style.addSource(GeoJsonSource(SRC_ROUTE_FLOWN))
         style.addSource(GeoJsonSource(SRC_TRACK_ACTUAL))
+        style.addSource(GeoJsonSource(SRC_TRACK_EST))
         style.addSource(GeoJsonSource(SRC_AIRPORTS))
         style.addSource(GeoJsonSource(SRC_AIRCRAFT))
 
@@ -179,7 +181,11 @@ object MapStyle {
         style.addLayer(LineLayer("route-flown", SRC_ROUTE_FLOWN).withProperties(
             PropertyFactory.lineColor(p.routeFlown), PropertyFactory.lineWidth(3.5f)))
         style.addLayer(LineLayer("track-actual", SRC_TRACK_ACTUAL).withProperties(
-            PropertyFactory.lineColor(p.trackActual), PropertyFactory.lineWidth(2f)))
+            PropertyFactory.lineColor(p.trackActual), PropertyFactory.lineWidth(2.5f)))
+        // Estimated continuation of the track (no fix): same colour, dashed.
+        style.addLayer(LineLayer("track-estimated", SRC_TRACK_EST).withProperties(
+            PropertyFactory.lineColor(p.trackActual), PropertyFactory.lineWidth(2.5f),
+            PropertyFactory.lineDasharray(arrayOf(1.2f, 1.2f)), PropertyFactory.lineOpacity(0.9f)))
 
         // Country names at Natural Earth's curated label points. Density grows with zoom via
         // separate layers per zoom band (filters must not contain zoom expressions).

@@ -69,7 +69,7 @@
     <string name="fix_age_label">Last fix</string>
     <string name="uncertainty_along">Along-track uncertainty</string>
     <string name="position">Position</string>
-    <string name="legend">Aircraft ring: green = good GPS, yellow = weak GPS / network, orange = inertial only, red = time only.\n\u25CF  measured now\n\u25D0  fused\n\u25CB  predicted\n\u25CC  stale\n\nAltitude comes from GPS only; the barometer reads cabin pressure and is used solely to detect climb and descent.</string>
+    <string name="legend">Aircraft ring: green = good GPS, orange = weak GPS / network, red = estimated (no GPS).\n\u25CF  measured now\n\u25D0  fused\n\u25CB  predicted\n\u25CC  stale\n\nAltitude comes from GPS only; the barometer reads cabin pressure and is used solely to detect climb and descent.</string>
 
     <!-- Settings -->
     <string name="distance_unit">Distance</string>
@@ -132,11 +132,11 @@
     <string name="help_aerial_title">Aerial imagery</string>
     <string name="help_aerial_body">In Settings you can download once (on Wi-Fi, about 60\u201380 MB) the NASA Blue Marble satellite mosaic (public domain) and show it under the lines and labels. Resolution is about 1 km per pixel, matching what is visible from cruise altitude: mountains, coasts, deserts, lakes. This is the only download the app ever makes; in flight everything is local.</string>
     <string name="help_lines_title">Lines on the map</string>
-    <string name="help_lines_body">Blue dashed line: remaining planned route.\nOrange solid line: the part already flown.\nFaint dotted line: the original plan, shown only after a re-plan.\nTurquoise line: the measured track, shown only after a proven deviation.\nShaded band: along-route uncertainty of the position.</string>
+    <string name="help_lines_body">Blue dashed line: remaining planned route.\nOrange solid line: the part already flown.\nFaint dotted line: the original plan, shown only after a re-plan.\nTurquoise line: the measured track (solid); dashed turquoise: the estimated continuation while no fix was available, so the track has no holes and the aircraft keeps moving.\nShaded band: along-route uncertainty of the position.</string>
     <string name="help_modes_title">Tracking modes</string>
     <string name="help_modes_body">Tracking: a GPS fix arrived within the last 10 seconds. Route estimate: GPS lost; the aircraft moves along the route at the last known speed, blending toward a typical cruise speed, and the uncertainty band grows about 3 % of the distance per second without a fix. Predicted only: no fix ever received; position follows a standard climb / cruise / descent profile from the takeoff time. Estimate only: you switched sensors off deliberately.</string>
     <string name="help_confidence_title">Confidence markers</string>
-    <string name="help_confidence_body">Aircraft ring colour = how much the position rests on:\ngreen  good GPS fix now\nyellow  weak GPS fix or network (ADS-B) fix\norange  no fix, inertial sensors and route only\nred  time-based estimate only\nSilhouette: solid when the position is measured, hollow when propagated.\n\nValue markers:\n\u25CF  measured now\n\u25D0  fused: measured recently and propagated\n\u25CB  predicted from route and time\n\u25CC  stale: last measurement is old</string>
+    <string name="help_confidence_body">Aircraft ring colour = how much the position rests on:\ngreen  good GPS fix now\norange  weak GPS fix or network (ADS-B) fix\nred  no fix: estimated (inertial sensors and route) or time only\nSilhouette: solid when the position is measured, hollow when propagated.\n\nValue markers:\n\u25CF  measured now\n\u25D0  fused: measured recently and propagated\n\u25CB  predicted from route and time\n\u25CC  stale: last measurement is old</string>
     <string name="help_deviation_title">Where the aircraft is drawn</string>
     <string name="help_deviation_body">With a GPS fix, even a weak one, the aircraft is drawn where it was measured and the turquoise line records the real track at 0.5 km resolution, including turns around the airports.\nThe governing route (blue dashed) is always the direct line from the latest measured position to the destination; it re-anchors as you move, so the aircraft sits on it and the remaining distance is measured along it. The original plan stays as a faint dotted line.\nWithout a fix the aircraft moves along the governing route from the last measured position: speed from the last fix blending toward a typical cruise speed, heading from the gyroscope for 90 s, and progress scaled by the gyroscope-measured deviation for 5 minutes (a holding circle nets zero).\nWithout any fix at all: time-based profile along the plan.</string>
     <string name="help_estimate_title">Estimate-only mode</string>
@@ -290,6 +290,10 @@
     <string name="logs_merge_selected">Merge %1$d</string>
     <string name="replay_playing">playing</string>
     <string name="replay_paused">paused</string>
+    <string name="gps_short">%1$d satellites \u00B1%2$d m</string>
+    <string name="log_time">Log time</string>
+    <string name="of">of</string>
+    <string name="project_page">Explanations, downloads and documents:</string>
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MetricsAndSettingsScreens
-// Version 4.4
+// Version 5.0
 // Purpose : Full-page metrics view (Origin / Now / Destination columns)
 //           and the settings page (units, clock, theme, follow, gestures).
 // =============================================================
@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
@@ -259,6 +260,12 @@ private fun AboutBlock() {
         Text(stringResource(R.string.about_copyright), style = small.copy(textDirection = TextDirection.Ltr),
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
         Text(stringResource(R.string.about_beta), style = small, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        Text(stringResource(R.string.project_page) + "  " + org.skytrack.Parameters.PROJECT_PAGE_URL,
+            style = small.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline), color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth().clickable {
+                try { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(org.skytrack.Parameters.PROJECT_PAGE_URL))) } catch (e: Exception) { }
+            })
         for (id in listOf(R.string.about_license, R.string.about_map, R.string.about_airports, R.string.about_fonts, R.string.about_offline)) {
             Text(stringResource(id), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())

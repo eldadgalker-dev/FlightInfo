@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Estimator
-// Version 4.2
+// Version 5.0
 // Purpose : Measured-first position estimator.
 //
 //           With a usable fix (any accuracy up to WEAK_FIX_MAX_HACC_M) the
@@ -76,6 +76,14 @@ class Estimator(val plannedRoute: Route) {
 
     /** Measured positions, decimated, oldest first. */
     val actualTrack: MutableList<GeoPoint> = ArrayList()
+
+    /**
+     * Estimated (propagated) positions while no fix was available, as segments, each
+     * starting at the last measured point and ending at the re-acquisition fix, so the
+     * drawn track has no holes: solid where measured, dashed where estimated.
+     */
+    val estimatedSegments: MutableList<MutableList<GeoPoint>> = ArrayList()
+    private var openSegment: MutableList<GeoPoint>? = null
 
     var replanCount = 0
         private set
@@ -207,10 +215,16 @@ class Estimator(val plannedRoute: Route) {
             val step = Geodesy.distance(prev, p)
             if (step < 50_000.0) flownMeasured += step        // ignore impossible jumps
         }
-        if (actualTrack.isEmpty() || Geodesy.distance(actualTrack.last(), p) >= Parameters.TRACK_DECIMATION_M) {
+        // Track vertices: every TRACK_DECIMATION_M, and at every heading change so the line follows the real path.
+        val n = actualTrack.size
+        val far = n == 0 || Geodesy.distance(actualTrack[n - 1], p) >= Parameters.TRACK_DECIMATION_M
+        val turned = n >= 2 && Geodesy.distance(actualTrack[n - 1], p) > 25.0 &&
+                abs(Geodesy.bearingDiff(Geodesy.bearing(actualTrack[n - 2], actualTrack[n - 1]), Geodesy.bearing(actualTrack[n - 1], p))) > Parameters.TRACK_TURN_DEG
+        if (far || turned) {
             actualTrack.add(p)
             if (actualTrack.size > Parameters.TRACK_MAX_POINTS) actualTrack.removeAt(0)
         }
+        openSegment?.let { seg -> seg.add(p); if (seg.size >= 2) estimatedSegments.add(seg); openSegment = null }
         flownSinceFix = 0.0
 
         // Governing route: anchor at the measured position when we left the current one.
@@ -318,6 +332,9 @@ class Estimator(val plannedRoute: Route) {
                 s = (s + step).coerceIn(0.0, route.lengthM)
                 flownSinceFix += abs(step)
                 pos = route.pointAt(s)
+                // Continue the drawn track through the gap (dashed): from the last measured point onwards.
+                val seg = openSegment ?: ArrayList<GeoPoint>().also { o -> lastFixPos?.let { o.add(it) }; openSegment = o }
+                if (seg.isEmpty() || Geodesy.distance(seg.last(), pos) >= Parameters.TRACK_DECIMATION_M) seg.add(pos)
                 sigmaS += Parameters.ALONG_TRACK_DRIFT_RATE * vEff * dt * (if (maneuvering) Parameters.MANEUVER_SIGMA_FACTOR else 1.0)
                 psi = if (ageS < Parameters.GYRO_TRUST_WINDOW_S && gyroFresh) Geodesy.wrapBearing(psi + gyroDeltaDeg) else route.bearingAt(s)
                 gyroDeltaDeg = 0.0
