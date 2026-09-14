@@ -1,47 +1,44 @@
-# FlightInfo — הטכנולוגיה: איך זה עובד ולמה
+# FlightInfo — The technology: how it works and why
 
-<div dir="rtl">
+**English** · [עברית](TECHNOLOGY.he.md)
 
-## הבעיה
-נוסע במטוס נוסעים רוצה לדעת איפה הוא. אין לו רשת, המסך במושב (אם יש) לא תמיד מציג מפה, וטלפון רגיל מקבל GPS רק ליד חלון ורק חלק מהזמן. הפתרונות הקיימים דורשים אינטרנט (Flightradar24) או מפות שמורות מראש עם חשבון ושרתים.
+## The problem
+A passenger wants to know where the aircraft is. There is no network, the seat screen (if any) does not always show a map, and a phone gets GPS only near a window and only part of the time. Existing solutions need internet (Flightradar24) or pre-downloaded maps with an account and servers.
 
-## העיקרון: מדידה כשיש, מסלול כשאין
-1. **כשיש תיקון GPS** (גם חלש — עד 2 ק"מ דיוק): המטוס מצויר במיקום הנמדד, והמסלול האמיתי נרשם ומצויר (קו טורקיז).
-2. **המסלול הקובע** הוא הקו הישר (מעגל גדול) מהמיקום הנמדד האחרון ליעד. הוא מתעגן מחדש עם כל תנועה, כך ש"מרחק נותר" נמדד לאורכו. התוכנית המקורית נשארת דהויה לייחוס.
-3. **כשה־GPS נעלם**: המטוס מתקדם על המסלול הקובע מהנקודה האחרונה, במהירות האחרונה שנמדדה (מתמזגת למהירות שיוט טיפוסית), בכיוון מהג׳ירוסקופ ל־90 שניות, ובהתקדמות מוקטנת לפי סטיית הכיוון שהג׳ירו מודד (הקפת המתנה = אפס התקדמות). אי־הודאות גדלה בכ־6% מהמרחק ומוצגת כפס.
-4. **כשלא היה GPS מעולם** (מושב אמצע): מיקום לפי זמן מההמראה ופרופיל טיסה סטנדרטי — ואזהרה מתגברת שמבקשת להצמיד לחלון.
+## The principle: measurement when available, route when not
+1. **With a GPS fix** (even a weak one, up to 2 km accuracy) the aircraft is drawn where it was measured and the real track is recorded and drawn (turquoise line).
+2. **The governing route** is the direct line (great circle) from the last measured position to the destination. It re-anchors as the aircraft moves, so "distance remaining" is measured along it. The original plan stays faint for reference.
+3. **When GPS disappears** the aircraft continues along the governing route from the last point at the last measured speed (blending toward a typical cruise speed), with heading from the gyroscope for 90 s and progress scaled by the heading deviation the gyroscope measures (a holding circle = zero progress). Uncertainty grows about 6 % of the distance and is drawn as a band. The track continues dashed; when GPS returns, the estimated stretch becomes the direct line between the two fixes — the past is known, only the future is estimated.
+4. **Never any GPS** (middle seat): position from time since takeoff and a standard profile, with an escalating warning asking to hold the phone to the window.
 
-## מה כל חיישן תורם
-| חיישן | תורם | לא יכול לתרום |
+## What each sensor contributes
+| Sensor | Contributes | Cannot contribute |
 |---|---|---|
-| GPS/GNSS | מיקום, מהירות, כיוון, גובה | כלום כשאין קו ראייה ללוויינים (פחות מ־4 לוויינים = אין מיקום) |
-| ברומטר | **לחץ תא** → זיהוי נסיקה/הנמכה, גובה תא | גובה המטוס (התא מלוחץ) |
-| ג׳ירוסקופ | שינויי כיוון, זיהוי פניות והקפות | כיוון מוחלט; סחיפה אחרי דקות |
-| מד תאוצה | ריצת ההמראה (זמן המראה בדיוק שניות), בלימה בנחיתה, וקטור כובד | מהירות או מרחק (הטיה של 0.02 מ/ש² = 70 מ/ש שגיאה אחרי שעה) |
-| מגנטומטר | — | לא שמיש בגוף המטוס |
-| רשת (כשיש) | מיקום ADS‑B אמיתי של הטיסה, עדכונים | אינו נדרש לעולם |
+| GPS/GNSS | position, speed, track, altitude | nothing without line of sight (fewer than 4 satellites = no position) |
+| Barometer | **cabin pressure** → climb/descent detection, cabin altitude | aircraft altitude (the cabin is pressurised) |
+| Gyroscope | heading changes, turns and holds | absolute heading; drifts after minutes |
+| Accelerometer | takeoff roll (takeoff time to the second), landing braking, gravity vector | speed or distance (a 0.02 m/s² bias = 70 m/s error after an hour) |
+| Magnetometer | — | unusable inside the fuselage |
+| Network (when present) | live ADS-B position of the flight, updates | never required |
 
-## למה מפה וקטורית מוטמעת
-המפה כולה (Natural Earth, נחלת הכלל, ~5 MB) בתוך האפליקציה ומצוירת על המכשיר ב־MapLibre. אין שרת אריחים, אין מפתח API, אין תלות בזמינות של אף אחד. תצלום הלוויין (NASA Blue Marble, נחלת הכלל) הוא הורדה חד־פעמית אופציונלית מ־GitHub Releases — עלות אפס.
+## Why an embedded vector map
+The whole map (Natural Earth, public domain, ~5 MB) is inside the app and rendered on the device with MapLibre. No tile server, no API key, no dependency on anyone's availability. Satellite imagery (NASA Blue Marble, public domain) is an optional one-time download from GitHub Releases — zero cost.
 
-## למה הקוד פתוח ותקציב אפס הוא דרישה
-BSD 3‑Clause מאפשר לכל אחד לבנות, לבדוק, לשנות ולהפיץ. תקציב אפס אומר שהמוצר ימשיך לעבוד גם אם היוצר יפסיק לתחזק אותו: אין שרת שייכבה ואין מנוי שיפוג.
+## Why open source and zero budget are requirements
+BSD 3-Clause lets anyone build, test, change and distribute. Zero budget means the product keeps working even if the author stops maintaining it: no server to switch off, no subscription to expire.
 
-## דיוק שנמדד בטיסה אמיתית (מינכן–תל אביב, 10.9.2026)
-- עם GPS: חציון 1 מ׳ מהתיקון הבא.
-- אחרי 24 דקות בלי GPS: 34 ק"מ סחיפה (≈10% מהמרחק שנטוס בלעדיו).
-- ETA בשיוט: −3 עד −6 דקות; מודל ההנמכה תוקן לאחר הטיסה.
-- GPS היה זמין 94% מהזמן ליד חלון, בדיוק חציוני 57 מ׳.
+## Accuracy measured on a real flight (Munich–Tel Aviv, 10 Sep 2026)
+- With GPS: median 1 m from the next fix.
+- After 24 minutes without GPS: 34 km drift (≈10 % of the distance flown without a fix).
+- ETA in cruise: −3 to −6 minutes; the descent model was corrected after the flight.
+- GPS was available 94 % of the time near a window, median accuracy 57 m.
 
-## יתרונות
-- עובד בכל מקום בעולם בלי הכנה מוקדמת ובלי חשבון.
-- כל ערך מסומן במה הוא נשען (נמדד / ממוזג / חיזוי) — לא מסתיר אי־ודאות.
-- יומן CSV מלא לכל טיסה → שיפור המנגנון מנתונים אמיתיים.
-- הילוך חוזר של טיסות קודמות במנוע העכשווי.
+## Advantages
+- Works anywhere in the world without preparation or an account.
+- Every value states what it rests on (measured / fused / predicted) — uncertainty is never hidden.
+- Full CSV log per flight → the estimator improves from real data; desktop and phone replay.
 
-## מגבלות מהותיות
-- ללא GPS אין דיוק של ק"מ בודדים — פיזיקה, לא באג.
-- אין מאגר חופשי של לוחות זמנים → סריקת כרטיס העלייה במקום שליפה לפי מספר טיסה.
-- רזולוציית התצלום מוגבלת למקורות נחלת הכלל (~1 ק"מ/פיקסל).
-
-</div>
+## Fundamental limits
+- Without GPS there is no kilometre-level accuracy — physics, not a bug.
+- No free schedule database → boarding-pass scan instead of flight-number lookup.
+- Imagery resolution is limited to public-domain sources (~1 km/pixel).

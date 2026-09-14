@@ -1,107 +1,106 @@
-# FlightInfo — עזרה מלאה
+# FlightInfo — Full help
 
-<div dir="rtl">
+**English** · [עברית](HELP.he.md)
 
-נוצר אוטומטית ממסכי העזרה של האפליקציה (גרסה 5.0-beta26).
+Generated automatically from the app's help screens (version 5.0-beta27).
 
-## מה FlightInfo עושה
+## What FlightInfo does
 
-מציג את המטוס שלך על מפת עולם לא־מקוונת במהלך הטיסה, עם מרחק שנטוס ונותר, מהירות, גובה, זמן ליעד ושעת הגעה. לא נדרשים רשת, חשבון או שרת. המיקום מגיע מה־GPS של הטלפון כשהוא רואה לוויינים; אחרת המטוס מוזז לאורך המסלול המתוכנן לפי זמן ומהירות.
+Shows your aircraft on an offline world map during a flight, with distance flown and remaining, speed, altitude, time to go and arrival time. It needs no network, no account and no server. Position comes from the phone's GPS when it can see satellites; otherwise the aircraft is moved along the planned route by time and speed.
 
-## הזנת טיסה
+## Entering a flight
 
-בחר מוצא ויעד לפי קוד IATA (TLV, LHR) או לפי שם עיר / שדה באנגלית. הדרך המהירה: "סרוק כרטיס עלייה למטוס" — כוון את המצלמה לברקוד או בחר צילום מסך של הכרטיס; מוצא, יעד ומספר טיסה נקראים ממנו. שעת היציאה המתוכננת אופציונלית ומשמשת רק כשאין תיקון GPS. לחץ "התחל טיסה". ניתן לחזור לכאן בכל עת דרך כפתור המטוס כדי לתקן את התוכנית או לסיים את הטיסה.
+Choose origin and destination by IATA code (TLV, LHR) or by city / airport name in English. Fastest: tap "Scan boarding pass" and point the camera at the barcode, or pick a screenshot of the pass; origin, destination and flight number are read from it. The scheduled departure time is optional and is used only when no GPS fix is available. Tap "Start flight". Return here any time with the aircraft button to correct the plan or end the flight.
 
-## פקדי המפה
+## Map controls
 
-עמודה ימנית (תצוגת מפה):  
-+ / −  הגדלה והקטנה (גם צביטה או הקשה כפולה)  
-חצים החוצה  הצגת כל המסלול  
-כוונת  מרכוז על המטוס  
-מצפן / חץ  צפון למעלה או כיוון טיסה למעלה  
+Right column (map view):  
++ / −  zoom (also pinch or double-tap)  
+arrows-out  show the whole route  
+crosshair  centre on the aircraft  
+compass / arrow  north-up or track-up  
   
-עמודה שמאלית (פעולות):  
-עיפרון  הגדרת טיסה  
-טבלה  כל הנתונים  
-גלגל שיניים  הגדרות  
-סימן שאלה  עזרה זו  
-לוויין / שעון  חיישנים חיים או הערכה לפי זמן  
-עין  תיקון חזותי: בחר עיר שאתה רואה מהחלון, את הצד ואת המרחק המשוער (דיוק ~15 ק"מ, שימושי רק ללא GPS)  
+Left column (functions):  
+pencil  flight setup  
+table  all values  
+gear  settings  
+question mark  this help  
+satellite / clock  live sensors or time-based estimate  
+eye  visual fix: pick a city you see out of the window, the side and a rough distance (about 15 km accuracy, useful only without GPS)  
   
-גרירת המפה משהה את העקיבה ל־20 שניות. הלוח התחתון נפתח בהקשה.
+Dragging the map pauses following for 20 seconds. The bottom panel expands on tap.
 
-## תצלום אוויר
+## Aerial imagery
 
-בהגדרות ניתן להוריד פעם אחת (ב־Wi‑Fi, כ־60–80 MB) את פסיפס הלוויין NASA Blue Marble (נחלת הכלל) ולהציגו מתחת לקווים ולתוויות. הרזולוציה כ־1 ק"מ לפיקסל — מתאימה למה שנראה מגובה שיוט: הרים, חופים, מדבריות, אגמים. זו ההורדה היחידה שהאפליקציה מבצעת; בטיסה הכול מקומי.
+In Settings you can download once (on Wi-Fi, about 60–80 MB) the NASA Blue Marble satellite mosaic (public domain) and show it under the lines and labels. Resolution is about 1 km per pixel, matching what is visible from cruise altitude: mountains, coasts, deserts, lakes. This is the only download the app ever makes; in flight everything is local.
 
-## הקווים במפה
+## Lines on the map
 
-קו כחול מקווקו: המסלול המתוכנן שנותר.  
-קו כתום רציף: החלק שכבר עבר.  
-קו מנוקד דהוי: התוכנית המקורית, רק אחרי תכנון מחדש.  
-קו טורקיז: המסלול שנמדד (רציף); טורקיז מקווקו: ההמשך המוערך כשלא היה תיקון — כך שאין חורים בקו והמטוס ממשיך לנוע.  
-פס מוצלל: אי־הודאות של המיקום לאורך המסלול.
+Blue dashed line: remaining planned route.  
+Orange solid line: the part already flown.  
+Faint dotted line: the original plan, shown only after a re-plan.  
+Turquoise line: the measured track (solid); dashed turquoise: the estimated continuation while no fix was available, so the track has no holes and the aircraft keeps moving.  
+Shaded band: along-route uncertainty of the position.
 
-## מצבי מעקב
+## Tracking modes
 
-מעקב: התקבל תיקון GPS ב־10 השניות האחרונות. הערכה לפי מסלול: ה־GPS אבד; המטוס מתקדם לאורך המסלול במהירות האחרונה הידועה, מתמזג למהירות שיוט טיפוסית, ופס אי־הודאות גדל בכ־3% מהמרחק לשנייה ללא תיקון. חיזוי בלבד: לא התקבל תיקון מעולם; המיקום נגזר מפרופיל נסיקה / שיוט / הנמכה סטנדרטי מזמן ההמראה. הערכה בלבד: כיבית את החיישנים במכוון.
+Tracking: a GPS fix arrived within the last 10 seconds. Route estimate: GPS lost; the aircraft moves along the route at the last known speed, blending toward a typical cruise speed, and the uncertainty band grows about 3 % of the distance per second without a fix. Predicted only: no fix ever received; position follows a standard climb / cruise / descent profile from the takeoff time. Estimate only: you switched sensors off deliberately.
 
-## סימוני ודאות
+## Confidence markers
 
-צבע הטבעת של המטוס = על מה המיקום נשען:  
-ירוק  תיקון GPS טוב עכשיו  
-כתום  תיקון GPS חלש או תיקון רשת (ADS‑B)  
-אדום  אין תיקון: הערכה (חיישנים אינרציאליים ומסלול) או זמן בלבד  
-הצללית: מלאה כשהמיקום נמדד, חלולה כשהוא מקודם.  
+Aircraft ring colour = how much the position rests on:  
+green  good GPS fix now  
+orange  weak GPS fix or network (ADS-B) fix  
+red  no fix: estimated (inertial sensors and route) or time only  
+Silhouette: solid when the position is measured, hollow when propagated.  
   
-סימוני ערכים:  
-●  נמדד עכשיו  
-◐  ממוזג: נמדד לאחרונה ומקודם  
-○  חיזוי מהמסלול ומהזמן  
-◌  לא מעודכן
+Value markers:  
+●  measured now  
+◐  fused: measured recently and propagated  
+○  predicted from route and time  
+◌  stale: last measurement is old
 
-## היכן המטוס מצויר
+## Where the aircraft is drawn
 
-כשיש תיקון GPS, גם חלש, המטוס מצויר במיקום שנמדד, והקו הטורקיז רושם את המסלול האמיתי ברזולוציה של 0.5 ק"מ — כולל הקפות סביב השדות.  
-המסלול הקובע (כחול מקווקו) הוא תמיד הקו הישר מהמיקום הנמדד האחרון ליעד; הוא מתעגן מחדש עם התנועה, כך שהמטוס יושב עליו והמרחק הנותר נמדד לאורכו. התוכנית המקורית נשארת כקו מנוקד דהוי.  
-ללא תיקון, המטוס מתקדם על המסלול הקובע מהנקודה האחרונה שנמדדה: מהירות מהתיקון האחרון שמתמזגת למהירות שיוט טיפוסית, כיוון מהג׳ירוסקופ ל־90 שניות, והתקדמות מוקטנת לפי סטיית הכיוון שהג׳ירו מודד במשך 5 דקות (הקפת המתנה נותנת אפס).  
-ללא תיקון כלל: פרופיל לפי זמן על התוכנית.
+With a GPS fix, even a weak one, the aircraft is drawn where it was measured and the turquoise line records the real track at 0.5 km resolution, including turns around the airports.  
+The governing route (blue dashed) is always the direct line from the latest measured position to the destination; it re-anchors as you move, so the aircraft sits on it and the remaining distance is measured along it. The original plan stays as a faint dotted line.  
+Without a fix the aircraft moves along the governing route from the last measured position: speed from the last fix blending toward a typical cruise speed, heading from the gyroscope for 90 s, and progress scaled by the gyroscope-measured deviation for 5 minutes (a holding circle nets zero).  
+Without any fix at all: time-based profile along the plan.
 
-## מצב הערכה בלבד
+## Estimate-only mode
 
-הפעל "הערכה בלבד" במסך ההגדרה, או לחץ על כפתור ה־GPS במפה. חיישני הטלפון מותעלמים והמטוס ממוקם היכן שטיסה עם שעת יציאה זו אמורה להיות (יציאה + 15 דקות נסיעה על הקרקע, ואז פרופיל סטנדרטי). מתאים למעקב אחר טיסה שאינך נמצא בה. שעה מתוכננת מאוחרת מהשעה הנוכחית מתפרשת כיציאה של אתמול.
+Turn on "Estimate only" in the setup screen, or tap the GPS button on the map. The phone's sensors are ignored and the aircraft is placed where a flight with that departure time should be (departure + 15 minutes taxi, then a standard profile). Use it to follow a flight you are not on. A scheduled time later than now is assumed to be yesterday's departure.
 
-## קבלת GPS במטוס
+## Getting a GPS fix on board
 
-הצמד את הטלפון לחלון או הנח על השולחן לידו. התיקון הראשון אחרי ההמראה עשוי להימשך 30–60 שניות. במושבי מעבר ואמצע לרוב אין תיקון; האפליקציה מציגה "חיזוי בלבד" ועובדת לפי זמן. פחות מ־4 לוויינים אינם נותנים מיקום; המצב מציג את מספרם כדי שתדע שהמקלט פעיל. מצב טיסה אינו משפיע על GPS.  
+Hold the phone against the window or on the tray table next to it. The first fix after takeoff can take 30–60 seconds. Aisle and middle seats often get no fix; the app then says "Predicted only" and works from time. Fewer than 4 satellites give no position; the status shows the count so you know the receiver is alive. Airplane mode does not affect GPS.  
   
-אם לטלפון יש אינטרנט (בשער, ב־Wi‑Fi במטוס, או במעקב אחר טיסה מהבית) והאפשרות מופעלת בהגדרות, מיקום הטיסה האמיתי נשלף מנתוני ADS‑B קהילתיים (adsb.lol) לפי מספר הטיסה ומוצג עם המקור "ADS‑B".
+If the phone has internet (gate, onboard Wi-Fi, or when following a flight from home) and the option is on in Settings, the real position of the flight is fetched from community ADS-B data (adsb.lol) using the flight number, and shown as source "ADS-B".
 
-## הערכים
+## The values
 
-כפתור "אני על הקרקע עכשיו" (בלוח, לפני ההמראה): מאפס את השלב, מכייל את גובה ה־GPS מול גובה השדה ומקבע לחץ ייחוס לחישוב גובה תא.  
-ללא GPS: הג׳ירוסקופ מקטין את ההתקדמות לאורך המסלול בזמן פניות והקפות ("תמרון"), ומד התאוצה מזהה את ריצת ההמראה ואת הבלימה בנחיתה.  
-מרחק נותר ומרחק שעבר נמדדים לאורך המסלול.  
-זמן ליעד: באוויר = המרחק הנותר במהירות שיוט + 20 דקות הנמכה; על הקרקע = ההמתנה עד ההמראה (הצפויה) + כל פרופיל הטיסה.  
-שעת ההגעה מוצגת בשעון היעד; הלוח מציג גם שעה במוצא, UTC ויעד.  
-הגובה מ־GPS בלבד; הברומטר מודד לחץ תא ומזהה רק נסיקה והנמכה.  
-כיוון אחרי אובדן GPS עוקב אחרי הג׳ירוסקופ 90 שניות ואז אחרי כיוון המסלול.
+"I am on the ground now" (panel, before takeoff): resets the phase, calibrates GPS altitude against the field elevation and fixes the reference pressure for cabin altitude.  
+Without GPS: the gyroscope scales along-route progress during turns and holds ("manoeuvring"), and the accelerometer detects the takeoff roll and the landing deceleration.  
+Distance remaining and flown are measured along the route.  
+Time to destination: airborne = remaining distance at cruise speed + 20 min descent; on the ground = wait until the (expected) takeoff + the full flight profile.  
+Arrival is shown in the destination's local time; the panel also shows local time at origin, UTC and destination.  
+Altitude comes from GPS only; the barometer measures cabin pressure and only detects climb and descent.  
+Heading after GPS loss follows the gyroscope for 90 seconds, then the route course.
 
-## מונחים במסך הנתונים
+## Terms in the metrics screen
 
-אי־ודאות לאורך המסלול: 1σ של המיקום בכיוון הטיסה; שווה לדיוק ה־GPS כשיש תיקון, וגדלה בכ־3% מהמרחק לשנייה בלעדיו, מהר יותר בתמרון.  
-עיגוני מסלול מחדש: כמה פעמים המסלול הקובע נמתח מחדש ממיקום נמדד חדש ליעד.  
-תיקונים חזותיים: תיקוני ציון־דרך ידניים שהחלת.  
-תמרון: הג׳ירוסקופ מראה כיוון הרחוק מהמסלול ביותר מ־60° במשך 45 שניות (המתנה, ניתוב).  
-גובה תא: גובה הלחץ של התא מהברומטר, יחסית לכיול הקרקע; בשיוט בדרך כלל 1,800–2,400 מ׳. זה לא גובה המטוס.  
-כיול קרקע: ההבדל בין גובה ה־GPS לגובה השדה, שנלקח כשלחצת "אני על הקרקע עכשיו", ומוחסר מהגבהים המוצגים.
+Along-track uncertainty: 1σ of the position along the direction of flight; it equals the GPS accuracy while there is a fix and grows about 3 % of the distance per second without one, faster while manoeuvring.  
+Route re-anchors: how many times the governing route was re-drawn from a new measured position to the destination.  
+Visual fixes: manual landmark fixes you applied.  
+Manoeuvring: the gyroscope shows the aircraft heading more than 60 degrees away from the route for 45 s (hold, vectoring).  
+Cabin altitude: pressure altitude of the cabin from the barometer, relative to the on-ground calibration; typically 1,800–2,400 m in cruise. It is not the aircraft altitude.  
+Ground calibration: difference between GPS altitude and the field elevation, taken when you pressed “I am on the ground now”, and subtracted from displayed altitudes.
 
-## יומני טיסה
+## Flight logs
 
-ההקלטה מתחילה רק בלחיצה על כפתור REC במפה (כחול בזמן הקלטה) ונעצרת בלחיצה נוספת, 10 דקות אחרי הנחיתה, או אחרי 3 שעות על הקרקע. בזמן הקלטה הטיסה כותבת קובץ CSV בטלפון (Android/data/com.galker.flightinfo/files/logs) עם ההערכה ונתוני GPS, ברומטר וג׳ירוסקופ גולמיים, פעם בשנייה. דבר אינו מועלה. "שתף יומן אחרון" שולח את הקובץ דרך כל אפליקציה שתבחר; יומן מטיסה אמיתית הוא הדרך הטובה ביותר לכייל את מנוע ההערכה.
+Recording starts only when you press the REC button on the map (blue when recording) and stops when you press it again, 10 minutes after landing, or after 3 hours on the ground. While recording, the flight writes a CSV file on this phone (Android/data/com.galker.flightinfo/files/logs) with the estimate and the raw GPS, barometer and gyroscope readings, once per second. Nothing is uploaded. "Share latest log" sends the file through any app you choose; a real flight log is the best way to calibrate the estimator.
 
-## מגבלות
+## Limitations
 
-ללא GPS המטוס עוקב אחרי הקו הישר; ניתוב אמיתי עלול לסטות במאות ק"מ בגלל מזג אוויר או מרחב אווירי, והאפליקציה לא תדע עד שה־GPS יחזור. אין שליפה לפי מספר טיסה: לא קיים מאגר לוחות זמנים חופשי ולא־מקוון, ולכן סריקת כרטיס העלייה. שעה מקומית במיקום הנוכחי מוצגת כ־UTC. כדור הארץ ממודל ככדור (שגיאת מרחק 0.3%).
+Without GPS the aircraft follows the direct route; real routing may differ by hundreds of kilometres for weather or airspace, and the app cannot know until GPS returns. No flight-number lookup: there is no free offline schedule database, hence the boarding-pass scan. Local time at the current position is shown as UTC. The Earth is modelled as a sphere (0.3 % distance error).
 
-</div>

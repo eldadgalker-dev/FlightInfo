@@ -4,7 +4,7 @@
 # See the LICENSE.txt file in the project root for full license information.
 # =============================================================
 # FlightInfo - build_docs.py
-# Version 1.1
+# Version 2.0
 # Purpose : Keep the companion documents in sync with the product:
 #           - regenerate docs/HELP.md from the Hebrew help strings
 #           - stamp the current versionName into README, BETA.md, TOOLS.md,
@@ -23,9 +23,11 @@ import sys
 # =============================================================
 ROOT        = sys.argv[1] if len(sys.argv) > 1 else "."
 STRINGS_HE  = os.path.join(ROOT, "app/src/main/res/values-iw/strings.xml")
+STRINGS_EN  = os.path.join(ROOT, "app/src/main/res/values/strings.xml")
 GRADLE      = os.path.join(ROOT, "app/build.gradle.kts")
-HELP_OUT    = os.path.join(ROOT, "docs/HELP.md")
-VERSION_FILES = ["README.md", "BETA.md", "TOOLS.md", "docs/HELP.md"]
+HELP_OUT    = os.path.join(ROOT, "docs/HELP.md")        # English (default)
+HELP_OUT_HE = os.path.join(ROOT, "docs/HELP.he.md")     # Hebrew
+VERSION_FILES = ["README.md", "BETA.md", "TOOLS.md", "docs/HELP.md", "docs/HELP.he.md"]
 HELP_ORDER  = ["what", "setup", "map", "aerial", "lines", "modes", "confidence", "deviation",
                "estimate", "gnss", "values", "terms", "logs", "limits"]
 VERSION_RE  = re.compile(r"\b\d+\.\d+(?:-beta\d+)?\b")
@@ -51,24 +53,31 @@ def decode(t):
 
 
 def build_help(ver):
-    s = open(STRINGS_HE, encoding="utf-8").read()
-    def get(name):
-        m = re.search(r'<string name="%s">(.*?)</string>' % name, s, re.S)
-        return decode(m.group(1)) if m else ""
-    out = ["# FlightInfo \u2014 \u05e2\u05d6\u05e8\u05d4 \u05de\u05dc\u05d0\u05d4", "", '<div dir="rtl">', "",
-           f"\u05e0\u05d5\u05e6\u05e8 \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05de\u05de\u05e1\u05db\u05d9 \u05d4\u05e2\u05d6\u05e8\u05d4 \u05e9\u05dc \u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 (\u05d2\u05e8\u05e1\u05d4 {ver}).", ""]
-    for key in HELP_ORDER:
-        title, body = get("help_%s_title" % key), get("help_%s_body" % key)
-        if not title:
-            continue
-        out += ["## " + title, "", body.replace("\n", "  \n"), ""]
-    out.append("</div>")
-    text = "\n".join(out) + "\n"
-    old = open(HELP_OUT, encoding="utf-8").read() if os.path.exists(HELP_OUT) else ""
-    if text != old:
-        open(HELP_OUT, "w", encoding="utf-8").write(text)
-        return True
-    return False
+    """docs/HELP.md (English, default) and docs/HELP.he.md (Hebrew) from the string resources, with a language toggle."""
+    changed = False
+    for path, out, lang in ((STRINGS_EN, HELP_OUT, "en"), (STRINGS_HE, HELP_OUT_HE, "he")):
+        s = open(path, encoding="utf-8").read()
+        def get(name):
+            m = re.search(r'<string name="%s">(.*?)</string>' % name, s, re.S)
+            return decode(m.group(1)) if m else ""
+        if lang == "en":
+            out_lines = ["# FlightInfo \u2014 Full help", "", "**English** \u00b7 [\u05e2\u05d1\u05e8\u05d9\u05ea](HELP.he.md)", "",
+                         f"Generated automatically from the app's help screens (version {ver}).", ""]
+        else:
+            out_lines = ["# FlightInfo \u2014 \u05e2\u05d6\u05e8\u05d4 \u05de\u05dc\u05d0\u05d4", "", '<div dir="rtl">', "",
+                         "[English](HELP.md) \u00b7 **\u05e2\u05d1\u05e8\u05d9\u05ea**", "",
+                         f"\u05e0\u05d5\u05e6\u05e8 \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05de\u05de\u05e1\u05db\u05d9 \u05d4\u05e2\u05d6\u05e8\u05d4 \u05e9\u05dc \u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 (\u05d2\u05e8\u05e1\u05d4 {ver}).", ""]
+        for key in HELP_ORDER:
+            title, body = get("help_%s_title" % key), get("help_%s_body" % key)
+            if title:
+                out_lines += ["## " + title, "", body.replace("\n", "  \n"), ""]
+        if lang == "he":
+            out_lines.append("</div>")
+        text = "\n".join(out_lines) + "\n"
+        old = open(out, encoding="utf-8").read() if os.path.exists(out) else ""
+        if text != old:
+            open(out, "w", encoding="utf-8").write(text); changed = True
+    return changed
 
 
 def stamp_versions(ver):
@@ -93,18 +102,20 @@ def stamp_versions(ver):
 
 def stamp_page(ver):
     """docs/index.html: current version and date in the 'version-line' paragraph."""
-    p = os.path.join(ROOT, "docs", "index.html")
-    if not os.path.isfile(p):
-        return False
-    s = open(p, encoding="utf-8").read()
     import datetime
     today = datetime.date.today().isoformat()
-    new = re.sub(r'(<p class="sub" id="version-line">)(.*?)(</p>)',
-                 lambda m: m.group(1) + m.group(2).split("<b>")[0] + "<b>" + ver + "</b> \u00b7 " + m.group(2).split("\u00b7")[-1].split(" ")[1] + " " + today + m.group(3)
-                 if "<b>" in m.group(2) else m.group(0), s, flags=re.S)
-    if new != s:
-        open(p, "w", encoding="utf-8").write(new); return True
-    return False
+    changed = False
+    for name in ("index.html", "index.he.html"):
+        p = os.path.join(ROOT, "docs", name)
+        if not os.path.isfile(p):
+            continue
+        s = open(p, encoding="utf-8").read()
+        new = re.sub(r'(<p class="sub" id="version-line">)(.*?)(</p>)',
+                     lambda m: m.group(1) + m.group(2).split("<b>")[0] + "<b>" + ver + "</b> \u00b7 " + m.group(2).split("\u00b7")[-1].split(" ")[1] + " " + today + m.group(3)
+                     if "<b>" in m.group(2) else m.group(0), s, flags=re.S)
+        if new != s:
+            open(p, "w", encoding="utf-8").write(new); changed = True
+    return changed
 
 
 def main():

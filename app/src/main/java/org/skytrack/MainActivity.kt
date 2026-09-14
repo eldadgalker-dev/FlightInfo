@@ -98,7 +98,8 @@ private fun Root(app: SkyTrackApp) {
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         // Start regardless of the result: without location the engine runs in PREDICTED_ONLY mode.
         pendingPlan?.let { p ->
-            if (app.engine.start(p)) { if (!p.estimateOnly) TrackingService.start(context); screen = Screen.MAP }
+            if (p.free) { if (app.engine.startFreeRecording()) TrackingService.start(context) }
+            else if (app.engine.start(p)) { if (!p.estimateOnly) TrackingService.start(context); screen = Screen.MAP }
             pendingPlan = null
         }
     }
@@ -175,9 +176,22 @@ private fun Root(app: SkyTrackApp) {
                 Screen.MAP -> {
                     BackHandler(enabled = false) {}
                     val recording by app.engine.recording.collectAsStateWithLifecycle()
+                    val initialLoc = remember {
+                        try { org.skytrack.sensors.GnssSource(context).lastKnown()?.let { Pair(it.latitude, it.longitude) } } catch (e: Exception) { null }
+                            ?: app.stores.loadGroundFix()?.let { Pair(it.lat, it.lon) }
+                    }
                     MapScreen(
                         recording = recording,
-                        onToggleRecording = { app.engine.setRecording(!recording) },
+                        initialLocation = initialLoc,
+                        onToggleRecording = {
+                            if (recording) app.engine.setRecording(false)
+                            else if (plan == null) {
+                                // REC without a flight: free recording (sensors + log), needs location permission.
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                                    if (app.engine.startFreeRecording()) TrackingService.start(context)
+                                } else { pendingPlan = FlightPlan.freeRecording(); permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)) }
+                            } else app.engine.setRecording(true)
+                        },
                         metrics = metrics, settings = settings, night = night,
                         onOpenMetrics = { screen = Screen.METRICS },
                         onOpenSettings = { screen = Screen.SETTINGS },

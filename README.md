@@ -1,8 +1,8 @@
 # FlightInfo
 
-> **Status: 5.0-beta26 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
+> **Status: 5.0-beta27 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
 
-**Docs:** [INSTALL](INSTALL.md) · [BETA testers](BETA.md) · [Help (all in-app help pages)](docs/HELP.md) · [How it works](docs/TECHNOLOGY.md) · [Development process & decisions](docs/DEVELOPMENT.md) · [Full development prompt](docs/PROMPT.md) · [Screenshots](docs/SCREENSHOTS.md) · [Tools & components, licences, risk](TOOLS.md) · [Installation page](https://eldadgalker-dev.github.io/FlightInfo/)
+**Docs:** [INSTALL](INSTALL.md) · [BETA testers](BETA.md) · [Help](docs/HELP.md) ([עברית](docs/HELP.he.md)) · [How it works](docs/TECHNOLOGY.md) ([עברית](docs/TECHNOLOGY.he.md)) · [Development process & decisions](docs/DEVELOPMENT.md) ([עברית](docs/DEVELOPMENT.he.md)) · [Full development prompt](docs/PROMPT.md) · [Screenshots](docs/SCREENSHOTS.md) ([עברית](docs/SCREENSHOTS.he.md)) · [Tools & components, licences, risk](TOOLS.md) · [Installation page](https://eldadgalker-dev.github.io/FlightInfo/) (English, [עברית](https://eldadgalker-dev.github.io/FlightInfo/index.he.html))
 
 **Desktop replay (any browser, no install):** [docs/replay/index.html](docs/replay/index.html) — open the file or https://eldadgalker-dev.github.io/FlightInfo/replay/ and drop a flight-log CSV. Same layout, colours and panel as the phone; plays the recorded flight at 30/120/600x.
 

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Stores
-// Version 4.2
+// Version 5.0
 // Purpose : SharedPreferences-backed persistence for the flight plan,
 //           the last position estimate (instant restore on relaunch),
 //           the last ground fix (origin auto-detection) and user settings.
@@ -25,20 +25,24 @@ data class FlightPlan(
     val scheduledDepartureMs: Long? = null,
     val takeoffMs: Long? = null,
     val estimateOnly: Boolean = false,    // true: ignore sensors, show the time-based estimate only
-    val takeoffMeasured: Boolean = false  // takeoffMs came from the sensors (overrides a manual entry)
+    val takeoffMeasured: Boolean = false, // takeoffMs came from the sensors (overrides a manual entry)
+    val free: Boolean = false             // free recording: no origin / destination, sensors and log only
 ) {
     fun toJson(): String = JSONObject().apply {
         put("o", originIata); put("d", destinationIata); put("fn", flightNumber)
-        put("sd", scheduledDepartureMs ?: 0L); put("to", takeoffMs ?: 0L); put("eo", estimateOnly); put("tm", takeoffMeasured)
+        put("sd", scheduledDepartureMs ?: 0L); put("to", takeoffMs ?: 0L); put("eo", estimateOnly); put("tm", takeoffMeasured); put("fr", free)
     }.toString()
 
     companion object {
+        const val FREE_CODE = "FREE"
+        fun freeRecording(): FlightPlan = FlightPlan(FREE_CODE, FREE_CODE, "", null, null, false, false, true)
+
         fun fromJson(s: String?): FlightPlan? = try {
             if (s.isNullOrEmpty()) null else JSONObject(s).let {
                 FlightPlan(
                     it.getString("o"), it.getString("d"), it.optString("fn", ""),
                     it.optLong("sd", 0L).takeIf { v -> v > 0 }, it.optLong("to", 0L).takeIf { v -> v > 0 },
-                    it.optBoolean("eo", false), it.optBoolean("tm", false)
+                    it.optBoolean("eo", false), it.optBoolean("tm", false), it.optBoolean("fr", false)
                 )
             }
         } catch (e: Exception) { null }

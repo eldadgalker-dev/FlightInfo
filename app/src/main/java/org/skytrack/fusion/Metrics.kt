@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Metrics
-// Version 4.6
+// Version 5.0
 // Purpose : Derive every displayed value (origin / now / destination
 //           columns) from a PositionEstimate, the Route and the airports.
 //           Time zones come from the airport table (IANA); the current
@@ -31,6 +31,7 @@ data class FlightMetrics(
     val plannedRoute: Route,        // original great circle origin -> destination
     val actualTrack: List<GeoPoint>,// decimated fixes (solid track)
     val estimatedTrack: List<List<GeoPoint>> = emptyList(), // propagated segments while no fix (dashed track)
+    val freeRecording: Boolean = false, // no origin / destination: only position, speed, altitude, track are meaningful
     val estimateOnly: Boolean,      // sensors deliberately ignored
     val overflownCountry: String?,  // localised name of the country under the estimated position
     val positionSource: String?,    // "ADS-B" when the latest fix came from the network, else null

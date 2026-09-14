@@ -224,7 +224,8 @@ class Estimator(val plannedRoute: Route) {
             actualTrack.add(p)
             if (actualTrack.size > Parameters.TRACK_MAX_POINTS) actualTrack.removeAt(0)
         }
-        openSegment?.let { seg -> seg.add(p); if (seg.size >= 2) estimatedSegments.add(seg); openSegment = null }
+        // Re-acquisition: in hindsight the path across the gap is the direct line between the two fixes.
+        openSegment?.let { seg -> if (seg.isNotEmpty()) estimatedSegments.add(mutableListOf(seg.first(), p)); openSegment = null }
         flownSinceFix = 0.0
 
         // Governing route: anchor at the measured position when we left the current one.

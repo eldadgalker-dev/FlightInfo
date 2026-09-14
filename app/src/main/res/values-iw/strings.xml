@@ -279,6 +279,8 @@
     <string name="log_time">זמן ביומן</string>
     <string name="of">מתוך</string>
     <string name="project_page">הסברים, הורדות ומסמכים:</string>
+    <string name="free_recording_title">הקלטה חופשית (ללא תוכנית טיסה)</string>
+    <string name="gnss_accuracy_short">דיוק</string>
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

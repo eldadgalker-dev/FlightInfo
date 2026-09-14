@@ -31,16 +31,16 @@ html, body { margin: 0; height: 100%; background: #202833; font-family: Roboto, 
 #map { position: absolute; inset: 0; }
 .maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display: none !important; }
 /* Graduated scale bar: above the bottom panel */
-.scalebar { position: absolute; left: 12px; bottom: 236px; z-index: 5; font: 700 11px/1 Roboto, Arial, sans-serif; color: #111; display: flex; align-items: flex-end; gap: 4px; }
+.scalebar { position: absolute; left: 12px; bottom: 236px; z-index: 5; font: 700 11px/1 Roboto, Arial, sans-serif; color: #111; display: flex; align-items: flex-end; gap: 6px; background: rgba(255,255,255,.88); border-radius: 6px; padding: 3px 6px; }
+body.night .scalebar { background: rgba(19,32,45,.88); }
 .scalebar .ticks span { white-space: nowrap; }
-.scalebar .unit { background: rgba(255,255,255,.85); padding: 1px 4px; border-radius: 3px; margin-bottom: -1px; }
-body.night .scalebar .unit { background: rgba(19,32,45,.85); }
+.scalebar .unit { margin-bottom: -1px; }
 .scalebar .ticks { display: flex; justify-content: space-between; margin-bottom: 2px; }
-.scalebar .ticks span { background: rgba(255,255,255,.85); padding: 1px 3px; border-radius: 3px; }
+.scalebar .ticks span { padding: 0; }
 .scalebar .segs { display: flex; height: 8px; border: 2px solid #111; border-top: none; background: #fff; }
 .scalebar .segs i { display: block; height: 100%; }
 .scalebar .segs i.a { background: #111; } .scalebar .segs i.b { background: #fff; }
-body.night .scalebar { color: #fff; } body.night .scalebar .ticks span { background: rgba(19,32,45,.85); }
+body.night .scalebar { color: #fff; }
 body.night .scalebar .segs { border-color: #fff; background: #13202d; } body.night .scalebar .segs i.a { background: #fff; } body.night .scalebar .segs i.b { background: #13202d; }
 
 .col { position: absolute; top: 60px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
@@ -240,7 +240,7 @@ return maplibregl$1;
   "use strict";
 
   // ---------------- Parameters ----------------
-  const APP_VERSION = "2.6";
+  const APP_VERSION = "2.7";
   const PAGE_URL = "https://eldadgalker-dev.github.io/FlightInfo/";
   const P = {
     SPEEDS: [30, 120, 600],           // x real time
@@ -441,6 +441,8 @@ return maplibregl$1;
     const fmtU = (u) => u >= 1 ? String(Math.round(u * 100) / 100) : String(Math.round(u * 1000)) + (S.du === "KM" ? " m" : "");
     let segs = ""; for (let i = 0; i < n; i++) segs += `<i class="${i % 2 ? "b" : "a"}" style="width:${px / n}px"></i>`;
     el.innerHTML = `<div class="bar" style="width:${px}px"><div class="ticks"><span>0</span><span>${fmtU(nice / 2)}</span><span>${fmtU(nice)}</span></div><div class="segs">${segs}</div></div><span class="unit">${nice >= 1 || S.du !== "KM" ? label : ""}</span>`;
+    // Attached to the top of the data panel below it.
+    const panel = $("panel"); if (panel) el.style.bottom = (panel.offsetHeight + 16) + "px";
   }
 
   function buildMap() {
@@ -517,7 +519,7 @@ return maplibregl$1;
     S.idx = 0; S.playT = undefined; S.follow = true; resetPositions(); pause();
     $("title").textContent = `FlightInfo ${APP_VERSION} \u00B7 Replay ${meta.origin} \u2192 ${meta.destination} ${meta.flight || ""}`;
     pushStatic(); render(true);
-    if (S.mapReady) fitRoute();
+    if (S.mapReady) { const p0 = S.shownPos || (S.origin ? [S.origin.lon, S.origin.lat] : null); if (p0) { S.lastGesture = 0; map.jumpTo({ center: p0, zoom: 10 }); } }
   }
   // Two polylines: measured (GPS fixes, solid) and estimated (propagated / interpolated, dashed),
   // built from the position actually shown for each row so the line never has holes.

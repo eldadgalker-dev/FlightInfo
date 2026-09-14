@@ -3,13 +3,13 @@
   Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
   This software is released under the BSD 3-Clause License.
   See the LICENSE.txt file in the project root for full license information.
-  FlightInfo - installation page (GitHub Pages) - Version 1.5
+  FlightInfo - installation page, English (GitHub Pages) - Version 2.0
 -->
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FlightInfo — התקנה</title>
+<title>FlightInfo — Install</title>
 <style>
   :root { --bg:#0b1622; --card:#13202d; --text:#e6ecf2; --muted:#b8c4d0; --accent:#ffb454; --blue:#7aa2c4; --teal:#5ad1c6; }
   * { box-sizing: border-box; }
@@ -17,109 +17,102 @@
   main { max-width: 820px; margin: 0 auto; padding: 24px 18px 48px; }
   h1 { font-size: 2rem; margin: 0 0 4px; color: var(--accent); }
   h2 { font-size: 1.25rem; margin: 28px 0 10px; color: var(--blue); border-bottom: 1px solid #2a3a4c; padding-bottom: 6px; }
-  p, li { color: var(--text); }
   .sub { color: var(--muted); margin-top: 0; }
   .card { background: var(--card); border-radius: 14px; padding: 18px; margin: 16px 0; }
   .install { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
   .install img { width: 200px; height: 200px; background: #fff; padding: 8px; border-radius: 10px; }
-  .btn { display: inline-block; background: var(--accent); color: #1a1200; font-weight: bold; text-decoration: none;
-         padding: 14px 22px; border-radius: 10px; font-size: 1.1rem; }
-  .btn:hover { filter: brightness(1.08); }
+  .btn { display: inline-block; background: var(--accent); color: #1a1200; font-weight: bold; text-decoration: none; padding: 14px 22px; border-radius: 10px; font-size: 1.1rem; }
   .small { font-size: .9rem; color: var(--muted); }
-  code, .mono { font-family: Consolas, "Courier New", monospace; direction: ltr; unicode-bidi: isolate; background:#0b1622; padding:2px 6px; border-radius:6px; }
-  ol li, ul li { margin: 6px 0; }
+  code { font-family: Consolas, "Courier New", monospace; background:#0b1622; padding:2px 6px; border-radius:6px; }
   a { color: var(--teal); }
   .links { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
   .links a { display:block; background:var(--card); border-radius:10px; padding:12px 14px; text-decoration:none; color:var(--text); }
-  .links a b { display:block; color: var(--teal); }
-  .links a span { font-size:.9rem; color: var(--muted); }
-  .en { direction: ltr; text-align: left; margin-top: 40px; border-top: 1px dashed #2a3a4c; padding-top: 16px; color: var(--muted); font-size: .95rem; }
-  .warn { border-inline-start: 4px solid var(--accent); padding-inline-start: 12px; color: var(--muted); }
+  .links a b { display:block; color: var(--teal); } .links a span { font-size:.9rem; color: var(--muted); }
+  .warn { border-left: 4px solid var(--accent); padding-left: 12px; color: var(--muted); }
+  figure { margin:0; text-align:center; width:170px } figure img { width:170px; border-radius:10px }
 </style>
 </head>
 <body>
 <main>
+  <p class="small" style="text-align:right"><b>English</b> · <a href="index.he.html">עברית</a></p>
   <h1>FlightInfo</h1>
-  <p class="sub" id="version-line">גרסה נוכחית: <b>5.0-beta26</b> · עודכן 2026-09-14</p>
-  <p class="sub">מיקום המטוס במהלך הטיסה על מפה לא־מקוונת — ללא רשת, ללא חשבון, ללא שרתים. Android בלבד. תוכנה חופשית (BSD 3-Clause).</p>
+  <p class="sub" id="version-line">Current version: <b>5.0-beta27</b> · updated 2026-09-14</p>
+  <p class="sub">Your aircraft's position during a flight on an offline map — no network, no account, no servers. Android only. Free software (BSD 3-Clause).</p>
 
   <div class="card install">
-    <img src="qr-install.png" alt="QR להורדת FlightInfo">
+    <img src="qr-install.png" alt="QR to download FlightInfo">
     <div>
-      <a class="btn" href="https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk">⬇ הורדת FlightInfo לאנדרואיד</a>
-      <p class="small">סרוק את ה־QR בטלפון או לחץ על הכפתור. תמיד הגרסה האחרונה.<br>
-      קישור ישיר: <code>https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk</code></p>
+      <a class="btn" href="https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk">⬇ Download FlightInfo for Android</a>
+      <p class="small">Scan the QR on the phone or tap the button. Always the latest version.<br>
+      Direct link: <code>https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk</code></p>
     </div>
   </div>
 
-  <h2>התקנה — ארבעה צעדים</h2>
+  <h2>Installation — four steps</h2>
   <div class="card">
     <ol>
-      <li>פתח את הקישור בטלפון (או סרוק את ה־QR) ואשר את ההורדה.
-          <div class="warn">אם Chrome מציג <b>"Dangerous download blocked"</b>: פתח ⋮ ← הורדות, הקש על הקובץ החסום ובחר "Download dangerous file". Chrome מסמן כך כל קובץ APK שאינו מוכר לו מהורדות רבות; הקובץ עצמו לא נמצא פסול. לחלופין: Firefox, או <a href="https://github.com/ImranR98/Obtainium">Obtainium</a> שמתקין ישירות מ־GitHub.</div></li>
-      <li>פתח את הקובץ <code>FlightInfo.apk</code> מההתרעה או מתיקיית "הורדות".</li>
-      <li>Android יבקש לאפשר התקנת אפליקציות מהדפדפן — אשר. זו בקשה חד־פעמית.</li>
-      <li>אם <b>Play Protect</b> מציג חסימה: לחץ "פרטים נוספים" ← "התקן בכל מקרה". ההתרעה מופיעה לכל אפליקציה שמותקנת מחוץ לחנות Play; היא אינה מעידה על בעיה.</li>
+      <li>Open the link on the phone (or scan the QR) and accept the download.
+          <div class="warn">If Chrome shows <b>"Dangerous download blocked"</b>: open ⋮ → Downloads, tap the blocked file and choose "Download dangerous file". Chrome flags every APK it has not seen downloaded many times; the file itself was not found harmful. Alternatives: Firefox, or <a href="https://github.com/ImranR98/Obtainium">Obtainium</a>, which installs directly from GitHub.</div></li>
+      <li>Open <code>FlightInfo.apk</code> from the notification or the Downloads folder.</li>
+      <li>Android asks to allow installing apps from this browser — allow. One-time.</li>
+      <li>If <b>Play Protect</b> blocks: tap "More details" → "Install anyway". This warning appears for every app installed outside the Play Store; it is not a sign of a problem.</li>
     </ol>
-    <p class="warn">עדכונים: באפליקציה — הגדרות ← "עדכון האפליקציה" ← "בדוק אם יש עדכון" ← "הורד והתקן". לחלופין הורד שוב מהקישור למעלה; ההתקנה מחליפה את הקודמת ושומרת את ההגדרות.</p>
+    <p class="warn">Updates: in the app — Settings → App update → Check → Download and install. Or download again from the link above; the installation replaces the previous one and keeps your settings.</p>
   </div>
 
-  <h2>שימוש ראשון</h2>
+  <h2>First use</h2>
   <div class="card">
     <ul>
-      <li>הזן מוצא ויעד (קוד IATA כמו <code>TLV</code>, או שם עיר באנגלית), או לחץ <b>סרוק כרטיס עלייה</b> וכוון את המצלמה לברקוד.</li>
-      <li>במטוס: הצמד את הטלפון לחלון. תיקון GPS ראשון — 30–60 שניות. במושב אמצע ייתכן שלא יהיה GPS; האפליקציה תציג "חיזוי בלבד" ותעבוד לפי זמן.</li>
-      <li>למעקב אחר טיסה שאינך בה — הפעל <b>הערכה בלבד</b> והזן את שעת היציאה.</li>
-      <li>תצלום אוויר (NASA Blue Marble): הגדרות ← "תצלום אוויר" ← הורד (פעם אחת, ~60–80 MB, ב־Wi‑Fi).</li>
-      <li>עזרה מלאה: כפתור <b>?</b> באפליקציה.</li>
+      <li>Enter origin and destination (IATA code such as <code>TLV</code>, or a city name in English), or tap <b>Scan boarding pass</b> and point the camera at the barcode.</li>
+      <li>Press the <b>REC</b> button to record a flight log — with or without a flight plan. It pulses red while recording.</li>
+      <li>On board: hold the phone against the window. First GPS fix takes 30–60 s. Middle seats may get no GPS; the app then says "Predicted only" and works from time.</li>
+      <li>To follow a flight you are not on: enable <b>Estimate only</b> and enter the departure time.</li>
+      <li>Aerial imagery (NASA Blue Marble): Settings → Aerial imagery → Download (once, ~60–80 MB, on Wi-Fi).</li>
+      <li>Full help: the <b>?</b> button in the app (English / Hebrew).</li>
     </ul>
   </div>
 
-  <h2>קישורים</h2>
-  <div class="links">
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/releases/latest"><b>גרסאות (Releases)</b><span>כל הגרסאות, הערות שחרור, קובצי APK</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo#readme"><b>תיאור טכני (README)</b><span>איך המיקום מחושב, מגבלות, בנייה מקוד</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo"><b>קוד המקור</b><span>Kotlin, Compose, MapLibre — BSD 3-Clause</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/actions"><b>בניות (Actions)</b><span>מצב הבנייה האחרונה</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/issues"><b>דיווח על תקלה</b><span>Issues — צרף צילום מסך ויומן טיסה</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/LICENSE.txt"><b>רישיון</b><span>BSD 3-Clause · © 1986–2026 Eldad Galker</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/TOOLS.md"><b>כלים ורכיבים</b><span>גרסאות, רישיונות, אבטחה וסיכון של כל רכיב</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/BETA.md"><b>הוראות לנסיינים</b><span>מה לבדוק בטיסה ואיך לדווח</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/HELP.md"><b>עזרה מלאה</b><span>כל מסכי העזרה של האפליקציה, לקריאה בדפדפן</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/TECHNOLOGY.md"><b>הטכנולוגיה</b><span>איך המיקום מחושב, מה כל חיישן תורם, יתרונות ומגבלות</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/DEVELOPMENT.md"><b>תהליך הפיתוח</b><span>ההחלטות, הסיבות, ומה התברר כשגוי</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/PROMPT.md"><b>הפרומפט המלא</b><span>מסמך הדרישות שפיתח את התוכנה</span></a>
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/SCREENSHOTS.md"><b>צילומי מסך</b><span>עם הסברים</span></a>
-    <a href="replay/"><b>הילוך חוזר במחשב</b><span>פתח בדפדפן, גרור קובץ יומן CSV — נראה כמו הטלפון</span></a>
-    <a href="https://github.com/ImranR98/Obtainium"><b>Obtainium</b><span>עדכונים אוטומטיים מ־GitHub (אפליקציה חופשית)</span></a>
-    <a href="https://www.galker.com/software/"><b>galker.com/software</b><span>תוכנות נוספות</span></a>
+  <h2>Desktop replay</h2>
+  <div class="card">
+    <p><a href="replay/">Open the desktop replay</a> in any browser and drop a flight-log CSV: the same phone-shaped screen, colours and panel; plays the recorded flight at 30/120/600×. Works offline (except optional imagery). Also downloadable as one file: <code>docs/replay/index.html</code>.</p>
   </div>
 
-  <h2>צילומי מסך</h2>
+  <h2>Screenshots</h2>
   <div class="card" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
-    <figure style="margin:0;text-align:center;width:170px"><img src="screenshots/01_gate_muc.jpg" alt="בשער, מינכן" style="width:170px;border-radius:10px"><figcaption class="small">בשער במינכן — תצלום אוויר, לוח נתונים</figcaption></figure>
-    <figure style="margin:0;text-align:center;width:170px"><img src="screenshots/02_cruise_croatia.jpg" alt="שיוט מעל קרואטיה" style="width:170px;border-radius:10px"><figcaption class="small">שיוט מעל קרואטיה — מסלול שעבר ומתוכנן</figcaption></figure>
-    <figure style="margin:0;text-align:center;width:170px"><img src="screenshots/03_cruise_turkey_panel.jpg" alt="שיוט מעל טורקיה" style="width:170px;border-radius:10px"><figcaption class="small">לוח מלא: מרחק, זמן ליעד, שעות</figcaption></figure>
-    <figure style="margin:0;text-align:center;width:170px"><img src="screenshots/04_estimate_mode_europe.jpg" alt="מצב הערכה" style="width:170px;border-radius:10px"><figcaption class="small">מצב הערכה — טיסה שאינך בה</figcaption></figure>
-    <figure style="margin:0;text-align:center;width:170px"><img src="screenshots/05_settings.jpg" alt="הגדרות" style="width:170px;border-radius:10px"><figcaption class="small">הגדרות</figcaption></figure>
+    <figure><img src="screenshots/01_gate_muc.jpg" alt="At the gate, Munich"><figcaption class="small">At the gate in Munich — imagery, data panel</figcaption></figure>
+    <figure><img src="screenshots/02_cruise_croatia.jpg" alt="Cruise over Croatia"><figcaption class="small">Cruise over Croatia — flown and planned route</figcaption></figure>
+    <figure><img src="screenshots/03_cruise_turkey_panel.jpg" alt="Cruise over Turkey"><figcaption class="small">Full panel: distances, time to go, clocks</figcaption></figure>
+    <figure><img src="screenshots/04_estimate_mode_europe.jpg" alt="Estimate mode"><figcaption class="small">Estimate mode — a flight you are not on</figcaption></figure>
+    <figure><img src="screenshots/05_settings.jpg" alt="Settings"><figcaption class="small">Settings</figcaption></figure>
   </div>
-  <p class="small">הצילומים מגרסאות בטא מוקדמות; פרטים בממשק משתנים בין גרסאות.</p>
+  <p class="small">Screenshots are from early beta versions; details change between versions.</p>
 
-  <h2>מה האפליקציה עושה</h2>
+  <h2>Links</h2>
+  <div class="links">
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/releases/latest"><b>Releases</b><span>All versions, release notes, APK files</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo#readme"><b>Technical README</b><span>How position is computed, limits, building from source</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/HELP.md"><b>Full help</b><span>All in-app help pages, readable in the browser</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/TECHNOLOGY.md"><b>The technology</b><span>How the position is computed, what each sensor gives, advantages and limits</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/DEVELOPMENT.md"><b>Development process</b><span>Decisions, reasons, and what turned out wrong</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/PROMPT.md"><b>Full development prompt</b><span>The requirements document that produced the software</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/docs/SCREENSHOTS.md"><b>Screenshots</b><span>With explanations</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/TOOLS.md"><b>Tools and components</b><span>Versions, licences, security and risk of every component</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/BETA.md"><b>Tester notes</b><span>What to test in flight and how to report</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo"><b>Source code</b><span>Kotlin, Compose, MapLibre — BSD 3-Clause</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/issues"><b>Report a problem</b><span>Issues — attach a screenshot and a flight log</span></a>
+    <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/LICENSE.txt"><b>Licence</b><span>BSD 3-Clause · © 1986–2026 Eldad Galker</span></a>
+    <a href="https://www.galker.com/software/"><b>galker.com/software</b><span>More software</span></a>
+  </div>
+
+  <h2>What the app does</h2>
   <div class="card">
     <ul>
-      <li>מפת עולם לא־מקוונת (Natural Earth) עם מדינות, ערים ושדות תעופה — בעברית.</li>
-      <li>מרחק שנטוס ונותר, מהירות, גובה, כיוון, זמן ליעד, שעת הגעה בשעון היעד, שעה במוצא וב־UTC.</li>
-      <li>המטוס תמיד על המסלול המתוכנן; סטייה מוכחת מתכננת את המסלול מחדש ומצוירת בנפרד.</li>
-      <li>כל ערך מסומן: נמדד ● / ממוזג ◐ / חיזוי ○ / לא מעודכן ◌.</li>
-      <li>יומן טיסה CSV בטלפון (אופציונלי, לשיפור המנגנון). דבר אינו מועלה לשום מקום.</li>
+      <li>Offline world map (Natural Earth) with countries, cities and airports.</li>
+      <li>Distance flown and remaining, speed, altitude, track, time to go, arrival in the destination's clock, time at origin and UTC.</li>
+      <li>With GPS the aircraft is where it was measured; without GPS it continues along the route from the last known point, and the track is drawn dashed.</li>
+      <li>Every value is marked: measured ● / fused ◐ / predicted ○ / stale ◌. Aircraft ring: green = good GPS, orange = weak, red = estimated.</li>
+      <li>CSV flight log on the phone (optional). Nothing is uploaded anywhere.</li>
     </ul>
-  </div>
-
-  <div class="en">
-    <p><b>English:</b> FlightInfo shows your aircraft on an offline map during a flight — no network, no account, no servers. Android only, free software (BSD-3-Clause).
-    <a href="https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk">Download the APK</a>, open it on the phone (if Chrome says "Dangerous download blocked", open Chrome's Downloads, tap the file and choose "Download dangerous file" — or use Firefox / Obtainium), allow installation from this source, and if Play Protect warns choose "More details → Install anyway".
-    In-app updates: Settings → App update. Documentation: <a href="https://github.com/eldadgalker-dev/FlightInfo#readme">README</a>.</p>
   </div>
 </main>
 </body>

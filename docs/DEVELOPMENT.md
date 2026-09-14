@@ -1,43 +1,42 @@
-# FlightInfo — תהליך הפיתוח וההחלטות
+# FlightInfo — Development process and decisions
 
-<div dir="rtl">
+**English** · [עברית](DEVELOPMENT.he.md)
 
-הפרויקט פותח בשיחה מתמשכת בין היוצר (אלדד גלקר) לעוזר AI (Claude), ב־8–11 בספטמבר 2026, בשיטה של: דרישה → תכנון → מימוש → בנייה ב־GitHub Actions → ניסוי בטלפון → תיקון. להלן ההחלטות המרכזיות, הסיבות, ומה התברר בדיעבד.
+The project was developed in a continuous conversation between the author (Eldad Galker) and an AI assistant (Claude), 8–14 September 2026, in the loop: requirement → design → implementation → build on GitHub Actions → trial on the phone → fix. Below are the main decisions, their reasons, and what turned out in hindsight.
 
-## אילוצים שהוגדרו מראש
-- **תקציב אפס**: אין שרתים, אין אחסון ענן, אין מפתחות API. כל עלות שגדלה עם מספר המשתמשים — מחוץ לתחום.
-- **רישיון BSD**, קוד באנגלית, ממשק בעברית (RTL) ובאנגלית.
-- **סביבת פיתוח ללא Android SDK** (רשת מוגבלת): הקוד נכתב "עיוור", קומפל ב־GitHub Actions, וליבת החישוב נבדקה ב־JVM עם kotlinc.
+## Constraints set up front
+- **Zero budget**: no servers, no cloud storage, no API keys. Any cost that grows with users is out.
+- **BSD licence**, code in English, UI in Hebrew (RTL) and English.
+- **No Android SDK in the development environment** (restricted network): code was written "blind", compiled by GitHub Actions, and the computing core was tested on the JVM with kotlinc; later a stub layer allowed compiling the whole service layer locally.
 
-## החלטות ותוצאותיהן
-
-| # | החלטה | סיבה | מה קרה |
+## Decisions and outcomes
+| # | Decision | Reason | What happened |
 |---|---|---|---|
-| 1 | MapLibre במקום Google Maps | Google דורש רשת ומפתח, אין API לא־מקוון | נכון; MapLibre 11 עבד גם עם `mbtiles://` ו־`asset://` |
-| 2 | Natural Earth כ־GeoJSON מוטמע במקום אריחי PMTiles מאוחסנים | אחסון = עלות; 5 MB ב־APK מספיקים לזום 1–10 בגובה שיוט | נכון; תוויות דרשו גליפים מוטמעים (Noto Sans PBF) |
-| 3 | בלי Hilt/Room/DataStore | פחות תלויות = פחות כשלי בנייה במכונה שאין רואים | נכון |
-| 4 | סריקת כרטיס עלייה (ZXing) במקום שליפה לפי מספר טיסה | אין מאגר לוחות זמנים חופשי | נכון; נשארה בקשה חוזרת של המשתמש |
-| 5 | חתימה במפתח debug | פשטות | **שגוי**: runner חד־פעמי = מפתח חדש בכל בנייה → "האפליקציה לא הותקנה". תוקן במפתח קבוע ב־repo |
-| 6 | **מסלול מתוכנן כקובע; "הוכחת סטייה" לפני שמזיזים את המטוס** (v2) | להימנע מקפיצות עם GPS רועש | **שגוי**: בטיסה אמיתית תיקונים בדיוק 57 מ׳ סווגו "חלשים" ומעולם לא "הוכיחו" סטייה של 48 ק"מ. המטוס צויר במקום שלא היה בו |
-| 7 | **מדידה קודמת; המסלול רק כגיבוי** (v4) | היומן של הטיסה הראשונה | נכון: חציון 1 מ׳; 34 ק"מ אחרי 24 דק׳ ללא GPS |
-| 8 | ברומטר = לחץ תא, לא גובה | פיזיקה | נכון; אך לחיצת תא מחדש בשיוט יצרה שלבים שגויים → GPS הפך למקור עיקרי לשלב |
-| 9 | ADS‑B (adsb.lol) כשיש רשת | "כל מידע אפשרי" בלי לדרוש רשת | פועל; זמינות השירות אינה מובטחת |
-| 10 | Blue Marble מ־NASA GIBS | שרת התמונות של NASA חסם את GitHub | פועל |
-| 11 | עדכון עצמי מ־GitHub Releases | ללא חנות | פועל; דרש מפתח קבוע (5) |
-| 12 | יומן CSV מלא + הילוך חוזר | כיול מנתונים אמיתיים | היומן הראשון שינה את האלגוריתם (6→7) ואת מודל ההנמכה |
+| 1 | MapLibre instead of Google Maps | Google needs network and a key, no offline API | Right; MapLibre 11 also worked with `mbtiles://` and `asset://` |
+| 2 | Natural Earth as embedded GeoJSON instead of hosted PMTiles | Hosting = cost; 5 MB in the APK suffice for zoom 1–10 at cruise altitude | Right; labels needed embedded glyphs (Noto Sans PBF) |
+| 3 | No Hilt/Room/DataStore | Fewer dependencies = fewer build failures on a machine one cannot see | Right |
+| 4 | Boarding-pass scan (ZXing) instead of flight-number lookup | No free schedule database | Right; the lookup remained a recurring user request |
+| 5 | Debug-key signing | Simplicity | **Wrong**: an ephemeral runner = a new key every build → "App not installed". Fixed with a stable key in the repo |
+| 6 | **Planned route as governing; "proven deviation" before moving the aircraft** (v2) | Avoid jumps with noisy GPS | **Wrong**: on a real flight, 57 m fixes were classified "weak" and never "proved" a 48 km offset. The aircraft was drawn where it was not |
+| 7 | **Measurement first; route only as fallback** (v4) | The first flight's log | Right: median 1 m; 34 km after 24 min without GPS |
+| 8 | Barometer = cabin pressure, not altitude | Physics | Right; but cabin re-pressurisation in cruise produced false phases → GPS became the primary phase source |
+| 9 | ADS-B (adsb.lol) when a network exists | "Every possible information" without requiring network | Works; service availability not guaranteed |
+| 10 | Blue Marble from NASA GIBS | NASA's image server blocked GitHub runners | Works |
+| 11 | Self-update from GitHub Releases | No store | Works; required the stable key (5) |
+| 12 | Full CSV log + replay (phone and desktop) | Calibration from real data | The first log changed the algorithm (6→7) and the descent model |
+| 13 | Recording only by the REC button, with or without a flight plan | The phone left running at home produced 14-hour logs | Logs are intentional now |
 
-## שיטת העבודה שהתבררה כיעילה
-- כל פרמטר מכוון בקובץ אחד (`Parameters.kt`).
-- ליבת החישוב טהורה (ללא Android) → בדיקות JVM ו־replay של יומנים.
-- כותרת גרסה בכל קובץ, Full Code בכל מסירה, ספירת שורות.
-- כלי העלאה (`update_github.bat`) שמאפשר למי שאינו מכיר Git לפרסם גרסה בגרירת קובץ.
+## The working method that proved effective
+- Every tunable in one file (`Parameters.kt`).
+- Pure computing core (no Android) → JVM tests and replay of logs; a stub layer to compile the service layer locally.
+- Version header in every file, full code in every delivery, line counts.
+- An upload tool (`update_github.bat`) that lets a non-Git user publish a version by dragging a file.
+- Companion documents regenerated by CI (`build_docs.py`) so they cannot drift.
 
-## מה היה שגוי ונלמד
-1. אי־אפשר להעריך "מה GPS ייתן במטוס" בלי טיסה: 57 מ׳ חציון, לא 10–30.
-2. כללים שנועדו "להגן" מרעש (הוכחת סטייה) גרועים מהרעש עצמו כשהמדידה עצמה טובה.
-3. כל שינוי שלא קומפל — לא קיים. סבב של גרסאות 3.0–4.2 לא נבנה כלל; רק stubs לקומפילציה מקומית שברו את השרשרת.
+## What was wrong and was learned
+1. "What GPS will give in an aircraft" cannot be estimated without a flight: median 57 m, not 10–30.
+2. Rules meant to "protect" from noise (proven deviation) are worse than the noise itself when the measurement is good.
+3. Every change that was not compiled does not exist. A run of versions 3.0–4.2 never built; only local stub compilation broke that chain.
 
-## הקשר לפרומפט
-הפרומפט המלא, כפי שהתפתח לאורך הדרך, נמצא ב־[PROMPT.md](PROMPT.md). הוא מתועד כ"היסטוריה חיה": סעיפים שהוחלפו סומנו, לא נמחקו.
-
-</div>
+## Relation to the prompt
+The full prompt, as it evolved, is in [PROMPT.md](PROMPT.md). It is kept as "living history": superseded sections are marked, not deleted.

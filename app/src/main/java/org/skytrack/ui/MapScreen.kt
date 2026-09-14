@@ -52,6 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -99,6 +101,8 @@ fun MapScreen(
     hebrew: Boolean,
     recording: Boolean = false,
     onToggleRecording: (() -> Unit)? = null,
+    /** Last known device location (lat, lon) for the "zoom to where I am" camera at app start. */
+    initialLocation: Pair<Double, Double>? = null,
     /** Replay mode: this content replaces the bottom panel and the top status strip is hidden. */
     replayPanel: (@Composable () -> Unit)? = null
 ) {
@@ -107,6 +111,10 @@ fun MapScreen(
     val aerial = remember { AerialPack(context) }
     var showVisualFix by remember { mutableStateOf(false) }
     var metersPerPx by remember { mutableStateOf(0.0) }
+    var panelHeightPx by remember { mutableStateOf(0) }
+    var zoomedForRecording by remember { mutableStateOf(false) }
+    var zoomedForReplay by remember { mutableStateOf(false) }
+    var zoomedAtStart by remember { mutableStateOf(false) }
     var snapshotTaken by rememberSaveable { mutableStateOf(false) }
     var controller by remember { mutableStateOf<MapController?>(null) }
     var trackUp by rememberSaveable { mutableStateOf(settings.trackUp) }
@@ -137,6 +145,19 @@ fun MapScreen(
         }
         LaunchedEffect(controller, trackUp) { controller?.trackUp = trackUp }
         LaunchedEffect(controller, metrics) { if (metrics != null) controller?.update(metrics) }
+        // App start without a flight: maximum zoom on the last known device location.
+        LaunchedEffect(controller, initialLocation) {
+            if (!zoomedAtStart && controller != null && metrics == null && initialLocation != null) { zoomedAtStart = true; controller?.zoomMaxTo(initialLocation.first, initialLocation.second) }
+        }
+        // Recording start: maximum zoom on the aircraft.
+        LaunchedEffect(recording, controller, metrics) {
+            if (recording && !zoomedForRecording && controller != null && metrics != null) { zoomedForRecording = true; controller?.zoomMaxTo(metrics.estimate.lat, metrics.estimate.lon) }
+            if (!recording) zoomedForRecording = false
+        }
+        // Replay start: maximum zoom on the first position.
+        LaunchedEffect(replayPanel != null, controller, metrics) {
+            if (replayPanel != null && !zoomedForReplay && controller != null && metrics != null) { zoomedForReplay = true; controller?.zoomMaxTo(metrics.estimate.lat, metrics.estimate.lon) }
+        }
         // One map snapshot when the flight ends, saved next to the flight log.
         LaunchedEffect(metrics?.estimate?.phase) {
             if (!snapshotTaken && metrics != null && metrics.estimate.phase == org.skytrack.sensors.FlightPhase.LANDED && !metrics.estimateOnly) {
@@ -180,14 +201,21 @@ fun MapScreen(
             SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.TableChart, stringResource(R.string.metrics)) }
             SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
             SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Help, stringResource(R.string.help)) }
-            if (metrics != null && onToggleRecording != null && !metrics.estimateOnly) {
-                // Flight-log recording: only this button starts or stops it.
+            if (onToggleRecording != null && metrics?.estimateOnly != true) {
+                // Flight-log recording: only this button starts or stops it (with or without a flight plan).
+                // Recording: slow red pulse; idle: red dot on a neutral button.
+                val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "rec")
+                val alpha by pulse.animateFloat(initialValue = 0.35f, targetValue = 1f, label = "recAlpha",
+                    animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                        androidx.compose.animation.core.tween(1200, easing = androidx.compose.animation.core.LinearEasing),
+                        androidx.compose.animation.core.RepeatMode.Reverse))
+                val red = androidx.compose.ui.graphics.Color(0xFFD32F2F)
                 SmallFloatingActionButton(
                     onClick = onToggleRecording,
-                    containerColor = if (recording) androidx.compose.ui.graphics.Color(0xFF2F6FB0) else MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = if (recording) red.copy(alpha = alpha) else MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Icon(if (recording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord, stringResource(R.string.recording),
-                        tint = if (recording) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                        tint = if (recording) androidx.compose.ui.graphics.Color.White else red)
                 }
             }
             if (metrics != null) {
@@ -213,10 +241,13 @@ fun MapScreen(
         }
 
         // -- Scale bar: above the panel, start side --
-        if (metersPerPx > 0) ScaleBar(metersPerPx, settings.distanceUnit, Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 12.dp, bottom = 236.dp))
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        if (metersPerPx > 0) ScaleBar(metersPerPx, settings.distanceUnit,
+            Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 12.dp, bottom = with(density) { panelHeightPx.toDp() } + 12.dp))
 
         // -- Bottom: metrics panel, or the replay panel in replay mode --
-        Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(8.dp)) {
+        Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(8.dp)
+            .onGloballyPositioned { panelHeightPx = it.size.height }) {
             if (replayPanel != null) replayPanel()
             else MetricsPanel(metrics, settings, panelExpanded, onConfirmGround, onOpenSetup) { panelExpanded = !panelExpanded; onPanelExpandedChanged(panelExpanded) }
         }
@@ -246,6 +277,7 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
             StripText("\u25CF  $line1", color)
             // Line 2: how the position is computed
             val line2 = when {
+                m.freeRecording -> stringResource(R.string.free_recording_title)
                 m.estimateOnly -> stringResource(R.string.mode_estimate_only)
                 e.mode == FusionMode.GNSS_TRACKING -> stringResource(R.string.strip_measured)
                 e.mode == FusionMode.ROUTE_CONSTRAINED -> stringResource(if (e.maneuvering) R.string.strip_route_maneuvering else R.string.mode_constrained)
@@ -278,6 +310,25 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onCo
             return@Surface
         }
         val e = m.estimate
+        if (m.freeRecording) {
+            // Free recording: no route, so only what the sensors give. Offer to enter a flight.
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.free_recording_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Row(Modifier.fillMaxWidth()) {
+                    LabeledValue(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, s.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(stringResource(R.string.altitude), Format.altitude(e.altM, s.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(stringResource(R.string.track), Format.heading(e.trackDeg), e.trackConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(stringResource(R.string.satellites), "${e.satsUsed}", null, modifier = Modifier.weight(1f))
+                }
+                Row(Modifier.fillMaxWidth()) {
+                    LabeledValue(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
+                    LabeledValue(stringResource(R.string.gnss_accuracy), if (e.mode == FusionMode.GNSS_TRACKING) Format.altitude(e.sigmaAlongM, s.altitudeUnit) else "--", modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.position), String.format(java.util.Locale.US, "%.4f, %.4f", e.lat, e.lon), e.positionConfidence, modifier = Modifier.weight(2f))
+                }
+                androidx.compose.material3.OutlinedButton(onClick = onStartFlight, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.start_flight)) }
+            }
+            return@Surface
+        }
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             e.originMismatchM?.let { d ->
                 Text(stringResource(R.string.origin_mismatch, Format.distance(d, s.distanceUnit), m.origin.iata),
@@ -460,20 +511,18 @@ private fun ScaleBar(metersPerPx: Double, unit: org.skytrack.data.DistanceUnit, 
                                else "${(u * 1000).toInt()}" + (if (unit == org.skytrack.data.DistanceUnit.KM) " m" else "")
     val fg = MaterialTheme.colorScheme.onSurface; val bg = MaterialTheme.colorScheme.surface
     androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
-        Row(modifier, verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        // One uniform box: tick labels, the graduated bar and the unit.
+        Row(modifier.background(bg.copy(alpha = 0.88f), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Column(Modifier.width(widthDp.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    for (t in listOf("0", f(nice / 2), f(nice))) {
-                        Text(t, style = MaterialTheme.typography.labelSmall, color = fg, maxLines = 1,
-                            modifier = Modifier.background(bg.copy(alpha = 0.85f), RoundedCornerShape(3.dp)).padding(horizontal = 3.dp))
-                    }
+                    for (t in listOf("0", f(nice / 2), f(nice))) Text(t, style = MaterialTheme.typography.labelSmall, color = fg, maxLines = 1)
                 }
-                Row(Modifier.fillMaxWidth().height(8.dp).background(bg).padding(1.dp)) {
+                Row(Modifier.fillMaxWidth().height(8.dp).background(fg).padding(1.dp)) {
                     for (i in 0 until n) Box(Modifier.weight(1f).fillMaxSize().background(if (i % 2 == 0) fg else bg))
                 }
             }
-            if (nice >= 1 || unit != org.skytrack.data.DistanceUnit.KM) Text(label, style = MaterialTheme.typography.labelSmall, color = fg, maxLines = 1,
-                modifier = Modifier.background(bg.copy(alpha = 0.85f), RoundedCornerShape(3.dp)).padding(horizontal = 4.dp))
+            if (nice >= 1 || unit != org.skytrack.data.DistanceUnit.KM) Text(label, style = MaterialTheme.typography.labelSmall, color = fg, maxLines = 1)
         }
     }
 }

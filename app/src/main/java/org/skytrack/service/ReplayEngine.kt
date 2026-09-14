@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - ReplayEngine
-// Version 1.2
+// Version 1.3
 // Purpose : Play a recorded flight log back through a fresh Estimator at
 //           30x .. 600x real time, publishing FlightMetrics exactly like the
 //           live engine so the normal map screen can display it. Because the
@@ -58,13 +58,18 @@ class ReplayEngine(private val airports: AirportRepository) {
     /** Load a log; returns false with `error` set if it cannot be replayed. */
     suspend fun load(file: File): Boolean = withContext(Dispatchers.IO) {
         stop()
-        val sum = FlightLogReader.summarize(file)
-        val o = sum?.originIata?.let { airports.byCode(it) }
-        val d = sum?.destinationIata?.let { airports.byCode(it) }
-        if (sum == null || o == null || d == null) { _error.value = "unknown airports in log"; return@withContext false }
-        summary = sum; origin = o; destination = d
+        val sum = FlightLogReader.summarize(file) ?: run { _error.value = "empty log"; return@withContext false }
         rows = FlightLogReader.rows(file)
         if (rows.isEmpty()) { _error.value = "empty log"; return@withContext false }
+        var o = sum.originIata?.let { airports.byCode(it) }
+        var d = sum.destinationIata?.let { airports.byCode(it) }
+        if (o == null || d == null) {
+            // Free recording or unknown codes: stand-in airport at the first fix.
+            val first = rows.firstOrNull { it.gnss != null }?.gnss ?: run { _error.value = "no airports and no fixes in log"; return@withContext false }
+            val ph = org.skytrack.data.Airport.placeholder(sum.originIata ?: "FREE", first.lat, first.lon)
+            o = o ?: ph; d = d ?: ph
+        }
+        summary = sum; origin = o; destination = d
         _error.value = null
         reset()
         true

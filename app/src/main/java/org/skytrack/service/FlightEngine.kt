@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 4.9
+// Version 5.0
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -75,7 +75,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         val p = plan
         if (on && p != null && !p.estimateOnly) {
             logger.enabled = true
-            logger.start(p.originIata, p.destinationIata, p.flightNumber)
+            logger.start(p.originIata, p.destinationIata, if (p.free) "free" else p.flightNumber)
             loggingStopped = false
             _recording.value = true
         } else {
@@ -118,8 +118,16 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     /** Start (or restart) tracking for a plan. Returns false if airports are unknown. */
     @Synchronized
     fun start(p: FlightPlan): Boolean {
-        val o = airports.byCode(p.originIata) ?: return false
-        val dst = airports.byCode(p.destinationIata) ?: return false
+        val o: Airport; val dst: Airport
+        if (p.free) {
+            // Free recording: no plan. A stand-in "airport" at the last known position keeps the
+            // estimator and metrics well defined (zero-length route); the UI hides route values.
+            val here = lastGnss?.let { GeoPoint(it.lat, it.lon) } ?: stores.loadGroundFix()?.let { GeoPoint(it.lat, it.lon) } ?: GeoPoint(0.0, 0.0)
+            o = Airport.placeholder(FlightPlan.FREE_CODE, here.lat, here.lon); dst = o
+        } else {
+            o = airports.byCode(p.originIata) ?: return false
+            dst = airports.byCode(p.destinationIata) ?: return false
+        }
         stop()
         plan = p; origin = o; destination = dst
         val est = Estimator(Route(o.point, dst.point))
@@ -154,8 +162,16 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
                 publish(System.currentTimeMillis())
             }
         }
-        if (p.flightNumber.isNotBlank()) pollJob = scope.launch { pollLive(p) }
+        if (p.flightNumber.isNotBlank() && !p.free) pollJob = scope.launch { pollLive(p) }
         return true
+    }
+
+    /** REC without a flight: start a free recording (sensors + log, no route values). */
+    @Synchronized
+    fun startFreeRecording(): Boolean {
+        val ok = start(FlightPlan.freeRecording())
+        if (ok) setRecording(true)
+        return ok
     }
 
     /**
@@ -338,13 +354,13 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         val relief = now < reliefUntilMs
         val fm = Metrics.compute(e, est.route, est.plannedRoute, est.actualTrack.toList(), p.estimateOnly && !externalFresh,
             o, dst, takeoffForMetrics, lastCountry, takeoffRef, source, cabinAlt, gr, warn, relief, noFixS)
-            .copy(estimatedTrack = est.estimatedSegments.map { it.toList() })
+            .copy(estimatedTrack = est.estimatedSegments.map { it.toList() }, freeRecording = p.free)
         phaseDetector.onRemaining(fm.remainingM, now)
         _metrics.value = fm
         // Logging window: stop LOG_AFTER_LANDING_MS after landing, or after LOG_MAX_GROUND_MS on the ground
         // without a takeoff (the phone left running at home). Tracking itself continues.
         if (e.phase == FlightPhase.LANDED) { if (landedSinceMs == 0L) landedSinceMs = now } else landedSinceMs = 0L
-        val groundTooLong = e.phase == FlightPhase.GROUND && p.takeoffMs == null && now - startMs > Parameters.LOG_MAX_GROUND_MS
+        val groundTooLong = !p.free && e.phase == FlightPhase.GROUND && p.takeoffMs == null && now - startMs > Parameters.LOG_MAX_GROUND_MS
         val landedLong = landedSinceMs != 0L && now - landedSinceMs > Parameters.LOG_AFTER_LANDING_MS
         if (!loggingStopped && _recording.value && (groundTooLong || landedLong)) { loggingStopped = true; logger.stop(); _recording.value = false }
         if (live && _recording.value && !loggingStopped) logger.log(fm, lastGnss, lastBaro, lastGyro)

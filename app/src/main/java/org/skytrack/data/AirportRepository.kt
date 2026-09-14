@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - AirportRepository
-// Version 1.3
+// Version 1.4
 // Purpose : Load the bundled airports.csv (OurAirports subset with
 //           IANA timezones) into memory and provide search and
 //           nearest-airport queries. ~3,200 rows; in-memory is adequate.
@@ -28,6 +28,11 @@ data class Airport(
 ) {
     val point: GeoPoint get() = GeoPoint(lat, lon)
     val label: String get() = "$iata - $city ($name)"
+
+    companion object {
+        /** Stand-in for free recordings and logs without airports: a point with no schedule or elevation. */
+        fun placeholder(code: String, lat: Double, lon: Double): Airport = Airport(code, code, code, "", "", lat, lon, 0, "UTC")
+    }
 }
 
 class AirportRepository(context: Context) {

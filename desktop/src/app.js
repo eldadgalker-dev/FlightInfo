@@ -16,7 +16,7 @@
   "use strict";
 
   // ---------------- Parameters ----------------
-  const APP_VERSION = "2.6";
+  const APP_VERSION = "2.7";
   const PAGE_URL = "https://eldadgalker-dev.github.io/FlightInfo/";
   const P = {
     SPEEDS: [30, 120, 600],           // x real time
@@ -217,6 +217,8 @@
     const fmtU = (u) => u >= 1 ? String(Math.round(u * 100) / 100) : String(Math.round(u * 1000)) + (S.du === "KM" ? " m" : "");
     let segs = ""; for (let i = 0; i < n; i++) segs += `<i class="${i % 2 ? "b" : "a"}" style="width:${px / n}px"></i>`;
     el.innerHTML = `<div class="bar" style="width:${px}px"><div class="ticks"><span>0</span><span>${fmtU(nice / 2)}</span><span>${fmtU(nice)}</span></div><div class="segs">${segs}</div></div><span class="unit">${nice >= 1 || S.du !== "KM" ? label : ""}</span>`;
+    // Attached to the top of the data panel below it.
+    const panel = $("panel"); if (panel) el.style.bottom = (panel.offsetHeight + 16) + "px";
   }
 
   function buildMap() {
@@ -293,7 +295,7 @@
     S.idx = 0; S.playT = undefined; S.follow = true; resetPositions(); pause();
     $("title").textContent = `FlightInfo ${APP_VERSION} \u00B7 Replay ${meta.origin} \u2192 ${meta.destination} ${meta.flight || ""}`;
     pushStatic(); render(true);
-    if (S.mapReady) fitRoute();
+    if (S.mapReady) { const p0 = S.shownPos || (S.origin ? [S.origin.lon, S.origin.lat] : null); if (p0) { S.lastGesture = 0; map.jumpTo({ center: p0, zoom: 10 }); } }
   }
   // Two polylines: measured (GPS fixes, solid) and estimated (propagated / interpolated, dashed),
   // built from the position actually shown for each row so the line never has holes.

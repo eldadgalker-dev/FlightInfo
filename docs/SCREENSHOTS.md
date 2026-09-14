@@ -1,15 +1,13 @@
-# FlightInfo — צילומי מסך
+# FlightInfo — Screenshots
 
-<div dir="rtl">
+**English** · [עברית](SCREENSHOTS.he.md)
 
 | | |
 |---|---|
-| ![בשער במינכן](screenshots/01_gate_muc.jpg) | **בשער במינכן** — תצלום אוויר Blue Marble, המסלול המתוכנן ל־TLV, לוח נתונים פתוח: מרחק, זמן ליעד (כולל ההמתנה להמראה), שעות במוצא/UTC/יעד |
-| ![שיוט מעל קרואטיה](screenshots/02_cruise_croatia.jpg) | **שיוט מעל קרואטיה** — קטע שעבר (כתום), המשך מתוכנן (מקווקו), שורת מצב עם שלב ומדינה |
-| ![לוח מלא](screenshots/03_cruise_turkey_panel.jpg) | **מעל טורקיה, לוח מלא** — צילום מהטיסה שחשפה את כשל v2 (המטוס מצויר על התוכנית במקום במיקומו) והוביל ל־v4 |
-| ![מצב הערכה](screenshots/04_estimate_mode_europe.jpg) | **מצב הערכה** — מעקב אחר טיסה שאינך בה, לפי שעת יציאה |
-| ![הגדרות](screenshots/05_settings.jpg) | **הגדרות** — יחידות, ערכת נושא, שפה, רשת, תצלום אוויר, יומנים, עדכון |
+| ![At the gate in Munich](screenshots/01_gate_muc.jpg) | **At the gate in Munich** — Blue Marble imagery, the planned route to TLV, open data panel: distance, time to destination (including the wait for takeoff), clocks at origin / UTC / destination |
+| ![Cruise over Croatia](screenshots/02_cruise_croatia.jpg) | **Cruise over Croatia** — flown part (orange), planned continuation (dashed), status strip with phase and country |
+| ![Full panel](screenshots/03_cruise_turkey_panel.jpg) | **Over Turkey, full panel** — the screenshot that exposed the v2 failure (aircraft drawn on the plan instead of at its position) and led to v4 |
+| ![Estimate mode](screenshots/04_estimate_mode_europe.jpg) | **Estimate mode** — following a flight you are not on, from the departure time |
+| ![Settings](screenshots/05_settings.jpg) | **Settings** — units, theme, language, network, imagery, logs, update |
 
-הצילומים מגרסאות בטא 2.x–4.x; פרטים בממשק משתנים בין גרסאות.
-
-</div>
+Screenshots are from beta versions 2.x–4.x; interface details change between versions.
