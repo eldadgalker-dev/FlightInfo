@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 3.2
+// Version 3.3
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -172,7 +172,8 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
     val m by engine.metrics.collectAsStateWithLifecycle()
     var seeking by remember { mutableStateOf<Float?>(null) }
     // Always English, LTR, fixed columns: unambiguous and steady at 600x.
-    val en = remember { englishContext(LocalContext.current) }
+    val ctx = LocalContext.current
+    val en = remember(ctx) { englishContext(ctx) }
 
     androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
     Surface(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {

@@ -16,7 +16,7 @@
   "use strict";
 
   // ---------------- Parameters ----------------
-  const APP_VERSION = "2.5";
+  const APP_VERSION = "2.6";
   const PAGE_URL = "https://eldadgalker-dev.github.io/FlightInfo/";
   const P = {
     SPEEDS: [30, 120, 600],           // x real time
@@ -201,17 +201,34 @@
     });
   }
 
+  /**
+   * Graduated scale bar: a "nice" total length (1, 2, 5 x 10^n) within 150 px, split into 4 or 5
+   * alternating segments with tick labels at 0, the middle and the end, in the selected unit.
+   */
+  function updateScaleBar() {
+    if (!map) return;
+    const el = $("scalebar"); const lat = map.getCenter().lat;
+    const mpp = 40075016.686 * Math.cos(rad(lat)) / (256 * Math.pow(2, map.getZoom()));
+    const unitM = S.du === "NM" ? 1852 : S.du === "MI" ? 1609.344 : 1000, label = S.du === "NM" ? "nm" : S.du === "MI" ? "mi" : "km";
+    const maxUnits = 150 * mpp / unitM;
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(maxUnits, 1e-6))));
+    const nice = [5, 2, 1].map((x) => x * pow).find((x) => x <= maxUnits) || pow;
+    const px = nice * unitM / mpp; const n = String(nice / pow)[0] === "5" ? 5 : 4;
+    const fmtU = (u) => u >= 1 ? String(Math.round(u * 100) / 100) : String(Math.round(u * 1000)) + (S.du === "KM" ? " m" : "");
+    let segs = ""; for (let i = 0; i < n; i++) segs += `<i class="${i % 2 ? "b" : "a"}" style="width:${px / n}px"></i>`;
+    el.innerHTML = `<div class="bar" style="width:${px}px"><div class="ticks"><span>0</span><span>${fmtU(nice / 2)}</span><span>${fmtU(nice)}</span></div><div class="segs">${segs}</div></div><span class="unit">${nice >= 1 || S.du !== "KM" ? label : ""}</span>`;
+  }
+
   function buildMap() {
     if (map) { map.remove(); }
     S.mapReady = false;
     map = new maplibregl.Map({ container: "map", style: style(), center: [20, 40], zoom: 3, attributionControl: false, dragRotate: false, pitchWithRotate: false });
     map.touchZoomRotate.disableRotation();
-    S.scale = new maplibregl.ScaleControl({ maxWidth: 140, unit: S.du === "NM" ? "nautical" : S.du === "MI" ? "imperial" : "metric" });
-    map.addControl(S.scale, "bottom-left");
+    map.on("move", updateScaleBar); map.on("zoom", updateScaleBar);
     map.on("dragstart", () => { S.lastGesture = Date.now(); });
     map.on("load", () => {
       P.LEVEL_COLORS.forEach((col, i) => map.addImage(`aircraft-${i}`, aircraftImage(col, i >= 2)));
-      S.mapReady = true; pushStatic(); render(true);
+      S.mapReady = true; pushStatic(); render(true); updateScaleBar();
     });
   }
   function pushStatic() {
@@ -465,7 +482,7 @@
       $("title").textContent = `FlightInfo ${APP_VERSION} \u2014 Replay`; applyLang(); };
     $("seek").addEventListener("input", (e) => { if (!S.rows.length) return; S.idx = Math.round(e.target.value / 1000 * (S.rows.length - 1)); S.playT = S.rows[S.idx].t; render(true); });
     chipGroup("speed", (v) => { S.speed = Number(v); render(false); saveSettings(); });
-    chipGroup("du", (v) => { S.du = v; if (S.scale) S.scale.setUnit(v === "NM" ? "nautical" : v === "MI" ? "imperial" : "metric"); render(false); saveSettings(); }); chipGroup("au", (v) => { S.au = v; render(false); saveSettings(); }); chipGroup("su", (v) => { S.su = v; render(false); saveSettings(); });
+    chipGroup("du", (v) => { S.du = v; updateScaleBar(); render(false); saveSettings(); }); chipGroup("au", (v) => { S.au = v; render(false); saveSettings(); }); chipGroup("su", (v) => { S.su = v; render(false); saveSettings(); });
     chipGroup("theme", (v) => { S.theme = v; applyTheme(); saveSettings(); }); chipGroup("aerial", (v) => { S.aerial = v === "1"; buildMap(); saveSettings(); }); chipGroup("lang", (v) => { S.lang = v; applyLang(); saveSettings(); });
     $("btnZoomIn").onclick = () => map.zoomIn(); $("btnZoomOut").onclick = () => map.zoomOut();
     $("btnFit").onclick = fitRoute; $("btnCenter").onclick = () => { S.lastGesture = 0; S.follow = true; render(true); };

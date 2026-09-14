@@ -443,26 +443,37 @@ private fun GnssBanner(m: FlightMetrics, modifier: Modifier) {
 }
 
 /**
- * Scale bar in the selected distance unit: picks a "nice" length (1, 2, 5 x 10^n) that fits
- * within ~120 dp and draws a bar of the matching pixel width with a white halo.
+ * Graduated scale bar in the selected distance unit: a "nice" total length (1, 2, 5 x 10^n) that
+ * fits ~150 dp, split into 4 or 5 alternating segments, with tick labels at 0, the middle and the end.
  */
 @Composable
 private fun ScaleBar(metersPerPx: Double, unit: org.skytrack.data.DistanceUnit, modifier: Modifier) {
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     val unitM = when (unit) { org.skytrack.data.DistanceUnit.NM -> 1852.0; org.skytrack.data.DistanceUnit.MI -> 1609.344; else -> 1000.0 }
     val label = when (unit) { org.skytrack.data.DistanceUnit.NM -> "nm"; org.skytrack.data.DistanceUnit.MI -> "mi"; else -> "km" }
-    val maxPx = 120.0 * density
-    val maxUnits = maxPx * metersPerPx / unitM
-    // nice number <= maxUnits
+    val maxUnits = 150.0 * density * metersPerPx / unitM
     val pow = Math.pow(10.0, Math.floor(Math.log10(maxUnits.coerceAtLeast(1e-6))))
     val nice = listOf(5.0, 2.0, 1.0).map { it * pow }.firstOrNull { it <= maxUnits } ?: pow
     val widthDp = (nice * unitM / metersPerPx / density).toFloat()
-    val text = if (nice >= 1) "${nice.toInt()} $label" else "${(nice * 1000).toInt()} " + (if (unit == org.skytrack.data.DistanceUnit.KM) "m" else label)
-    Column(modifier, horizontalAlignment = Alignment.Start) {
-        Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp))
-        Box(Modifier.width(widthDp.dp).height(6.dp).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)).padding(1.dp)) {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.onSurface))
+    val n = if (Math.round(nice / pow) == 5L) 5 else 4
+    fun f(u: Double): String = if (u >= 1) (if (u == Math.floor(u)) u.toInt().toString() else String.format(java.util.Locale.US, "%.1f", u))
+                               else "${(u * 1000).toInt()}" + (if (unit == org.skytrack.data.DistanceUnit.KM) " m" else "")
+    val fg = MaterialTheme.colorScheme.onSurface; val bg = MaterialTheme.colorScheme.surface
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
+        Row(modifier, verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(Modifier.width(widthDp.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    for (t in listOf("0", f(nice / 2), f(nice))) {
+                        Text(t, style = MaterialTheme.typography.labelSmall, color = fg, maxLines = 1,
+                            modifier = Modifier.background(bg.copy(alpha = 0.85f), RoundedCornerShape(3.dp)).padding(horizontal = 3.dp))
+                    }
+                }
+                Row(Modifier.fillMaxWidth().height(8.dp).background(bg).padding(1.dp)) {
+                    for (i in 0 until n) Box(Modifier.weight(1f).fillMaxSize().background(if (i % 2 == 0) fg else bg))
+                }
+            }
+            if (nice >= 1 || unit != org.skytrack.data.DistanceUnit.KM) Text(label, style = MaterialTheme.typography.labelSmall, color = fg, maxLines = 1,
+                modifier = Modifier.background(bg.copy(alpha = 0.85f), RoundedCornerShape(3.dp)).padding(horizontal = 4.dp))
         }
     }
 }

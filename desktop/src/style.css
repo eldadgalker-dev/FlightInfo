@@ -1,4 +1,4 @@
-/* FlightInfo Desktop Replay - styles - Version 1.3
+/* FlightInfo Desktop Replay - styles - Version 1.4
    Colours follow the phone app: night surface #13202D, day surface #FFFFFF, primary blue #2F6FB0 (day) / amber #FFB454 (night),
    time = blue, distance = primary, motion = teal. Layout mirrors the phone: fabs in two columns, bottom panel. */
 :root {
@@ -16,10 +16,18 @@ html, body { margin: 0; height: 100%; background: #202833; font-family: Roboto, 
   box-shadow: 0 0 0 10px #111, 0 20px 60px rgba(0,0,0,.6); background: var(--bg); }
 #map { position: absolute; inset: 0; }
 .maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display: none !important; }
-/* Scale bar: above the bottom panel, readable over imagery */
-.maplibregl-ctrl-bottom-left { bottom: 232px !important; left: 10px !important; }
-.maplibregl-ctrl-scale { background: rgba(255,255,255,.85); color: #111; border: 2px solid #111; border-top: none; font-weight: 700; font-size: 12px; direction: ltr; unicode-bidi: isolate; }
-body.night .maplibregl-ctrl-scale { background: rgba(19,32,45,.85); color: #fff; border-color: #fff; }
+/* Graduated scale bar: above the bottom panel */
+.scalebar { position: absolute; left: 12px; bottom: 236px; z-index: 5; font: 700 11px/1 Roboto, Arial, sans-serif; color: #111; display: flex; align-items: flex-end; gap: 4px; }
+.scalebar .ticks span { white-space: nowrap; }
+.scalebar .unit { background: rgba(255,255,255,.85); padding: 1px 4px; border-radius: 3px; margin-bottom: -1px; }
+body.night .scalebar .unit { background: rgba(19,32,45,.85); }
+.scalebar .ticks { display: flex; justify-content: space-between; margin-bottom: 2px; }
+.scalebar .ticks span { background: rgba(255,255,255,.85); padding: 1px 3px; border-radius: 3px; }
+.scalebar .segs { display: flex; height: 8px; border: 2px solid #111; border-top: none; background: #fff; }
+.scalebar .segs i { display: block; height: 100%; }
+.scalebar .segs i.a { background: #111; } .scalebar .segs i.b { background: #fff; }
+body.night .scalebar { color: #fff; } body.night .scalebar .ticks span { background: rgba(19,32,45,.85); }
+body.night .scalebar .segs { border-color: #fff; background: #13202d; } body.night .scalebar .segs i.a { background: #fff; } body.night .scalebar .segs i.b { background: #13202d; }
 
 .col { position: absolute; top: 60px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
 .col.left { left: 10px; } .col.right { right: 10px; }
