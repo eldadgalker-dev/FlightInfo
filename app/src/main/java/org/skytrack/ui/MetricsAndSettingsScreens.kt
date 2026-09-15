@@ -27,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -228,6 +229,7 @@ fun SettingsScreen(s: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit
             OutlinedButton(onClick = onShareLog, enabled = logCount > 0, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.share_log)) }
         }
         OutlinedButton(onClick = onFeedback, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.feedback_title)) }
+        TesterSection()
         HorizontalDivider()
         UpdateSection(updater)
         HorizontalDivider()
@@ -389,5 +391,36 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/**
+ * Tester programme (opt-in). Visible only when the endpoint is configured. Explains exactly what is
+ * sent, requires a ticked consent box, and lets the user leave at any time.
+ */
+@Composable
+private fun TesterSection() {
+    if (org.skytrack.Parameters.TELEMETRY_URL.isBlank()) return
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val app = ctx.applicationContext as org.skytrack.SkyTrackApp
+    var joined by remember { mutableStateOf(app.stores.testerConsent) }
+    var nick by remember { mutableStateOf(app.stores.testerNickname ?: "") }
+    var email by remember { mutableStateOf(app.stores.testerEmail ?: "") }
+    var consent by remember { mutableStateOf(false) }
+    Section(stringResource(R.string.tester_title), Accent.status) {
+        Text(stringResource(R.string.tester_explain), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(6.dp))
+        if (joined) {
+            Text(stringResource(R.string.tester_joined, nick), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+            OutlinedButton(onClick = { app.telemetry.leave(); joined = false }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tester_leave)) }
+        } else {
+            OutlinedTextField(value = nick, onValueChange = { nick = it.take(40) }, label = { Text(stringResource(R.string.tester_nick)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = email, onValueChange = { email = it.take(80) }, label = { Text(stringResource(R.string.tester_email)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Checkbox(checked = consent, onCheckedChange = { consent = it })
+                Text(stringResource(R.string.tester_consent), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            }
+            OutlinedButton(onClick = { app.telemetry.join(nick, email); joined = true }, enabled = consent && nick.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tester_join)) }
+        }
     }
 }

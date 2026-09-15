@@ -296,6 +296,14 @@
     <string name="project_page">Explanations, downloads and documents:</string>
     <string name="free_recording_title">Free recording (no flight plan)</string>
     <string name="gnss_accuracy_short">Accuracy</string>
+    <string name="tester_title">Tester programme</string>
+    <string name="tester_explain">Joining sends the developer, over the network, when you install or update the app: app version, phone model, Android version, a random tester id, the nickname you enter and (optionally) your e-mail. The server also records the time, your IP address and country. Nothing else is ever sent, and nothing at all is sent unless you join. You can leave at any time.</string>
+    <string name="tester_nick">Nickname</string>
+    <string name="tester_email">E-mail (optional, for replies)</string>
+    <string name="tester_consent">I agree to the data described above being sent and stored for the purpose of the beta programme.</string>
+    <string name="tester_join">Join the tester programme</string>
+    <string name="tester_leave">Leave the programme</string>
+    <string name="tester_joined">Joined as %1$s. Install and update events are reported.</string>
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>

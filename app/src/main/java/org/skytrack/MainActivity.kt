@@ -153,7 +153,7 @@ private fun Root(app: SkyTrackApp) {
             when (screen) {
                 Screen.SETUP -> SetupScreen(
                     airports = app.airports,
-                    existing = plan,
+                    existing = plan?.takeIf { !it.free },
                     suggestedOrigin = remember { app.engine.suggestOrigin() },
                     onStart = { startFlight(it) },
                     onClear = { TrackingService.stop(context); app.engine.clearFlight(); screen = Screen.SETUP },

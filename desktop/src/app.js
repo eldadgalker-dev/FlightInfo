@@ -16,7 +16,7 @@
   "use strict";
 
   // ---------------- Parameters ----------------
-  const APP_VERSION = "2.7";
+  const APP_VERSION = "2.8";
   const PAGE_URL = "https://eldadgalker-dev.github.io/FlightInfo/";
   const P = {
     SPEEDS: [30, 120, 600],           // x real time
@@ -35,29 +35,29 @@
              countryText: "#8fa3b8", placeText: "#e6ecf2", halo: "#0b1622", planned: "#7aa2c4", flown: "#ffb454", track: "#5ad1c6", original: "#4a5a6c" },
   };
   const UI = {
-    he: { settings: "הגדרות", back: "חזרה", help: "עזרה", dist: "מרחק", alt: "גובה", speed: "מהירות", theme: "ערכת נושא", aerial: "תצלום אוויר (NASA GIBS, דורש רשת)", lang: "שפה / Language",
-          openTip: "פתח יומן", loadHint: "טען קובץ CSV של יומן טיסה (כפתור התיקייה, או גרור לכאן)" },
-    en: { settings: "Settings", back: "Back", help: "Help", dist: "Distance", alt: "Altitude", speed: "Speed", theme: "Theme", aerial: "Aerial imagery (NASA GIBS, needs network)", lang: "Language / שפה",
+    he: { settings: "\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea", back: "\u05d7\u05d6\u05e8\u05d4", help: "\u05e2\u05d6\u05e8\u05d4", dist: "\u05de\u05e8\u05d7\u05e7", alt: "\u05d2\u05d5\u05d1\u05d4", speed: "\u05de\u05d4\u05d9\u05e8\u05d5\u05ea", theme: "\u05e2\u05e8\u05db\u05ea \u05e0\u05d5\u05e9\u05d0", aerial: "\u05ea\u05e6\u05dc\u05d5\u05dd \u05d0\u05d5\u05d5\u05d9\u05e8 (NASA GIBS, \u05d3\u05d5\u05e8\u05e9 \u05e8\u05e9\u05ea)", lang: "\u05e9\u05e4\u05d4 / Language",
+          openTip: "\u05e4\u05ea\u05d7 \u05d9\u05d5\u05de\u05df", loadHint: "\u05d8\u05e2\u05df \u05e7\u05d5\u05d1\u05e5 CSV \u05e9\u05dc \u05d9\u05d5\u05de\u05df \u05d8\u05d9\u05e1\u05d4 (\u05db\u05e4\u05ea\u05d5\u05e8 \u05d4\u05ea\u05d9\u05e7\u05d9\u05d9\u05d4, \u05d0\u05d5 \u05d2\u05e8\u05d5\u05e8 \u05dc\u05db\u05d0\u05df)" },
+    en: { settings: "Settings", back: "Back", help: "Help", dist: "Distance", alt: "Altitude", speed: "Speed", theme: "Theme", aerial: "Aerial imagery (NASA GIBS, needs network)", lang: "Language / \u05e9\u05e4\u05d4",
           openTip: "Open log", loadHint: "Load a FlightInfo CSV log (folder button, or drop it here)" },
   };
   // The replay panel is always English (fixed-width, unambiguous), independent of the UI language.
   const PH = { GROUND: "on ground", TAKEOFF: "takeoff", CLIMB: "climb", CRUISE: "cruise", DESCENT: "descent", LANDED: "landed" };
   const T = {
-    he: { title: "הילוך חוזר", play: "נגן", pause: "השהה", close: "סגור", remaining: "מרחק נותר", speed: "מהירות קרקע", alt: "גובה",
-          playing: "מנגן", paused: "מושהה", loadHint: "טען קובץ CSV של יומן טיסה (כפתור התיקייה משמאל, או גרור לכאן)",
-          noGnss: "אין GPS", gnss: (n, a) => `${n} לוויינים ±${a} מ׳`, fixes: "תיקונים", duration: "משך",
-          lPhase: "שלב", lGps: "GPS", lLogTime: "זמן ביומן", of: "מתוך", srcFix: "מיקום GPS", srcEst: "מיקום מוערך (כפי שנרשם)",
-          phases: { GROUND: "על הקרקע", TAKEOFF: "המראה", CLIMB: "נסיקה", CRUISE: "שיוט", DESCENT: "הנמכה", LANDED: "נחת" },
-          badLog: "הקובץ אינו יומן FlightInfo תקין", unknownAirports: "שדות תעופה לא מוכרים ביומן",
-          help: [["מה זה", "הצגה שולחנית של יומן טיסה שנרשם באפליקציית FlightInfo. מוצגים המיקום שהאפליקציה חישבה בטיסה (סמל המטוס), המסלול שנמדד ב־GPS (טורקיז), המסלול המתוכנן (מקווקו) והערכים שהיו על המסך."],
-                 ["טעינה", "כפתור התיקייה משמאל, או גרירת קובץ CSV אל המסך. הקובץ נמצא בטלפון תחת Android/data/com.galker.flightinfo/files/logs, או נשלח מהאפליקציה דרך 'שתף'."],
-                 ["פקדים", "נגן/השהה, מהירות 30×/120×/600×, סרגל דילוג. משמאל: הגדרות (יחידות, ערכת נושא, תצלום אוויר, שפה) ועזרה. מימין: זום, כל המסלול, מרכוז, צפון/כיוון."],
-                 ["טבעת המטוס ותגית המיקום", "ירוק — GPS טוב; כתום — GPS חלש; אדום — מוערך (אין GPS) או זמן בלבד. סביב מטוס מוערך מוצג עיגול שגיאה (2σ) באותו צבע, כמו בטלפון."],
-                 ["קו טורקיז", "רציף — מסלול שנמדד ב־GPS; מקווקו — קטע מוערך: ללא GPS, או פער ברישום שהושלם באינטרפולציה במהירות הידועה לפניו ואחריו. המטוס ממשיך לנוע גם בקטעים אלה."],
-                 ["מגבלות", "תוויות המפה ותצלום האוויר דורשים רשת; ללא רשת המפה הוקטורית מוצגת ללא שמות. אין כאן חישוב מחדש — מוצג מה שנרשם."]] },
+    he: { title: "\u05d4\u05d9\u05dc\u05d5\u05da \u05d7\u05d5\u05d6\u05e8", play: "\u05e0\u05d2\u05df", pause: "\u05d4\u05e9\u05d4\u05d4", close: "\u05e1\u05d2\u05d5\u05e8", remaining: "\u05de\u05e8\u05d7\u05e7 \u05e0\u05d5\u05ea\u05e8", speed: "\u05de\u05d4\u05d9\u05e8\u05d5\u05ea \u05e7\u05e8\u05e7\u05e2", alt: "\u05d2\u05d5\u05d1\u05d4",
+          playing: "\u05de\u05e0\u05d2\u05df", paused: "\u05de\u05d5\u05e9\u05d4\u05d4", loadHint: "\u05d8\u05e2\u05df \u05e7\u05d5\u05d1\u05e5 CSV \u05e9\u05dc \u05d9\u05d5\u05de\u05df \u05d8\u05d9\u05e1\u05d4 (\u05db\u05e4\u05ea\u05d5\u05e8 \u05d4\u05ea\u05d9\u05e7\u05d9\u05d9\u05d4 \u05de\u05e9\u05de\u05d0\u05dc, \u05d0\u05d5 \u05d2\u05e8\u05d5\u05e8 \u05dc\u05db\u05d0\u05df)",
+          noGnss: "\u05d0\u05d9\u05df GPS", gnss: (n, a) => `${n} \u05dc\u05d5\u05d5\u05d9\u05d9\u05e0\u05d9\u05dd \u00b1${a} \u05de\u05f3`, fixes: "\u05ea\u05d9\u05e7\u05d5\u05e0\u05d9\u05dd", duration: "\u05de\u05e9\u05da",
+          lPhase: "\u05e9\u05dc\u05d1", lGps: "GPS", lLogTime: "\u05d6\u05de\u05df \u05d1\u05d9\u05d5\u05de\u05df", of: "\u05de\u05ea\u05d5\u05da", srcFix: "\u05de\u05d9\u05e7\u05d5\u05dd GPS", srcEst: "\u05de\u05d9\u05e7\u05d5\u05dd \u05de\u05d5\u05e2\u05e8\u05da (\u05db\u05e4\u05d9 \u05e9\u05e0\u05e8\u05e9\u05dd)",
+          phases: { GROUND: "\u05e2\u05dc \u05d4\u05e7\u05e8\u05e7\u05e2", TAKEOFF: "\u05d4\u05de\u05e8\u05d0\u05d4", CLIMB: "\u05e0\u05e1\u05d9\u05e7\u05d4", CRUISE: "\u05e9\u05d9\u05d5\u05d8", DESCENT: "\u05d4\u05e0\u05de\u05db\u05d4", LANDED: "\u05e0\u05d7\u05ea" },
+          badLog: "\u05d4\u05e7\u05d5\u05d1\u05e5 \u05d0\u05d9\u05e0\u05d5 \u05d9\u05d5\u05de\u05df FlightInfo \u05ea\u05e7\u05d9\u05df", unknownAirports: "\u05e9\u05d3\u05d5\u05ea \u05ea\u05e2\u05d5\u05e4\u05d4 \u05dc\u05d0 \u05de\u05d5\u05db\u05e8\u05d9\u05dd \u05d1\u05d9\u05d5\u05de\u05df",
+          help: [["\u05de\u05d4 \u05d6\u05d4", "\u05d4\u05e6\u05d2\u05d4 \u05e9\u05d5\u05dc\u05d7\u05e0\u05d9\u05ea \u05e9\u05dc \u05d9\u05d5\u05de\u05df \u05d8\u05d9\u05e1\u05d4 \u05e9\u05e0\u05e8\u05e9\u05dd \u05d1\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d9\u05ea FlightInfo. \u05de\u05d5\u05e6\u05d2\u05d9\u05dd \u05d4\u05de\u05d9\u05e7\u05d5\u05dd \u05e9\u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05d7\u05d9\u05e9\u05d1\u05d4 \u05d1\u05d8\u05d9\u05e1\u05d4 (\u05e1\u05de\u05dc \u05d4\u05de\u05d8\u05d5\u05e1), \u05d4\u05de\u05e1\u05dc\u05d5\u05dc \u05e9\u05e0\u05de\u05d3\u05d3 \u05d1\u05beGPS (\u05d8\u05d5\u05e8\u05e7\u05d9\u05d6), \u05d4\u05de\u05e1\u05dc\u05d5\u05dc \u05d4\u05de\u05ea\u05d5\u05db\u05e0\u05df (\u05de\u05e7\u05d5\u05d5\u05e7\u05d5) \u05d5\u05d4\u05e2\u05e8\u05db\u05d9\u05dd \u05e9\u05d4\u05d9\u05d5 \u05e2\u05dc \u05d4\u05de\u05e1\u05da."],
+                 ["\u05d8\u05e2\u05d9\u05e0\u05d4", "\u05db\u05e4\u05ea\u05d5\u05e8 \u05d4\u05ea\u05d9\u05e7\u05d9\u05d9\u05d4 \u05de\u05e9\u05de\u05d0\u05dc, \u05d0\u05d5 \u05d2\u05e8\u05d9\u05e8\u05ea \u05e7\u05d5\u05d1\u05e5 CSV \u05d0\u05dc \u05d4\u05de\u05e1\u05da. \u05d4\u05e7\u05d5\u05d1\u05e5 \u05e0\u05de\u05e6\u05d0 \u05d1\u05d8\u05dc\u05e4\u05d5\u05df \u05ea\u05d7\u05ea Android/data/com.galker.flightinfo/files/logs, \u05d0\u05d5 \u05e0\u05e9\u05dc\u05d7 \u05de\u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05d3\u05e8\u05da '\u05e9\u05ea\u05e3'."],
+                 ["\u05e4\u05e7\u05d3\u05d9\u05dd", "\u05e0\u05d2\u05df/\u05d4\u05e9\u05d4\u05d4, \u05de\u05d4\u05d9\u05e8\u05d5\u05ea 30\u00d7/120\u00d7/600\u00d7, \u05e1\u05e8\u05d2\u05dc \u05d3\u05d9\u05dc\u05d5\u05d2. \u05de\u05e9\u05de\u05d0\u05dc: \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea (\u05d9\u05d7\u05d9\u05d3\u05d5\u05ea, \u05e2\u05e8\u05db\u05ea \u05e0\u05d5\u05e9\u05d0, \u05ea\u05e6\u05dc\u05d5\u05dd \u05d0\u05d5\u05d5\u05d9\u05e8, \u05e9\u05e4\u05d4) \u05d5\u05e2\u05d6\u05e8\u05d4. \u05de\u05d9\u05de\u05d9\u05df: \u05d6\u05d5\u05dd, \u05db\u05dc \u05d4\u05de\u05e1\u05dc\u05d5\u05dc, \u05de\u05e8\u05db\u05d5\u05d6, \u05e6\u05e4\u05d5\u05df/\u05db\u05d9\u05d5\u05d5\u05df."],
+                 ["\u05d8\u05d1\u05e2\u05ea \u05d4\u05de\u05d8\u05d5\u05e1 \u05d5\u05ea\u05d2\u05d9\u05ea \u05d4\u05de\u05d9\u05e7\u05d5\u05dd", "\u05d9\u05e8\u05d5\u05e7 \u2014 GPS \u05d8\u05d5\u05d1; \u05db\u05ea\u05d5\u05dd \u2014 GPS \u05d7\u05dc\u05e9; \u05d0\u05d3\u05d5\u05dd \u2014 \u05de\u05d5\u05e2\u05e8\u05da (\u05d0\u05d9\u05df GPS) \u05d0\u05d5 \u05d6\u05de\u05df \u05d1\u05dc\u05d1\u05d3. \u05e1\u05d1\u05d9\u05d1 \u05de\u05d8\u05d5\u05e1 \u05de\u05d5\u05e2\u05e8\u05da \u05de\u05d5\u05e6\u05d2 \u05e2\u05d9\u05d2\u05d5\u05dc \u05e9\u05d2\u05d9\u05d0\u05d4 (2\u03c3) \u05d1\u05d0\u05d5\u05ea\u05d5 \u05e6\u05d1\u05e2, \u05db\u05de\u05d5 \u05d1\u05d8\u05dc\u05e4\u05d5\u05df."],
+                 ["\u05e7\u05d5 \u05d8\u05d5\u05e8\u05e7\u05d9\u05d6", "\u05e8\u05e6\u05d9\u05e3 \u2014 \u05de\u05e1\u05dc\u05d5\u05dc \u05e9\u05e0\u05de\u05d3\u05d3 \u05d1\u05beGPS; \u05de\u05e7\u05d5\u05d5\u05e7\u05d5 \u2014 \u05e7\u05d8\u05e2 \u05de\u05d5\u05e2\u05e8\u05da: \u05dc\u05dc\u05d0 GPS, \u05d0\u05d5 \u05e4\u05e2\u05e8 \u05d1\u05e8\u05d9\u05e9\u05d5\u05dd \u05e9\u05d4\u05d5\u05e9\u05dc\u05dd \u05d1\u05d0\u05d9\u05e0\u05d8\u05e8\u05e4\u05d5\u05dc\u05e6\u05d9\u05d4 \u05d1\u05de\u05d4\u05d9\u05e8\u05d5\u05ea \u05d4\u05d9\u05d3\u05d5\u05e2\u05d4 \u05dc\u05e4\u05e0\u05d9\u05d5 \u05d5\u05d0\u05d7\u05e8\u05d9\u05d5. \u05d4\u05de\u05d8\u05d5\u05e1 \u05de\u05de\u05e9\u05d9\u05da \u05dc\u05e0\u05d5\u05e2 \u05d2\u05dd \u05d1\u05e7\u05d8\u05e2\u05d9\u05dd \u05d0\u05dc\u05d4."],
+                 ["\u05de\u05d2\u05d1\u05dc\u05d5\u05ea", "\u05ea\u05d5\u05d5\u05d9\u05d5\u05ea \u05d4\u05de\u05e4\u05d4 \u05d5\u05ea\u05e6\u05dc\u05d5\u05dd \u05d4\u05d0\u05d5\u05d5\u05d9\u05e8 \u05d3\u05d5\u05e8\u05e9\u05d9\u05dd \u05e8\u05e9\u05ea; \u05dc\u05dc\u05d0 \u05e8\u05e9\u05ea \u05d4\u05de\u05e4\u05d4 \u05d4\u05d5\u05e7\u05d8\u05d5\u05e8\u05d9\u05ea \u05de\u05d5\u05e6\u05d2\u05ea \u05dc\u05dc\u05d0 \u05e9\u05de\u05d5\u05ea. \u05d0\u05d9\u05df \u05db\u05d0\u05df \u05d7\u05d9\u05e9\u05d5\u05d1 \u05de\u05d7\u05d3\u05e9 \u2014 \u05de\u05d5\u05e6\u05d2 \u05de\u05d4 \u05e9\u05e0\u05e8\u05e9\u05dd."]] },
     en: { title: "Replay", play: "Play", pause: "Pause", close: "Close", remaining: "Distance remaining", speed: "Ground speed", alt: "Altitude",
           playing: "playing", paused: "paused", loadHint: "Load a FlightInfo CSV flight log (folder button on the left, or drop it here)",
-          noGnss: "No GPS", gnss: (n, a) => `${n} satellites ±${a} m`, fixes: "fixes", duration: "duration",
+          noGnss: "No GPS", gnss: (n, a) => `${n} satellites \u00b1${a} m`, fixes: "fixes", duration: "duration",
           lPhase: "Phase", lGps: "GPS", lLogTime: "Log time", of: "of", srcFix: "GPS position", srcEst: "estimated position (as recorded)",
           phases: { GROUND: "on ground", TAKEOFF: "takeoff", CLIMB: "climb", CRUISE: "cruise", DESCENT: "descent", LANDED: "landed" },
           badLog: "Not a valid FlightInfo log", unknownAirports: "Unknown airports in log",
@@ -288,8 +288,14 @@
       const parts = fileName.replace(/\.csv$/i, "").split("_");
       if (parts.length >= 4) { meta.origin = meta.origin || parts[2]; meta.destination = meta.destination || parts[3]; meta.flight = meta.flight || parts[4] || ""; }
     }
-    const o = D.airports[meta.origin], d = D.airports[meta.destination];
-    if (!o || !d) { $("line3").textContent = T[S.lang].unknownAirports; return; }
+    let o = D.airports[meta.origin], d = D.airports[meta.destination];
+    if (!o || !d) {
+      // Free recording (no airports): stand in with the first and last fix.
+      const fx = rows.filter((r) => r.fix && !Number.isNaN(r.fix.lat));
+      if (!fx.length) { $("line3").textContent = T[S.lang].unknownAirports; return; }
+      o = o || { lat: fx[0].fix.lat, lon: fx[0].fix.lon, elev: 0, name: "start" }; d = d || { lat: fx[fx.length - 1].fix.lat, lon: fx[fx.length - 1].fix.lon, elev: 0, name: "end" };
+      meta.origin = meta.origin || "START"; meta.destination = meta.destination || "END";
+    }
     S.rows = rows; S.origin = { ...o, iata: meta.origin }; S.dest = { ...d, iata: meta.destination }; S.meta = meta; S.estTrusted = !!meta.estTrusted;
     S.route = greatCircle([o.lon, o.lat], [d.lon, d.lat], P.ROUTE_SAMPLES);
     S.idx = 0; S.playT = undefined; S.follow = true; resetPositions(); pause();

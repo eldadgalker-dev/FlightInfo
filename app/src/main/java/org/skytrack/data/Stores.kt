@@ -147,6 +147,23 @@ class Stores(private val context: Context) {
         )
     }
 
+    // -- Tester programme (opt-in) --
+    var testerId: String?
+        get() = prefs.getString("tester_id", null)
+        set(v) = prefs.edit().putString("tester_id", v).apply()
+    var testerNickname: String?
+        get() = prefs.getString("tester_nick", null)
+        set(v) = prefs.edit().putString("tester_nick", v).apply()
+    var testerEmail: String?
+        get() = prefs.getString("tester_email", null)
+        set(v) = prefs.edit().putString("tester_email", v).apply()
+    var testerConsent: Boolean
+        get() = prefs.getBoolean("tester_consent", false)
+        set(v) = prefs.edit().putBoolean("tester_consent", v).apply()
+    var testerLastReportedVersion: String?
+        get() = prefs.getString("tester_ver", null)
+        set(v) = prefs.edit().putString("tester_ver", v).apply()
+
     /** Last map zoom, restored on the next launch (not part of Settings to avoid recomposition on every gesture). */
     fun saveLastZoom(z: Double) = prefs.edit().putFloat(KEY_ZOOM, z.toFloat()).apply()
     fun loadLastZoom(): Double? = if (prefs.contains(KEY_ZOOM)) prefs.getFloat(KEY_ZOOM, 5f).toDouble() else null

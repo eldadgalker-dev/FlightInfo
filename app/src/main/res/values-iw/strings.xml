@@ -281,6 +281,14 @@
     <string name="project_page">הסברים, הורדות ומסמכים:</string>
     <string name="free_recording_title">הקלטה חופשית (ללא תוכנית טיסה)</string>
     <string name="gnss_accuracy_short">דיוק</string>
+    <string name="tester_title">תוכנית נסיינים</string>
+    <string name="tester_explain">ההצטרפות שולחת למפתח, דרך הרשת, בכל התקנה או עדכון של האפליקציה: גרסת האפליקציה, דגם הטלפון, גרסת Android, מזהה נסיין אקראי, הכינוי שהזנת ו(רשות) המייל שלך. השרת רושם גם את המועד, כתובת ה־IP והמדינה. דבר אחר אינו נשלח לעולם, ודבר אינו נשלח כלל אם לא הצטרפת. ניתן לעזוב בכל עת.</string>
+    <string name="tester_nick">כינוי</string>
+    <string name="tester_email">מייל (רשות, לתשובות)</string>
+    <string name="tester_consent">אני מסכים שהנתונים המתוארים לעיל יישלחו ויישמרו לצורך תוכנית הבטא.</string>
+    <string name="tester_join">הצטרף לתוכנית הנסיינים</string>
+    <string name="tester_leave">עזוב את התוכנית</string>
+    <string name="tester_joined">הצטרפת בשם %1$s. אירועי התקנה ועדכון מדווחים.</string>
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

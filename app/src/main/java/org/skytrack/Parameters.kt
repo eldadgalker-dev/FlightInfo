@@ -82,6 +82,7 @@ object Parameters {
     const val UPDATE_ASSET_NAME = "FlightInfo.apk"   // fixed-name asset published by the build workflow
     const val FEEDBACK_EMAIL    = "eldad@galker.com"  // in-app feedback (bug / improvement / flight log)
     const val PROJECT_PAGE_URL  = "https://eldadgalker-dev.github.io/FlightInfo/"   // explanations, downloads, documents
+    const val TELEMETRY_URL     = ""   // tester-programme endpoint (server/SERVER.md); empty = feature hidden, nothing sent
 
     // -- Estimate-only mode --
     const val TAXI_ALLOWANCE_S          = 900.0     // s, scheduled departure -> assumed takeoff

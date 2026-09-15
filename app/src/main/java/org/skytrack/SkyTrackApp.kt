@@ -45,8 +45,11 @@ class SkyTrackApp : Application() {
         } catch (e: Exception) { false }
     }
 
+    val telemetry by lazy { org.skytrack.net.Telemetry(this, stores) }
+
     override fun onCreate() {
         super.onCreate()
+        telemetry.reportLaunchIfNeeded()
         MapLibre.getInstance(this)
         airports = AirportRepository(this)
         stores = Stores(this)

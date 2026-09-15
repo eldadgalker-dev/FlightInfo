@@ -1,6 +1,6 @@
 # FlightInfo — Tools and components in the package
 
-Status as of version 5.0-beta27 (11 Sep 2026). "Last update" is the version of the component used by this project; "Security" and "Risk" are the project author's assessment, not the vendor's.
+Status as of version 5.1-beta28 (11 Sep 2026). "Last update" is the version of the component used by this project; "Security" and "Risk" are the project author's assessment, not the vendor's.
 
 ## Scripts and workflows shipped in this repository
 
@@ -11,6 +11,8 @@ Status as of version 5.0-beta27 (11 Sep 2026). "Last update" is the version of t
 | `tools/build_bluemarble_gibs.py` | 1.0 | 2026-09-09 | BSD-3 | Fetches Blue Marble tiles from NASA GIBS into MBTiles (runs in Actions) | Public data, no credentials | Low |
 | `tools/build_bluemarble.py` | 1.0 | 2026-09-09 | BSD-3 | Alternative: reprojects an equirectangular image to MBTiles | Public data | Low |
 | `.github/workflows/build.yml` | 2.1 | 2026-09-09 | BSD-3 | Tests, builds and publishes the APK to GitHub Releases on every push | Signs with the committed key unless secrets are present | Medium: committed signing key (see `keystore/README.md`) |
+| `server/worker.js` (Cloudflare Worker, free tier) | 1.0 | 2026-09-14 | BSD-3 | Telemetry endpoint: page views and download clicks (IP, country, browser), tester-programme events (opt-in) | Token-protected export; retention 400 days; optional IP anonymisation | Medium: stores personal data — see `server/SERVER.md` legal note |
+| `.github/workflows/stats.yml` + `tools/collect_stats.py` | 1.0 | 2026-09-14 | BSD-3 | Daily aggregate download counts per release asset into `docs/stats/downloads.csv` | Public API, no personal data | Low |
 | `.github/workflows/bluemarble.yml` | 2.0 | 2026-09-09 | BSD-3 | Manual: builds and publishes the aerial imagery pack | Public data | Low |
 | `tools/build_desktop.py` + `desktop/src/*` | 1.1 | 2026-09-14 | BSD-3 | Builds the single-file desktop replay app (`docs/replay/index.html`) | No network at build; app itself online only for optional imagery | Low |
 | MapLibre GL JS (embedded in the desktop app) | 4.7.1 | 2026-09-14 | BSD-3 | Browser map rendering | Mainstream | Low |
@@ -47,4 +49,4 @@ Status as of version 5.0-beta27 (11 Sep 2026). "Last update" is the version of t
 | Obtainium (user's choice) | Automatic update tracking from GitHub | Free, open source (GPL-3) | — | Installs APKs the user approves | Low |
 
 ## What the app never does
-No accounts, no analytics, no crash reporting, no background network. The only network traffic is: update check / APK download (user-initiated or once per launch when allowed), aerial pack download (user-initiated), ADS-B queries with the flight number (when allowed and a network exists). Flight logs stay on the phone until the user shares them.
+No accounts, no analytics, no crash reporting, no background network, no identification of who downloads or installs it. Download statistics are the aggregate per-asset counts GitHub publishes (`docs/stats/downloads.csv`, collected daily by `stats.yml`); GitHub exposes no identity to anyone. The tester programme (Settings) is opt-in with explicit consent and sends only the listed fields; the installation page records visits and download clicks with a visible privacy notice (see `server/SERVER.md`). The only network traffic is: update check / APK download (user-initiated or once per launch when allowed), aerial pack download (user-initiated), ADS-B queries with the flight number (when allowed and a network exists). Flight logs stay on the phone until the user shares them.

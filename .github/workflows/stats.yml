@@ -1,0 +1,37 @@
+# Copyright (c) 1986-2026 Eldad Galker, eldad@galker.com, https://www.galker.com/software/
+# This software is released under the BSD 3-Clause License.
+# See the LICENSE.txt file in the project root for full license information.
+# FlightInfo - download statistics - Version 1.0
+# Daily: appends the cumulative download count of every release asset to
+# docs/stats/downloads.csv (aggregate numbers only; GitHub exposes no identity).
+name: stats
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect release download counts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/collect_stats.py "${{ github.repository }}" docs/stats/downloads.csv
+      - name: Commit
+        run: |
+          if ! git diff --quiet -- docs/stats; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add docs/stats
+            git commit -m "stats: download counts $(date -u +%F) [skip ci]"
+            git push
+          fi

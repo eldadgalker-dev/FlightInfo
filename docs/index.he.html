@@ -37,11 +37,11 @@
   .warn { border-inline-start: 4px solid var(--accent); padding-inline-start: 12px; color: var(--muted); }
 </style>
 </head>
-<body>
+<body data-telemetry="">
 <main>
   <p class="small" style="text-align:left"><a href="index.html">English</a> · <b>עברית</b></p>
   <h1>FlightInfo</h1>
-  <p class="sub" id="version-line">גרסה נוכחית: <b>5.0-beta27</b> · עודכן 2026-09-14</p>
+  <p class="sub" id="version-line">גרסה נוכחית: <b>5.1-beta28</b> · עודכן 2026-09-14</p>
   <p class="sub">מיקום המטוס במהלך הטיסה על מפה לא־מקוונת — ללא רשת, ללא חשבון, ללא שרתים. Android בלבד. תוכנה חופשית (BSD 3-Clause).</p>
 
   <div class="card install">
@@ -122,6 +122,19 @@
     <a href="https://github.com/eldadgalker-dev/FlightInfo/releases/latest/download/FlightInfo.apk">Download the APK</a>, open it on the phone (if Chrome says "Dangerous download blocked", open Chrome's Downloads, tap the file and choose "Download dangerous file" — or use Firefox / Obtainium), allow installation from this source, and if Play Protect warns choose "More details → Install anyway".
     In-app updates: Settings → App update. Documentation: <a href="https://github.com/eldadgalker-dev/FlightInfo#readme">README</a>.</p>
   </div>
+  <p class="small" id="privacy-note">עמוד זה רושם ביקורים ולחיצות הורדה (מועד, כתובת IP, מדינה, דפדפן) למדידת השימוש בבטא. ללא עוגיות. <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/server/SERVER.md">פרטים</a>.</p>
 </main>
+<script>
+// Usage beacons to the project's telemetry endpoint (server/SERVER.md). Disabled while data-telemetry is empty.
+(function () {
+  var base = document.body.getAttribute("data-telemetry"); if (!base) return;
+  function send(ev) {
+    try { navigator.sendBeacon(base.replace(/\/$/, "") + "/event", JSON.stringify({ event: ev, page: location.pathname, lang: navigator.language,
+      screen: screen.width + "x" + screen.height, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, platform: navigator.platform })); } catch (e) {}
+  }
+  send("page_view");
+  document.querySelectorAll('a[href$="FlightInfo.apk"]').forEach(function (a) { a.addEventListener("click", function () { send("download_click"); }); });
+})();
+</script>
 </body>
 </html>

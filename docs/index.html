@@ -32,11 +32,11 @@
   figure { margin:0; text-align:center; width:170px } figure img { width:170px; border-radius:10px }
 </style>
 </head>
-<body>
+<body data-telemetry="">
 <main>
   <p class="small" style="text-align:right"><b>English</b> · <a href="index.he.html">עברית</a></p>
   <h1>FlightInfo</h1>
-  <p class="sub" id="version-line">Current version: <b>5.0-beta27</b> · updated 2026-09-14</p>
+  <p class="sub" id="version-line">Current version: <b>5.1-beta28</b> · updated 2026-09-14</p>
   <p class="sub">Your aircraft's position during a flight on an offline map — no network, no account, no servers. Android only. Free software (BSD 3-Clause).</p>
 
   <div class="card install">
@@ -114,6 +114,19 @@
       <li>CSV flight log on the phone (optional). Nothing is uploaded anywhere.</li>
     </ul>
   </div>
+  <p class="small" id="privacy-note">This page records visits and download clicks (time, IP address, country, browser) to measure use of the beta. No cookies. <a href="https://github.com/eldadgalker-dev/FlightInfo/blob/main/server/SERVER.md">Details</a>.</p>
 </main>
+<script>
+// Usage beacons to the project's telemetry endpoint (server/SERVER.md). Disabled while data-telemetry is empty.
+(function () {
+  var base = document.body.getAttribute("data-telemetry"); if (!base) return;
+  function send(ev) {
+    try { navigator.sendBeacon(base.replace(/\/$/, "") + "/event", JSON.stringify({ event: ev, page: location.pathname, lang: navigator.language,
+      screen: screen.width + "x" + screen.height, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, platform: navigator.platform })); } catch (e) {}
+  }
+  send("page_view");
+  document.querySelectorAll('a[href$="FlightInfo.apk"]').forEach(function (a) { a.addEventListener("click", function () { send("download_click"); }); });
+})();
+</script>
 </body>
 </html>
