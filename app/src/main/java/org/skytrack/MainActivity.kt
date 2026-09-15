@@ -24,6 +24,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.ui.res.stringResource
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -150,6 +154,21 @@ private fun Root(app: SkyTrackApp) {
 
     SkyTrackTheme(night = night) {
         Surface(Modifier.fillMaxSize()) {
+            // A crash recorded by the previous run: show it once and offer to send it.
+            val crashPrefs = context.getSharedPreferences("skytrack", android.content.Context.MODE_PRIVATE)
+            var crashText by remember { mutableStateOf(crashPrefs.getString("last_crash", null)) }
+            crashText?.let { txt ->
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { },
+                    title = { Text(stringResource(R.string.crash_title)) },
+                    text = { Text(txt.take(1200), style = MaterialTheme.typography.bodySmall) },
+                    confirmButton = { TextButton(onClick = {
+                        org.skytrack.net.Feedback.sendEmail(context, org.skytrack.net.Feedback.Kind.BUG, "crash report", txt, emptyList())
+                        crashPrefs.edit().remove("last_crash").apply(); crashText = null
+                    }) { Text(stringResource(R.string.crash_send)) } },
+                    dismissButton = { TextButton(onClick = { crashPrefs.edit().remove("last_crash").apply(); crashText = null }) { Text(stringResource(R.string.crash_dismiss)) } }
+                )
+            }
             when (screen) {
                 Screen.SETUP -> SetupScreen(
                     airports = app.airports,

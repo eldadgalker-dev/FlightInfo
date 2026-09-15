@@ -1,6 +1,6 @@
 # FlightInfo
 
-> **Status: 5.1-beta30 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
+> **Status: 5.1-beta31 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
 
 **Docs:** [INSTALL](INSTALL.md) · [BETA testers](BETA.md) · [Help](docs/HELP.md) ([עברית](docs/HELP.he.md)) · [How it works](docs/TECHNOLOGY.md) ([עברית](docs/TECHNOLOGY.he.md)) · [Development process & decisions](docs/DEVELOPMENT.md) ([עברית](docs/DEVELOPMENT.he.md)) · [Full development prompt](docs/PROMPT.md) · [Screenshots](docs/SCREENSHOTS.md) ([עברית](docs/SCREENSHOTS.he.md)) · [Tools & components, licences, risk](TOOLS.md) · [Installation page](https://eldadgalker-dev.github.io/FlightInfo/) (English, [עברית](https://eldadgalker-dev.github.io/FlightInfo/index.he.html))
 

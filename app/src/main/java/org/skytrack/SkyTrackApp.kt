@@ -49,12 +49,41 @@ class SkyTrackApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        telemetry.reportLaunchIfNeeded()
+        installCrashRecorder()
         MapLibre.getInstance(this)
         airports = AirportRepository(this)
         stores = Stores(this)
         geo = GeoData(this)
         engine = FlightEngine(airports, stores, FlightLogger(this), geo, hebrew, ::isOnline)
-        stores.plan.value?.let { engine.start(it) }
+        // Restoring a saved flight and the tester report are non-essential: a failure must not stop the launch.
+        try { stores.plan.value?.let { engine.start(it) } } catch (e: Exception) { recordNonFatal("restore flight", e) }
+        try { telemetry.reportLaunchIfNeeded() } catch (e: Exception) { recordNonFatal("telemetry", e) }
+    }
+
+    /**
+     * Crash recorder: an uncaught exception is written to logs/crash_<time>.txt and to the
+     * preferences, so the next launch can show it and offer to send it (Settings > Report).
+     */
+    private fun installCrashRecorder() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            try {
+                val text = crashText(e)
+                getSharedPreferences("skytrack", MODE_PRIVATE).edit().putString("last_crash", text.take(6000)).apply()
+                val dir = java.io.File(getExternalFilesDir(null) ?: filesDir, "logs"); dir.mkdirs()
+                java.io.File(dir, "crash_" + System.currentTimeMillis() + ".txt").writeText(text)
+            } catch (ignored: Exception) { }
+            previous?.uncaughtException(t, e)
+        }
+    }
+
+    private fun recordNonFatal(where: String, e: Exception) {
+        try { getSharedPreferences("skytrack", MODE_PRIVATE).edit().putString("last_crash", "[non-fatal: $where]\n" + crashText(e).take(5000)).apply() } catch (ignored: Exception) { }
+    }
+
+    private fun crashText(e: Throwable): String {
+        val ver = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (x: Exception) { "?" }
+        return "FlightInfo $ver | ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} | Android ${android.os.Build.VERSION.RELEASE}\n" +
+                java.time.Instant.now().toString() + "\n\n" + android.util.Log.getStackTraceString(e)
     }
 }
