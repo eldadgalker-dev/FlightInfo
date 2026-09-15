@@ -2,7 +2,7 @@
 
 **English** · [עברית](HELP.he.md)
 
-Generated automatically from the app's help screens (version 5.1-beta28).
+Generated automatically from the app's help screens (version 5.1-beta29).
 
 ## What FlightInfo does
 

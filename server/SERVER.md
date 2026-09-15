@@ -1,4 +1,6 @@
-# FlightInfo — Telemetry endpoint (zero-cost)
+# FlightInfo — Telemetry endpoint (zero-cost) — advanced option
+
+> **Simpler alternative without any server: [GOOGLE-FORM.md](GOOGLE-FORM.md)** (a Google Form + Sheet; 5 minutes). Use the Worker below only if you want token-protected export, unique-visitor hashing and retention control.
 
 **English** · (הוראות בעברית למטה)
 

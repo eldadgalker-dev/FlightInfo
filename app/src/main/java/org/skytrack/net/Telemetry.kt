@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Telemetry
-// Version 1.0
+// Version 1.1
 // Purpose : Tester-programme events (register / install / update / unregister)
 //           sent to the project's telemetry endpoint. Strictly opt-in: nothing
 //           is sent unless the user joined the programme in Settings and the
@@ -59,23 +59,37 @@ class Telemetry(private val context: Context, private val stores: Stores) {
 
     private fun currentVersion(): String = try { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?" } catch (e: Exception) { "?" }
 
+    private val isGoogleForm: Boolean get() = Parameters.TELEMETRY_URL.contains("docs.google.com/forms")
+
     private fun send(event: String, testerId: String) {
         if (!enabled) return
-        val body = JSONObject().apply {
-            put("event", event); put("testerId", testerId); put("consent", true)
-            put("nickname", stores.testerNickname ?: ""); put("email", stores.testerEmail ?: "")
-            put("version", currentVersion()); put("device", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-            put("android", android.os.Build.VERSION.RELEASE); put("platform", "android")
-            put("tz", java.util.TimeZone.getDefault().id)
-        }.toString()
+        val fields = linkedMapOf(
+            "event" to event, "testerId" to testerId, "nickname" to (stores.testerNickname ?: ""), "email" to (stores.testerEmail ?: ""),
+            "version" to currentVersion(), "device" to "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+            "android" to android.os.Build.VERSION.RELEASE, "platform" to "android", "tz" to java.util.TimeZone.getDefault().id
+        )
         scope.launch {
             try {
-                val c = URL(Parameters.TELEMETRY_URL.trimEnd('/') + "/event").openConnection() as HttpURLConnection
-                c.requestMethod = "POST"; c.connectTimeout = 8000; c.readTimeout = 8000; c.doOutput = true
-                c.setRequestProperty("Content-Type", "application/json")
-                c.outputStream.use { it.write(body.toByteArray()) }
-                c.responseCode; c.disconnect()
-            } catch (e: Exception) { /* offline or endpoint down: silently skipped; the next launch retries the version report */
+                // Public IP of this device (the form cannot see it by itself); best effort, 4 s.
+                fields["ip"] = try { URL(Parameters.IP_ECHO_URL).openConnection().let { it.connectTimeout = 4000; it.readTimeout = 4000; it.getInputStream().bufferedReader().readText().trim().take(45) } } catch (e: Exception) { "" }
+                if (isGoogleForm) {
+                    val form = fields.filterKeys { Parameters.TELEMETRY_FORM_FIELDS.containsKey(it) }
+                        .map { (k, v) -> java.net.URLEncoder.encode(Parameters.TELEMETRY_FORM_FIELDS[k], "UTF-8") + "=" + java.net.URLEncoder.encode(v, "UTF-8") }
+                        .joinToString("&")
+                    val c = URL(Parameters.TELEMETRY_URL).openConnection() as HttpURLConnection
+                    c.requestMethod = "POST"; c.connectTimeout = 8000; c.readTimeout = 8000; c.doOutput = true; c.instanceFollowRedirects = false
+                    c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                    c.outputStream.use { it.write(form.toByteArray()) }
+                    c.responseCode; c.disconnect()
+                } else {
+                    val body = JSONObject().apply { fields.forEach { (k, v) -> put(k, v) }; put("consent", true) }.toString()
+                    val c = URL(Parameters.TELEMETRY_URL.trimEnd('/') + "/event").openConnection() as HttpURLConnection
+                    c.requestMethod = "POST"; c.connectTimeout = 8000; c.readTimeout = 8000; c.doOutput = true
+                    c.setRequestProperty("Content-Type", "application/json")
+                    c.outputStream.use { it.write(body.toByteArray()) }
+                    c.responseCode; c.disconnect()
+                }
+            } catch (e: Exception) { /* offline or endpoint down: the next launch retries the version report */
                 if (event == "install" || event == "update") stores.testerLastReportedVersion = null
             }
         }

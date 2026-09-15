@@ -1,6 +1,6 @@
 # FlightInfo
 
-> **Status: 5.1-beta28 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
+> **Status: 5.1-beta29 — testers only.** See [BETA.md](BETA.md) for what to test and how to report. Validated on one real flight (MUC-TLV, 10 Sep 2026); see the validation section.
 
 **Docs:** [INSTALL](INSTALL.md) · [BETA testers](BETA.md) · [Help](docs/HELP.md) ([עברית](docs/HELP.he.md)) · [How it works](docs/TECHNOLOGY.md) ([עברית](docs/TECHNOLOGY.he.md)) · [Development process & decisions](docs/DEVELOPMENT.md) ([עברית](docs/DEVELOPMENT.he.md)) · [Full development prompt](docs/PROMPT.md) · [Screenshots](docs/SCREENSHOTS.md) ([עברית](docs/SCREENSHOTS.he.md)) · [Tools & components, licences, risk](TOOLS.md) · [Installation page](https://eldadgalker-dev.github.io/FlightInfo/) (English, [עברית](https://eldadgalker-dev.github.io/FlightInfo/index.he.html))
 
@@ -88,7 +88,7 @@ All builds are signed with the committed key `keystore/flightinfo.jks` (see `key
 
 ### Usage statistics and tester programme
 
-Three layers, all zero-cost: (1) `stats.yml` appends GitHub's aggregate per-asset download counts to `docs/stats/downloads.csv` daily; (2) the installation page sends `page_view` / `download_click` beacons (time, IP, country, browser, screen, timezone, per-day unique-visitor hash) to a Cloudflare Worker described in `server/SERVER.md`, with a visible privacy notice; (3) the app's **Tester programme** (Settings) is strictly opt-in: after explicit consent it reports install and update events with version, device, Android version, a random tester id, nickname and optional e-mail. Nothing is sent by the app otherwise. The export is token-protected.
+Three layers, all zero-cost: (1) `stats.yml` appends GitHub's aggregate per-asset download counts to `docs/stats/downloads.csv` daily; (2) the installation page sends `page_view` / `download_click` beacons (time, IP, country, browser, screen, timezone, per-day unique-visitor hash) to a Google Form/Sheet (`server/GOOGLE-FORM.md`, simplest) or a Cloudflare Worker (`server/SERVER.md`), with a visible privacy notice; (3) the app's **Tester programme** (Settings) is strictly opt-in: after explicit consent it reports install and update events with version, device, Android version, a random tester id, nickname and optional e-mail. Nothing is sent by the app otherwise. The export is token-protected.
 
 ### Keeping the documents in sync
 

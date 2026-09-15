@@ -82,7 +82,15 @@ object Parameters {
     const val UPDATE_ASSET_NAME = "FlightInfo.apk"   // fixed-name asset published by the build workflow
     const val FEEDBACK_EMAIL    = "eldad@galker.com"  // in-app feedback (bug / improvement / flight log)
     const val PROJECT_PAGE_URL  = "https://eldadgalker-dev.github.io/FlightInfo/"   // explanations, downloads, documents
-    const val TELEMETRY_URL     = ""   // tester-programme endpoint (server/SERVER.md); empty = feature hidden, nothing sent
+    // Tester programme endpoint (opt-in). Either a Cloudflare Worker (server/SERVER.md, JSON) or, simpler, a Google Form:
+    // TELEMETRY_URL = the form's ".../formResponse" URL and TELEMETRY_FORM_FIELDS = the entry ids of its questions.
+    // Empty URL = feature hidden, nothing sent.
+    const val TELEMETRY_URL     = ""
+    val TELEMETRY_FORM_FIELDS = mapOf(          // Google Form question id per field; ignored for a Worker URL
+        "event" to "entry.0", "testerId" to "entry.0", "nickname" to "entry.0", "email" to "entry.0",
+        "version" to "entry.0", "device" to "entry.0", "android" to "entry.0", "ip" to "entry.0"
+    )
+    const val IP_ECHO_URL       = "https://api.ipify.org"   // public IP of the sender, added to tester events (free, no key)
 
     // -- Estimate-only mode --
     const val TAXI_ALLOWANCE_S          = 900.0     // s, scheduled departure -> assumed takeoff
