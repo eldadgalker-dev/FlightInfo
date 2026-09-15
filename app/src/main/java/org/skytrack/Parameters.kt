@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 5.0
+// Version 5.1
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -85,10 +85,10 @@ object Parameters {
     // Tester programme endpoint (opt-in). Either a Cloudflare Worker (server/SERVER.md, JSON) or, simpler, a Google Form:
     // TELEMETRY_URL = the form's ".../formResponse" URL and TELEMETRY_FORM_FIELDS = the entry ids of its questions.
     // Empty URL = feature hidden, nothing sent.
-    const val TELEMETRY_URL     = ""
+    const val TELEMETRY_URL     = "https://docs.google.com/forms/d/e/1FAIpQLSedhDUHKU3mijvE7jDNxPLhxEgxv1DAwdArCB3DCQBSNlCaIQ/formResponse"
     val TELEMETRY_FORM_FIELDS = mapOf(          // Google Form question id per field; ignored for a Worker URL
-        "event" to "entry.0", "testerId" to "entry.0", "nickname" to "entry.0", "email" to "entry.0",
-        "version" to "entry.0", "device" to "entry.0", "android" to "entry.0", "ip" to "entry.0"
+        "event" to "entry.872746858", "testerId" to "entry.1827329673", "nickname" to "entry.973636318", "email" to "entry.347293189",
+        "version" to "entry.1786288586", "device" to "entry.207228415", "android" to "entry.1695370694", "ip" to "entry.215031131"
     )
     const val IP_ECHO_URL       = "https://api.ipify.org"   // public IP of the sender, added to tester events (free, no key)
 

@@ -4,7 +4,12 @@
 
 Simplest channel. Every event (page view, download click, tester register / install / update) becomes one row in a Google Sheet you own. No server, no account other than Google, nothing to maintain. The public IP is fetched by the client (api.ipify.org) and sent as a field, so IP and browser are recorded too.
 
-## Create the form (once)
+## Fastest: let a script build the form (2 minutes)
+1. Open https://script.google.com → **New project**.
+2. Paste the content of `server/create_form.gs`, save, choose the function **createFlightInfoForm** in the toolbar, **Run**, allow the permissions once.
+3. The log (bottom of the screen) prints: the form edit link, the Sheet link (your log), the `TELEMETRY_URL`, a ready-made Kotlin `TELEMETRY_FORM_FIELDS` block and the `data-telemetry` / `data-form-fields` values for both installation pages. Paste them in — or send me the log and I wire them in.
+
+## Manual alternative: create the form yourself (once)
 1. https://forms.google.com → **Blank form**. Title: `FlightInfo telemetry`.
 2. Add **9 short-answer questions**, in this order, with exactly these titles:
    `event`, `testerId`, `nickname`, `email`, `version`, `device`, `android`, `ip`, `ua`
@@ -36,7 +41,12 @@ Or send me the `formResponse` URL and the `entry.N` list and I will wire them in
 
 <div dir="rtl">
 
-## בעברית — טופס Google (5 דקות, ללא שרת)
+## בעברית — הדרך המהירה: סקריפט בונה את הטופס (2 דקות)
+1. script.google.com → פרויקט חדש → הדבק את `server/create_form.gs` → שמור.
+2. בחר בסרגל את הפונקציה `createFlightInfoForm` → הרץ → אשר הרשאות פעם אחת.
+3. ביומן (למטה) יודפסו: קישור לטופס, קישור לגיליון (היומן), `TELEMETRY_URL`, בלוק Kotlin מוכן ל־`TELEMETRY_FORM_FIELDS`, וערכי `data-telemetry` / `data-form-fields` לעמודי ההתקנה. הדבק — או שלח לי את היומן ואשלב.
+
+## בעברית — ידנית: טופס Google (5 דקות, ללא שרת)
 1. forms.google.com → טופס חדש בשם `FlightInfo telemetry`.
 2. 9 שאלות "תשובה קצרה" בסדר הזה ובשמות האלה: `event, testerId, nickname, email, version, device, android, ip, ua` (רשות: `page, lang, screen, tz, platform, referer`).
 3. הגדרות → תגובות: בטל איסוף כתובת מייל ובטל הגבלה לתגובה אחת. תגובות → קישור ל־Sheets (זה היומן; עמודה A = חותמת זמן).
