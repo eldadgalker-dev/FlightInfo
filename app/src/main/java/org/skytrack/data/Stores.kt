@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Stores
-// Version 5.0
+// Version 5.1
 // Purpose : SharedPreferences-backed persistence for the flight plan,
 //           the last position estimate (instant restore on relaunch),
 //           the last ground fix (origin auto-detection) and user settings.
@@ -79,10 +79,10 @@ data class Settings(
     val altitudeUnit: AltitudeUnit = AltitudeUnit.M,
     val speedUnit: SpeedUnit = SpeedUnit.KMH,
     val use24h: Boolean = true,
-    val theme: ThemeMode = ThemeMode.NIGHT,
+    val theme: ThemeMode = ThemeMode.AUTO,
     val autoFollow: Boolean = true,
     val trackUp: Boolean = false,
-    val rotateGestures: Boolean = false,
+    val rotateGestures: Boolean = true,      // two-finger rotation on by default
     val logFlights: Boolean = true,     // write CSV flight logs for offline calibration
     val aerial: Boolean = false,        // show the downloaded Blue Marble imagery when available
     val useNetwork: Boolean = true,     // when a network is available: ADS-B position, update check

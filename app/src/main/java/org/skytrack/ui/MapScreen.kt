@@ -145,9 +145,12 @@ fun MapScreen(
         }
         LaunchedEffect(controller, trackUp) { controller?.trackUp = trackUp }
         LaunchedEffect(controller, metrics) { if (metrics != null) controller?.update(metrics) }
-        // App start without a flight: maximum zoom on the last known device location.
+        // App start without a flight: maximum zoom on the device location (last known, then the fresh fix when it arrives).
         LaunchedEffect(controller, initialLocation) {
-            if (!zoomedAtStart && controller != null && metrics == null && initialLocation != null) { zoomedAtStart = true; controller?.zoomMaxTo(initialLocation.first, initialLocation.second) }
+            if (controller != null && metrics == null && initialLocation != null) {
+                controller?.zoomMaxTo(initialLocation.first, initialLocation.second)
+                controller?.showDeviceLocation(initialLocation.first, initialLocation.second)
+            }
         }
         // Recording start: maximum zoom on the aircraft.
         LaunchedEffect(recording, controller, metrics) {

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - GnssSource
-// Version 1.1
+// Version 1.3
 // Purpose : Wrap android.location.LocationManager (GPS_PROVIDER) and
 //           GnssStatus into a cold Flow of classified GNSS samples.
 //           LocationManager is used directly, not Fused Location, because
@@ -80,6 +80,23 @@ class GnssSource(private val context: Context) {
             lm.unregisterGnssStatusCallback(statusCb)
             thread.quitSafely()
         }
+    }
+
+    /** One fresh fix (GPS, then network), delivered on the main thread; silently nothing without permission. */
+    @SuppressLint("MissingPermission")
+    fun requestSingleFix(onFix: (Location) -> Unit) {
+        try {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val listener = object : LocationListener {
+                override fun onLocationChanged(loc: Location) { lm.removeUpdates(this); onFix(loc) }
+                @Deprecated("Deprecated in Java") override fun onStatusChanged(p: String?, s: Int, e: android.os.Bundle?) {}
+                override fun onProviderEnabled(provider: String) {}
+                override fun onProviderDisabled(provider: String) {}
+            }
+            for (prov in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
+                try { lm.requestLocationUpdates(prov, 1000L, 0f, listener, android.os.Looper.getMainLooper()) } catch (e: Exception) { }
+            }
+        } catch (e: Exception) { }
     }
 
     /** Last known fix from any provider (used for origin detection at startup). */

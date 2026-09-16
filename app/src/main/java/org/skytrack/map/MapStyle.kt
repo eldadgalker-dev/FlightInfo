@@ -88,6 +88,7 @@ object MapStyle {
     const val SRC_ROUTE_FLOWN = "route-flown"
     const val SRC_TRACK_ACTUAL = "track-actual"
     const val SRC_TRACK_EST = "track-estimated"
+    const val SRC_DEVICE = "device-location"
     const val SRC_UNCERTAINTY = "uncertainty"
     const val SRC_AIRPORTS = "airports"
     const val SRC_AIRCRAFT = "aircraft"

@@ -2,7 +2,7 @@
 
 **English** · [עברית](HELP.he.md)
 
-Generated automatically from the app's help screens (version 5.1-beta31).
+Generated automatically from the app's help screens (version 5.2-beta32).
 
 ## What FlightInfo does
 
@@ -98,7 +98,12 @@ Ground calibration: difference between GPS altitude and the field elevation, tak
 
 ## Flight logs
 
-Recording starts only when you press the REC button on the map (blue when recording) and stops when you press it again, 10 minutes after landing, or after 3 hours on the ground. While recording, the flight writes a CSV file on this phone (Android/data/com.galker.flightinfo/files/logs) with the estimate and the raw GPS, barometer and gyroscope readings, once per second. Nothing is uploaded. "Share latest log" sends the file through any app you choose; a real flight log is the best way to calibrate the estimator.
+Recording starts only when you press the REC button on the map (pulsing red while recording, red dot when idle) and stops when you press it again, 10 minutes after landing, or after 3 hours on the ground. While recording, the flight writes a CSV file on this phone (Android/data/com.galker.flightinfo/files/logs) with the estimate and the raw GPS, barometer and gyroscope readings, once per second. Nothing is uploaded. "Share latest log" sends the file through any app you choose; a real flight log is the best way to calibrate the estimator.  
+  
+Replaying a flight:  
+1. In the app: Settings > Flight logs > tap a log > Replay. The map plays it back at 30/120/600x through the current estimator.  
+2. On any computer, online: open https://eldadgalker-dev.github.io/FlightInfo/replay/ and drop the CSV (share it from the app by e-mail or Drive first).  
+3. On a computer offline: download docs/replay/index.html once from the project page ("Desktop replay" > save the file) and open it by double-click; drop the CSV. Same screen as the phone; imagery needs a network, everything else works offline.
 
 ## Limitations
 

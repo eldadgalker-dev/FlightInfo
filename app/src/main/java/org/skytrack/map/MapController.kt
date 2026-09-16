@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 5.1
+// Version 5.2
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -21,6 +21,8 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -149,6 +151,17 @@ class MapController(private val context: Context, private val map: MapLibreMap,
 
     /** Render the current map view to a bitmap (used once at landing for the flight log). */
     fun snapshot(cb: (android.graphics.Bitmap) -> Unit) { map.snapshot { bmp -> cb(bmp) } }
+
+    /** Blue dot at the device location while no flight is shown. */
+    fun showDeviceLocation(lat: Double, lon: Double) {
+        val st = style ?: return
+        if (st.getSource(MapStyle.SRC_DEVICE) == null) {
+            st.addSource(GeoJsonSource(MapStyle.SRC_DEVICE))
+            st.addLayer(CircleLayer("device-halo", MapStyle.SRC_DEVICE).withProperties(PropertyFactory.circleColor("#2F6FB0"), PropertyFactory.circleOpacity(0.25f), PropertyFactory.circleRadius(14f)))
+            st.addLayer(CircleLayer("device-dot", MapStyle.SRC_DEVICE).withProperties(PropertyFactory.circleColor("#2F6FB0"), PropertyFactory.circleRadius(6f), PropertyFactory.circleStrokeColor("#FFFFFF"), PropertyFactory.circleStrokeWidth(2f)))
+        }
+        src(st, MapStyle.SRC_DEVICE)?.setGeoJson(FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(lon, lat))))
+    }
 
     /** Camera to a point at maximum zoom (recording start, replay start, app start at the current location). */
     fun zoomMaxTo(lat: Double, lon: Double) {

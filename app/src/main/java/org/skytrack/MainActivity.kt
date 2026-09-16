@@ -195,9 +195,18 @@ private fun Root(app: SkyTrackApp) {
                 Screen.MAP -> {
                     BackHandler(enabled = false) {}
                     val recording by app.engine.recording.collectAsStateWithLifecycle()
-                    val initialLoc = remember {
+                    // Where am I: ask for location permission on first launch; then last known fix immediately and a fresh
+                    // one-shot fix when it arrives (zoom to it). Falls back to the last ground fix the app stored.
+                    var initialLoc by remember { mutableStateOf(
                         try { org.skytrack.sensors.GnssSource(context).lastKnown()?.let { Pair(it.latitude, it.longitude) } } catch (e: Exception) { null }
-                            ?: app.stores.loadGroundFix()?.let { Pair(it.lat, it.lon) }
+                            ?: app.stores.loadGroundFix()?.let { Pair(it.lat, it.lon) }) }
+                    val locPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                        if (granted) org.skytrack.sensors.GnssSource(context).requestSingleFix { initialLoc = Pair(it.latitude, it.longitude) }
+                    }
+                    LaunchedEffect(Unit) {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+                            org.skytrack.sensors.GnssSource(context).requestSingleFix { initialLoc = Pair(it.latitude, it.longitude) }
+                        else locPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                     }
                     MapScreen(
                         recording = recording,
