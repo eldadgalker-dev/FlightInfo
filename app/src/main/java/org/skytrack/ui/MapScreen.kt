@@ -194,13 +194,18 @@ fun MapScreen(
             Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 64.dp, end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // + / - keep following the moving aircraft (they do not count as a pan gesture).
-            SmallFloatingActionButton(onClick = { controller?.zoomIn() }) { Icon(Icons.Filled.ZoomInMap, stringResource(R.string.zoom_in)) }
-            SmallFloatingActionButton(onClick = { controller?.zoomOut() }) { Icon(Icons.Filled.ZoomOutMap, stringResource(R.string.zoom_out)) }
-            SmallFloatingActionButton(onClick = { controller?.fitRoute() }) { Icon(Icons.Filled.CropFree, stringResource(R.string.fit_route)) }
+            // Zoom: arrows inward = all the way in (max zoom on the aircraft); + / - = one step;
+            // arrows outward = all the way out (whole route, or minimum zoom without a route). All keep following.
+            SmallFloatingActionButton(onClick = { controller?.zoomMaxIn() }) { Icon(Icons.Filled.ZoomInMap, stringResource(R.string.zoom_in_max)) }
+            SmallFloatingActionButton(onClick = { controller?.zoomIn() }) { Icon(Icons.Filled.Add, stringResource(R.string.zoom_in)) }
+            SmallFloatingActionButton(onClick = { controller?.zoomOut() }) { Icon(Icons.Filled.Remove, stringResource(R.string.zoom_out)) }
+            SmallFloatingActionButton(onClick = { controller?.zoomMaxOut() }) { Icon(Icons.Filled.ZoomOutMap, stringResource(R.string.zoom_out_max)) }
             SmallFloatingActionButton(onClick = { controller?.recenter() }) { Icon(Icons.Filled.CenterFocusStrong, stringResource(R.string.recenter)) }
             SmallFloatingActionButton(onClick = { trackUp = !trackUp; controller?.recenter() }) {
                 Icon(if (trackUp) Icons.Filled.Navigation else Icons.Filled.Explore, stringResource(R.string.orientation))
+            }
+            if (metrics != null && !metrics.estimateOnly) {
+                SmallFloatingActionButton(onClick = { showVisualFix = true }) { Icon(Icons.Filled.Visibility, stringResource(R.string.visual_fix)) }
             }
             if (onManualLocation != null && metrics == null) {
                 // Manual "I am here": the map centre, or typed coordinates.
@@ -275,11 +280,6 @@ fun MapScreen(
                 // Live sensing (satellite) vs time-based estimate (clock)
                 SmallFloatingActionButton(onClick = onToggleEstimateOnly) {
                     Icon(if (metrics.estimateOnly) Icons.Filled.Schedule else Icons.Filled.SatelliteAlt, stringResource(R.string.toggle_mode))
-                }
-                if (!metrics.estimateOnly) {
-                    SmallFloatingActionButton(onClick = { showVisualFix = true }) {
-                        Icon(Icons.Filled.Visibility, stringResource(R.string.visual_fix))
-                    }
                 }
             }
         }

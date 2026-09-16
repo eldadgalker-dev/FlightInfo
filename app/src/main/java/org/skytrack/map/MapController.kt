@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 5.5
+// Version 5.6
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -188,6 +188,21 @@ class MapController(private val context: Context, private val map: MapLibreMap,
     /** Zoom buttons: change the zoom around the followed point and resume following immediately. */
     fun zoomIn() { followEnabled = true; lastGestureMs = 0L; startZoom = null; zoomBy(1.0) }
     fun zoomOut() { followEnabled = true; lastGestureMs = 0L; startZoom = null; zoomBy(-1.0) }
+    /** All the way in: maximum zoom on the followed point. */
+    fun zoomMaxIn() {
+        followEnabled = true; lastGestureMs = 0L; startZoom = null
+        val cp = map.cameraPosition
+        val target = if (hasShown) LatLng(shownLat, shownLon) else cp.target ?: return
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(target).zoom(Parameters.MAP_MAX_ZOOM).bearing(cp.bearing).build()), 500)
+    }
+    /** All the way out: the whole route when there is one, else minimum zoom around the followed point. */
+    fun zoomMaxOut() {
+        followEnabled = true; lastGestureMs = 0L; startZoom = null
+        if (pendingMetrics != null && pendingMetrics?.freeRecording != true) { fitRoute(); return }
+        val cp = map.cameraPosition
+        val target = if (hasShown) LatLng(shownLat, shownLon) else cp.target ?: return
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(target).zoom(Parameters.MAP_MIN_ZOOM + 1.0).bearing(0.0).build()), 500)
+    }
     private fun zoomBy(delta: Double) {
         val cp = map.cameraPosition
         val target = if (hasShown) LatLng(shownLat, shownLon) else cp.target ?: return
@@ -197,7 +212,7 @@ class MapController(private val context: Context, private val map: MapLibreMap,
 
     fun fitRoute() {
         val m = pendingMetrics ?: return
-        lastGestureMs = System.currentTimeMillis()
+        followEnabled = true; lastGestureMs = 0L; startZoom = null   // keep following at the new zoom
         val b = LatLngBounds.Builder()
             .include(LatLng(m.origin.lat, m.origin.lon))
             .include(LatLng(m.destination.lat, m.destination.lon))

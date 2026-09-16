@@ -317,6 +317,8 @@
     <string name="manual_location">Set my location manually</string>
     <string name="manual_location_hint">Used for the start-up view and as the starting point of a free recording when the phone has no location. Pre-filled with the map centre: pan the map to where you are, or type coordinates.</string>
     <string name="manual_location_set">Set</string>
+    <string name="zoom_in_max">Zoom all the way in</string>
+    <string name="zoom_out_max">Zoom all the way out</string>
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>
