@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - GnssSource
-// Version 1.3
+// Version 1.4
 // Purpose : Wrap android.location.LocationManager (GPS_PROVIDER) and
 //           GnssStatus into a cold Flow of classified GNSS samples.
 //           LocationManager is used directly, not Fused Location, because
@@ -84,30 +84,76 @@ class GnssSource(private val context: Context) {
         }
     }
 
-    /** One fresh fix (GPS, then network), delivered on the main thread; silently nothing without permission. */
+    /**
+     * "Where am I" indoors as well: the fused provider (Wi-Fi / cell / Bluetooth, the one Google Maps
+     * uses; Android 12+) first, then network, then GPS. The first answer from any provider wins, is
+     * stored for the next launch, and the other requests are cancelled. Nothing without permission.
+     */
     @SuppressLint("MissingPermission")
     fun requestSingleFix(onFix: (Location) -> Unit) {
         try {
             val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            var delivered = false
             val listener = object : LocationListener {
-                override fun onLocationChanged(loc: Location) { lm.removeUpdates(this); onFix(loc) }
+                override fun onLocationChanged(loc: Location) {
+                    if (delivered) return
+                    delivered = true; lm.removeUpdates(this); remember(loc); onFix(loc)
+                }
                 @Deprecated("Deprecated in Java") override fun onStatusChanged(p: String?, s: Int, e: android.os.Bundle?) {}
                 override fun onProviderEnabled(provider: String) {}
                 override fun onProviderDisabled(provider: String) {}
             }
-            for (prov in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
+            for (prov in providers()) {
                 try { lm.requestLocationUpdates(prov, 1000L, 0f, listener, android.os.Looper.getMainLooper()) } catch (e: Exception) { }
             }
         } catch (e: Exception) { }
     }
 
-    /** Last known fix from any provider (used for origin detection at startup). */
+    private fun providers(): List<String> {
+        val out = ArrayList<String>()
+        if (android.os.Build.VERSION.SDK_INT >= 31) out.add(LocationManager.FUSED_PROVIDER)
+        out.add(LocationManager.NETWORK_PROVIDER); out.add(LocationManager.GPS_PROVIDER)
+        return out.filter { try { lm.allProviders.contains(it) } catch (e: Exception) { false } }
+    }
+
+    /**
+     * Last known position for the start-up camera: the freshest of all providers, or the position
+     * this app stored at its previous run (survives a reboot, when the system caches are empty).
+     */
     @SuppressLint("MissingPermission")
-    fun lastKnown(): Location? = try {
-        lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-    } catch (e: Exception) { null }
+    fun lastKnown(): Location? {
+        var best: Location? = null
+        try {
+            for (prov in providers()) {
+                val l = try { lm.getLastKnownLocation(prov) } catch (e: Exception) { null } ?: continue
+                if (best == null || l.time > best!!.time) best = l
+            }
+        } catch (e: Exception) { }
+        if (best != null) { remember(best!!); return best }
+        val prefs = context.getSharedPreferences("skytrack", Context.MODE_PRIVATE)
+        if (!prefs.contains("last_loc_lat")) return null
+        return Location("stored").apply {
+            latitude = prefs.getFloat("last_loc_lat", 0f).toDouble(); longitude = prefs.getFloat("last_loc_lon", 0f).toDouble()
+            time = prefs.getLong("last_loc_time", 0L)
+        }
+    }
+
+    /** Store the latest device position for the next launch. */
+    fun remember(loc: Location) {
+        try {
+            context.getSharedPreferences("skytrack", Context.MODE_PRIVATE).edit()
+                .putFloat("last_loc_lat", loc.latitude.toFloat()).putFloat("last_loc_lon", loc.longitude.toFloat()).putLong("last_loc_time", loc.time).apply()
+        } catch (e: Exception) { }
+    }
+
+    private var lastRememberMs = 0L
+    private fun rememberThrottled(loc: Location) {
+        val now = System.currentTimeMillis()
+        if (now - lastRememberMs > 30_000) { lastRememberMs = now; remember(loc) }
+    }
 
     private fun classify(loc: Location): GnssSample {
+        rememberThrottled(loc)
         val hAcc = if (loc.hasAccuracy()) loc.accuracy.toDouble() else 9999.0
         val vAcc = if (loc.hasVerticalAccuracy()) loc.verticalAccuracyMeters.toDouble() else 9999.0
         val q = when {
