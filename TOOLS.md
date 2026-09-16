@@ -1,6 +1,6 @@
 # FlightInfo — Tools and components in the package
 
-Status as of version 5.3-beta35 (11 Sep 2026). "Last update" is the version of the component used by this project; "Security" and "Risk" are the project author's assessment, not the vendor's.
+Status as of version 5.3-beta36 (11 Sep 2026). "Last update" is the version of the component used by this project; "Security" and "Risk" are the project author's assessment, not the vendor's.
 
 ## Scripts and workflows shipped in this repository
 

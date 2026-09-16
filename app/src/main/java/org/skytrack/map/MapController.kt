@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 5.3
+// Version 5.4
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -146,6 +146,11 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         if (!noDest) src(st, MapStyle.SRC_UNCERTAINTY)?.setGeoJson(uncertaintyFeature(m, route))
 
         val e = m.estimate
+        if (noDest && e.lastFixAgeMs < 0) {
+            // Free recording before the first fix: there is no position to show yet.
+            src(st, MapStyle.SRC_AIRCRAFT)?.setGeoJson(emptyCollection()); hasShown = false
+            return
+        }
         val icon = MapStyle.IMG_AIRCRAFT_LEVEL[e.sensorLevel.coerceIn(0, 3)]
         // Replay runs faster than real time: then the 1 s tween would lag behind; place the marker directly.
         val wall = System.currentTimeMillis()

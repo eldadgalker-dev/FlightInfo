@@ -217,10 +217,7 @@ private fun Root(app: SkyTrackApp) {
                     MapScreen(
                         recording = recording,
                         initialLocation = initialLoc,
-                        onExit = { keep ->
-                            if (!keep) { TrackingService.stop(context); app.engine.stop() }
-                            (context as? android.app.Activity)?.finishAffinity()
-                        },
+                        onExit = { keep -> exitApp(context, keep) },
                         onToggleRecording = {
                             if (recording) app.engine.setRecording(false)
                             else if (plan == null) {
@@ -268,10 +265,7 @@ private fun Root(app: SkyTrackApp) {
                             app.stores.saveSettings(it); app.engine.logger.enabled = it.logFlights
                             if (it.language != settings.language) applyLanguage(it.language)
                         },
-                        onExit = { keep ->
-                            if (!keep) { TrackingService.stop(context); app.engine.stop() }
-                            (context as? android.app.Activity)?.finishAffinity()
-                        },
+                        onExit = { keep -> exitApp(context, keep) },
                         onBack = { screen = Screen.MAP },
                         onHelp = { screen = Screen.HELP },
                         onShareLog = { shareLatestLog(context, app) },
@@ -363,4 +357,21 @@ private fun shareFiles(context: android.content.Context, files: List<java.io.Fil
         }
         context.startActivity(android.content.Intent.createChooser(intent, files[0].name))
     } catch (e: Exception) { }
+}
+
+/**
+ * Exit. keepTracking = true: the activity closes, the foreground service (tracking / recording) stays.
+ * false: service and engine stopped, the task removed from Recents and the process ended, so nothing
+ * of the app keeps running.
+ */
+private fun exitApp(context: android.content.Context, keepTracking: Boolean) {
+    val activity = context as? android.app.Activity
+    if (!keepTracking) {
+        try { TrackingService.stop(context) } catch (e: Exception) { }
+        try { (context.applicationContext as SkyTrackApp).engine.stop() } catch (e: Exception) { }
+        activity?.finishAndRemoveTask()
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ android.os.Process.killProcess(android.os.Process.myPid()) }, 400)
+    } else {
+        activity?.finishAndRemoveTask()
+    }
 }

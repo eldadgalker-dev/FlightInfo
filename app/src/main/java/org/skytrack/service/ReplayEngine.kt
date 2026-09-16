@@ -142,7 +142,7 @@ class ReplayEngine(private val airports: AirportRepository) {
         val pe = e.tick(r.timeMs, r.phase, takeoffMs, r.liveTracking)
         if (!publish) return
         _metrics.value = Metrics.compute(pe, e.route, e.plannedRoute, e.actualTrack.toList(), !r.liveTracking, o, d, takeoffMs)
-            .copy(estimatedTrack = e.estimatedSegments.map { it.toList() },
+            .copy(estimatedTrack = e.estimatedTrackSnapshot(),
                   freeRecording = summary?.originIata == org.skytrack.data.FlightPlan.FREE_CODE || d.iata == "END")
         _progress.value = if (rows.size > 1) i.toFloat() / (rows.size - 1) else 1f
     }

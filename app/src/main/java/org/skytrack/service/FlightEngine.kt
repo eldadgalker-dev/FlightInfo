@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 5.1
+// Version 5.2
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -123,7 +123,8 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         if (p.free) {
             // Free recording: no plan. A stand-in "airport" at the last known position keeps the
             // estimator and metrics well defined (zero-length route); the UI hides route values.
-            val here = lastGnss?.let { GeoPoint(it.lat, it.lon) } ?: stores.loadGroundFix()?.let { GeoPoint(it.lat, it.lon) } ?: GeoPoint(0.0, 0.0)
+            val here = lastGnss?.let { GeoPoint(it.lat, it.lon) } ?: stores.lastDeviceLocation()?.let { GeoPoint(it.first, it.second) }
+                ?: stores.loadGroundFix()?.let { GeoPoint(it.lat, it.lon) } ?: GeoPoint(0.0, 0.0)
             o = Airport.placeholder(FlightPlan.FREE_CODE, here.lat, here.lon); dst = o
         } else {
             o = airports.byCode(p.originIata) ?: return false
@@ -358,7 +359,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         val relief = now < reliefUntilMs
         val fm = Metrics.compute(e, est.route, est.plannedRoute, est.actualTrack.toList(), p.estimateOnly && !externalFresh,
             o, dst, takeoffForMetrics, lastCountry, takeoffRef, source, cabinAlt, gr, warn, relief, noFixS)
-            .copy(estimatedTrack = est.estimatedSegments.map { it.toList() }, freeRecording = p.free)
+            .copy(estimatedTrack = est.estimatedTrackSnapshot(), freeRecording = p.free)
         phaseDetector.onRemaining(fm.remainingM, now)
         _metrics.value = fm
         // Logging window: stop LOG_AFTER_LANDING_MS after landing, or after LOG_MAX_GROUND_MS on the ground

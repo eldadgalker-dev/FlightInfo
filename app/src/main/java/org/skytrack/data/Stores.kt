@@ -147,6 +147,10 @@ class Stores(private val context: Context) {
         )
     }
 
+    /** Last device position stored by GnssSource (lat, lon), or null. */
+    fun lastDeviceLocation(): Pair<Double, Double>? =
+        if (prefs.contains("last_loc_lat")) Pair(prefs.getFloat("last_loc_lat", 0f).toDouble(), prefs.getFloat("last_loc_lon", 0f).toDouble()) else null
+
     /** Recording was on when the app last ran (restored on restart). */
     var recordingActive: Boolean
         get() = prefs.getBoolean("rec_active", false)

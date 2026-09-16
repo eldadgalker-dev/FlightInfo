@@ -61,7 +61,7 @@
     <string name="estimator">מנוע הערכה</string>
     <string name="mode">מצב</string>
     <string name="phase">שלב טיסה</string>
-    <string name="satellites">לוויינים (בשימוש/נראים)</string>
+    <string name="satellites">לוויינים</string>
     <string name="fix_age_label">תיקון אחרון</string>
     <string name="uncertainty_along">אי־ודאות לאורך המסלול</string>
     <string name="position">מיקום</string>
@@ -298,6 +298,7 @@
     <string name="logs_merge_confirm_text">%1$d קבצים יאוחדו לאחד, מסודרים לפי זמן וללא כפילויות. המקוריים יימחקו. להמשיך?</string>
     <string name="exit_question_recording">מתבצעת הקלטה. להמשיך להקליט ולעקוב ברקע (ההתרעה נשארת), או לעצור הכול?</string>
     <string name="exit_keep_recording">המשך להקליט</string>
+    <string name="remaining_short">נותר</string>
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

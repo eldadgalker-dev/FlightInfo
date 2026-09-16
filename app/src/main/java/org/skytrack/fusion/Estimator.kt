@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Estimator
-// Version 5.1
+// Version 5.2
 // Purpose : Measured-first position estimator.
 //
 //           With a usable fix (any accuracy up to WEAK_FIX_MAX_HACC_M) the
@@ -84,6 +84,14 @@ class Estimator(val plannedRoute: Route) {
      */
     val estimatedSegments: MutableList<MutableList<GeoPoint>> = ArrayList()
     private var openSegment: MutableList<GeoPoint>? = null
+
+    /** Closed segments plus the one still growing (drawn dashed, including up to the current position). */
+    fun estimatedTrackSnapshot(): List<List<GeoPoint>> {
+        val out = ArrayList<List<GeoPoint>>(estimatedSegments.size + 1)
+        for (seg in estimatedSegments) out.add(seg.toList())
+        openSegment?.let { seg -> val cur = ArrayList(seg); if (cur.isEmpty() || cur.last() != pos) cur.add(pos); if (cur.size >= 2) out.add(cur) }
+        return out
+    }
 
     var replanCount = 0
         private set

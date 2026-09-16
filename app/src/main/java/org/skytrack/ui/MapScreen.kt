@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.SatelliteAlt
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.ZoomOutMap
+import androidx.compose.material.icons.filled.ZoomInMap
+import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
@@ -190,9 +192,9 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // + / - keep following the moving aircraft (they do not count as a pan gesture).
-            SmallFloatingActionButton(onClick = { controller?.zoomIn() }) { Icon(Icons.Filled.Add, stringResource(R.string.zoom_in)) }
-            SmallFloatingActionButton(onClick = { controller?.zoomOut() }) { Icon(Icons.Filled.Remove, stringResource(R.string.zoom_out)) }
-            SmallFloatingActionButton(onClick = { controller?.fitRoute() }) { Icon(Icons.Filled.ZoomOutMap, stringResource(R.string.fit_route)) }
+            SmallFloatingActionButton(onClick = { controller?.zoomIn() }) { Icon(Icons.Filled.ZoomInMap, stringResource(R.string.zoom_in)) }
+            SmallFloatingActionButton(onClick = { controller?.zoomOut() }) { Icon(Icons.Filled.ZoomOutMap, stringResource(R.string.zoom_out)) }
+            SmallFloatingActionButton(onClick = { controller?.fitRoute() }) { Icon(Icons.Filled.CropFree, stringResource(R.string.fit_route)) }
             SmallFloatingActionButton(onClick = { controller?.recenter() }) { Icon(Icons.Filled.CenterFocusStrong, stringResource(R.string.recenter)) }
             SmallFloatingActionButton(onClick = { trackUp = !trackUp; controller?.recenter() }) {
                 Icon(if (trackUp) Icons.Filled.Navigation else Icons.Filled.Explore, stringResource(R.string.orientation))
@@ -204,10 +206,6 @@ fun MapScreen(
             Modifier.align(Alignment.TopStart).statusBarsPadding().padding(top = 64.dp, start = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            SmallFloatingActionButton(onClick = onOpenSetup) { Icon(Icons.Filled.EditNote, stringResource(R.string.flight_setup)) }
-            SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.TableChart, stringResource(R.string.metrics)) }
-            SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
-            SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Help, stringResource(R.string.help)) }
             if (onExit != null) {
                 var exitDialog by remember { mutableStateOf(false) }
                 SmallFloatingActionButton(onClick = { exitDialog = true }) { Icon(Icons.Filled.PowerSettingsNew, stringResource(R.string.exit_app)) }
@@ -220,6 +218,10 @@ fun MapScreen(
                         dismissButton = { androidx.compose.material3.TextButton(onClick = { exitDialog = false; onExit(false) }) { Text(stringResource(R.string.exit_close_all)) } }
                     )
                 }
+            SmallFloatingActionButton(onClick = onOpenSetup) { Icon(Icons.Filled.EditNote, stringResource(R.string.flight_setup)) }
+            SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.TableChart, stringResource(R.string.metrics)) }
+            SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
+            SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Help, stringResource(R.string.help)) }
             }
             if (onToggleRecording != null && metrics?.estimateOnly != true) {
                 // Flight-log recording: only this button starts or stops it (with or without a flight plan).
@@ -343,7 +345,7 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onCo
                 Row(Modifier.fillMaxWidth()) {
                     LabeledValue(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
                     LabeledValue(stringResource(R.string.gnss_accuracy), if (e.mode == FusionMode.GNSS_TRACKING) Format.altitude(e.sigmaAlongM, s.altitudeUnit) else "--", modifier = Modifier.weight(1f))
-                    LabeledValue(stringResource(R.string.position), String.format(java.util.Locale.US, "%.4f, %.4f", e.lat, e.lon), e.positionConfidence, modifier = Modifier.weight(2f))
+                    LabeledValue(stringResource(R.string.position), if (e.lastFixAgeMs < 0) "--" else String.format(java.util.Locale.US, "%.4f, %.4f", e.lat, e.lon), e.positionConfidence, modifier = Modifier.weight(2f))
                 }
                 androidx.compose.material3.OutlinedButton(onClick = onStartFlight, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.start_flight)) }
             }

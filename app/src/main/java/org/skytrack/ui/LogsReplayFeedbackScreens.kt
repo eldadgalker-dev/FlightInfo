@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 3.5
+// Version 3.6
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -203,30 +203,31 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
             }
             m?.let { fm ->
                 val e = fm.estimate
+                // Three columns per row: nothing is cut.
                 Row(Modifier.fillMaxWidth()) {
                     LabeledValue(en.getString(R.string.utc_time), Format.time(fm.nowUtc.atZone(java.time.ZoneOffset.UTC), true), modifier = Modifier.weight(1f), accent = Accent.time)
-                    LabeledValue(en.getString(R.string.remaining), Format.distance(fm.remainingM, settings.distanceUnit), e.positionConfidence, modifier = Modifier.weight(1f), accent = Accent.distance)
+                    LabeledValue(en.getString(R.string.remaining_short), if (fm.freeRecording) "--" else Format.distance(fm.remainingM, settings.distanceUnit), e.positionConfidence, modifier = Modifier.weight(1f), accent = Accent.distance)
                     LabeledValue(en.getString(R.string.ground_speed), Format.speed(e.groundSpeedMps, settings.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
-                    LabeledValue(en.getString(R.string.altitude), Format.altitude(e.altM, settings.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
                 }
+                Row(Modifier.fillMaxWidth()) {
+                    LabeledValue(en.getString(R.string.altitude), Format.altitude(e.altM, settings.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
                 // Second row, as on the desktop replay: phase, satellites, accuracy, position source badge.
                 val fresh = e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING
                 val good = fresh && e.sensorLevel == 3
                 val badgeColor = if (good) androidx.compose.ui.graphics.Color(0xFF2E7D32) else if (fresh) androidx.compose.ui.graphics.Color(0xFFF57C00) else androidx.compose.ui.graphics.Color(0xFFC62828)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
                     LabeledValue(en.getString(R.string.phase), en.getString(when (e.phase) { org.skytrack.sensors.FlightPhase.GROUND -> R.string.phase_ground; org.skytrack.sensors.FlightPhase.TAKEOFF -> R.string.phase_takeoff; org.skytrack.sensors.FlightPhase.CLIMB -> R.string.phase_climb; org.skytrack.sensors.FlightPhase.CRUISE -> R.string.phase_cruise; org.skytrack.sensors.FlightPhase.DESCENT -> R.string.phase_descent; org.skytrack.sensors.FlightPhase.LANDED -> R.string.phase_landed }), modifier = Modifier.weight(1f))
                     LabeledValue(en.getString(R.string.satellites), if (fresh) "${e.satsUsed}/${e.satsVisible}" else "--", modifier = Modifier.weight(1f), accent = Accent.motion)
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
                     LabeledValue(en.getString(R.string.gnss_accuracy_short), if (e.sigmaAlongM < 1000) "\u00B1${e.sigmaAlongM.toInt()} m" else "\u00B1${String.format(java.util.Locale.US, "%.1f", e.sigmaAlongM / 1000)} km", modifier = Modifier.weight(1f), accent = Accent.motion)
                     Column(Modifier.weight(1f)) {
                         Text(en.getString(R.string.position), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(if (good) "GPS good" else if (fresh) "GPS weak" else "estimated", style = MaterialTheme.typography.labelMedium, color = badgeColor,
                             modifier = Modifier.background(badgeColor.copy(alpha = 0.15f), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
                     }
+                    Spacer(Modifier.weight(1f))
                 }
-                // Labelled, two lines: phase / country / GPS, then elapsed log time.
-                val gps = if (e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING) en.getString(R.string.gps_short, e.satsUsed, e.satsVisible, e.sigmaAlongM.toInt()) else en.getString(R.string.gnss_none)
-                Text("${en.getString(R.string.phase)}: ${en.getString(when (e.phase) { org.skytrack.sensors.FlightPhase.GROUND -> R.string.phase_ground; org.skytrack.sensors.FlightPhase.TAKEOFF -> R.string.phase_takeoff; org.skytrack.sensors.FlightPhase.CLIMB -> R.string.phase_climb; org.skytrack.sensors.FlightPhase.CRUISE -> R.string.phase_cruise; org.skytrack.sensors.FlightPhase.DESCENT -> R.string.phase_descent; org.skytrack.sensors.FlightPhase.LANDED -> R.string.phase_landed })}" + (fm.overflownCountry?.let { "  \u00B7  $it" } ?: "") + "  \u00B7  GPS: $gps",
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Elapsed log time.
                 engine.summary?.let { sum ->
                     Text("${en.getString(R.string.log_time)}: ${Format.durationHms((fm.nowUtc.toEpochMilli() - sum.startMs) / 1000)} ${en.getString(R.string.of)} ${Format.durationHms(sum.durationS)}",
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
