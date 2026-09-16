@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Estimator
-// Version 5.2
+// Version 5.3
 // Purpose : Measured-first position estimator.
 //
 //           With a usable fix (any accuracy up to WEAK_FIX_MAX_HACC_M) the
@@ -239,8 +239,9 @@ class Estimator(val plannedRoute: Route) {
                 actualTrack.add(p)
                 if (actualTrack.size > Parameters.TRACK_MAX_POINTS) actualTrack.removeAt(0)
             }
-            // Re-acquisition after estimated points: the estimated stretch is closed at this fix.
-            openSegment?.let { seg -> seg.add(p); if (seg.size >= 2) estimatedSegments.add(seg); openSegment = null }
+            // Re-acquisition: in hindsight the path across the gap is the direct line between the last
+            // measured point and this fix (the propagated guess is discarded), as on the desktop replay.
+            openSegment?.let { seg -> if (seg.isNotEmpty()) estimatedSegments.add(mutableListOf(seg.first(), p)); openSegment = null }
         }
         flownSinceFix = 0.0
 

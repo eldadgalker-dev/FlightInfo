@@ -218,6 +218,10 @@ private fun Root(app: SkyTrackApp) {
                         recording = recording,
                         initialLocation = initialLoc,
                         onExit = { keep -> exitApp(context, keep) },
+                        onManualLocation = { la, lo ->
+                            org.skytrack.sensors.GnssSource(context).remember(android.location.Location("manual").apply { latitude = la; longitude = lo; time = System.currentTimeMillis() })
+                            initialLoc = Pair(la, lo)
+                        },
                         onToggleRecording = {
                             if (recording) app.engine.setRecording(false)
                             else if (plan == null) {

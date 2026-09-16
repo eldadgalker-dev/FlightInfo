@@ -299,6 +299,9 @@
     <string name="exit_question_recording">מתבצעת הקלטה. להמשיך להקליט ולעקוב ברקע (ההתרעה נשארת), או לעצור הכול?</string>
     <string name="exit_keep_recording">המשך להקליט</string>
     <string name="remaining_short">נותר</string>
+    <string name="manual_location">קבע את מיקומי ידנית</string>
+    <string name="manual_location_hint">משמש לתצוגת הפתיחה וכנקודת התחלה להקלטה חופשית כשלטלפון אין מיקום. ממולא במרכז המפה: הזז את המפה למקומך, או הקלד קואורדינטות.</string>
+    <string name="manual_location_set">קבע</string>
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

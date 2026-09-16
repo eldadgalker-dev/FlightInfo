@@ -16,7 +16,7 @@
   "use strict";
 
   // ---------------- Parameters ----------------
-  const APP_VERSION = "2.9";
+  const APP_VERSION = "3.0";
   const PAGE_URL = "https://eldadgalker-dev.github.io/FlightInfo/";
   const P = {
     SPEEDS: [30, 120, 600],           // x real time
@@ -235,7 +235,9 @@
   }
   function pushStatic() {
     if (!S.mapReady || !S.route) return;
-    map.getSource("planned").setData(line(S.route));
+    const realDest = S.dest && !["END", "FREE", "START"].includes(S.dest.iata);
+    map.getSource("planned").setData(realDest ? line(S.route) : empty());
+    if (!realDest) { map.getSource("airports").setData(empty()); return; }
     map.getSource("airports").setData({ type: "FeatureCollection", features: [
       { type: "Feature", geometry: { type: "Point", coordinates: [S.origin.lon, S.origin.lat] }, properties: { code: S.origin.iata } },
       { type: "Feature", geometry: { type: "Point", coordinates: [S.dest.lon, S.dest.lat] }, properties: { code: S.dest.iata } }] });
@@ -430,7 +432,9 @@
     const lvl = sensorLevel(r);
     map.getSource("aircraft").setData({ type: "FeatureCollection", features: !pos ? [] : [{ type: "Feature", geometry: { type: "Point", coordinates: pos }, properties: { icon: `aircraft-${lvl}`, bearing: Number.isNaN(r.track) ? 0 : r.track } }] });
     // Governing route: direct line from the aircraft to the destination (the plan stays as the faint line).
-    map.getSource("flown").setData(pos && S.dest ? line(greatCircle(pos, [S.dest.lon, S.dest.lat], 60)) : empty());
+    // Governing line only toward a real destination (not for free recordings with stand-in START/END points).
+    const realDest = S.dest && !["END", "FREE", "START"].includes(S.dest.iata);
+    map.getSource("flown").setData(pos && realDest ? line(greatCircle(pos, [S.dest.lon, S.dest.lat], 60)) : empty());
     if (S.follow && Date.now() - S.lastGesture > 20000 && pos) map.jumpTo({ center: pos, bearing: S.trackUp && !Number.isNaN(r.track) ? r.track : 0 });
   }
   // Flight clock advances by wall time x speed; the row index follows it and the position is

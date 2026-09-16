@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Explore
@@ -108,6 +109,8 @@ fun MapScreen(
     initialLocation: Pair<Double, Double>? = null,
     /** Exit: true = keep tracking/recording in the background, false = stop everything. */
     onExit: ((keepTracking: Boolean) -> Unit)? = null,
+    /** Manually set "where I am" (used for the start-up camera and as the free-recording origin). */
+    onManualLocation: ((lat: Double, lon: Double) -> Unit)? = null,
     /** Replay mode: this content replaces the bottom panel and the top status strip is hidden. */
     replayPanel: (@Composable () -> Unit)? = null
 ) {
@@ -198,6 +201,34 @@ fun MapScreen(
             SmallFloatingActionButton(onClick = { controller?.recenter() }) { Icon(Icons.Filled.CenterFocusStrong, stringResource(R.string.recenter)) }
             SmallFloatingActionButton(onClick = { trackUp = !trackUp; controller?.recenter() }) {
                 Icon(if (trackUp) Icons.Filled.Navigation else Icons.Filled.Explore, stringResource(R.string.orientation))
+            }
+            if (onManualLocation != null && metrics == null) {
+                // Manual "I am here": the map centre, or typed coordinates.
+                var dlg by remember { mutableStateOf(false) }
+                var latText by remember { mutableStateOf("") }
+                var lonText by remember { mutableStateOf("") }
+                SmallFloatingActionButton(onClick = {
+                    controller?.centerLatLon()?.let { c -> latText = String.format(java.util.Locale.US, "%.5f", c.first); lonText = String.format(java.util.Locale.US, "%.5f", c.second) }
+                    dlg = true
+                }) { Icon(Icons.Filled.PushPin, stringResource(R.string.manual_location)) }
+                if (dlg) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { dlg = false },
+                        title = { Text(stringResource(R.string.manual_location)) },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(stringResource(R.string.manual_location_hint), style = MaterialTheme.typography.bodySmall)
+                                androidx.compose.material3.OutlinedTextField(value = latText, onValueChange = { latText = it }, label = { Text("Latitude") }, singleLine = true)
+                                androidx.compose.material3.OutlinedTextField(value = lonText, onValueChange = { lonText = it }, label = { Text("Longitude") }, singleLine = true)
+                            }
+                        },
+                        confirmButton = { androidx.compose.material3.TextButton(onClick = {
+                            val la = latText.trim().toDoubleOrNull(); val lo = lonText.trim().toDoubleOrNull()
+                            if (la != null && lo != null && la in -90.0..90.0 && lo in -180.0..180.0) { onManualLocation(la, lo); dlg = false }
+                        }) { Text(stringResource(R.string.manual_location_set)) } },
+                        dismissButton = { androidx.compose.material3.TextButton(onClick = { dlg = false }) { Text(stringResource(R.string.replay_close)) } }
+                    )
+                }
             }
         }
 

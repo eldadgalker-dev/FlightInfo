@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 3.6
+// Version 3.7
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -203,6 +203,10 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
             }
             m?.let { fm ->
                 val e = fm.estimate
+                // Position quality for the badge (shared by the rows below).
+                val fresh = e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING
+                val good = fresh && e.sensorLevel == 3
+                val badgeColor = if (good) androidx.compose.ui.graphics.Color(0xFF2E7D32) else if (fresh) androidx.compose.ui.graphics.Color(0xFFF57C00) else androidx.compose.ui.graphics.Color(0xFFC62828)
                 // Three columns per row: nothing is cut.
                 Row(Modifier.fillMaxWidth()) {
                     LabeledValue(en.getString(R.string.utc_time), Format.time(fm.nowUtc.atZone(java.time.ZoneOffset.UTC), true), modifier = Modifier.weight(1f), accent = Accent.time)
@@ -211,10 +215,6 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
                 }
                 Row(Modifier.fillMaxWidth()) {
                     LabeledValue(en.getString(R.string.altitude), Format.altitude(e.altM, settings.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
-                // Second row, as on the desktop replay: phase, satellites, accuracy, position source badge.
-                val fresh = e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING
-                val good = fresh && e.sensorLevel == 3
-                val badgeColor = if (good) androidx.compose.ui.graphics.Color(0xFF2E7D32) else if (fresh) androidx.compose.ui.graphics.Color(0xFFF57C00) else androidx.compose.ui.graphics.Color(0xFFC62828)
                     LabeledValue(en.getString(R.string.phase), en.getString(when (e.phase) { org.skytrack.sensors.FlightPhase.GROUND -> R.string.phase_ground; org.skytrack.sensors.FlightPhase.TAKEOFF -> R.string.phase_takeoff; org.skytrack.sensors.FlightPhase.CLIMB -> R.string.phase_climb; org.skytrack.sensors.FlightPhase.CRUISE -> R.string.phase_cruise; org.skytrack.sensors.FlightPhase.DESCENT -> R.string.phase_descent; org.skytrack.sensors.FlightPhase.LANDED -> R.string.phase_landed }), modifier = Modifier.weight(1f))
                     LabeledValue(en.getString(R.string.satellites), if (fresh) "${e.satsUsed}/${e.satsVisible}" else "--", modifier = Modifier.weight(1f), accent = Accent.motion)
                 }
