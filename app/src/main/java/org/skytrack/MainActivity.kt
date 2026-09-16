@@ -292,6 +292,16 @@ private fun Root(app: SkyTrackApp) {
                         onReport = { f -> reportLog = f; screen = Screen.FEEDBACK },
                         onImport = { importLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "*/*")) },
                         importTick = importTick,
+                        onRepair = { f ->
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                val sum = org.skytrack.service.FlightLogReader.summarize(f)
+                                val rows = org.skytrack.service.FlightLogReader.rows(f)
+                                val first = rows.firstOrNull { it.gnss != null }?.gnss; val last = rows.lastOrNull { it.gnss != null }?.gnss
+                                val o = sum?.originIata?.let { app.airports.byCode(it) } ?: first?.let { org.skytrack.data.Airport.placeholder("START", it.lat, it.lon) }
+                                val d = sum?.destinationIata?.let { app.airports.byCode(it) } ?: last?.let { org.skytrack.data.Airport.placeholder("END", it.lat, it.lon) }
+                                if (o == null || d == null) null else try { org.skytrack.service.FlightLogRepair.repair(f, o, d) } catch (e: Exception) { null }
+                            }
+                        },
                         onBack = { screen = Screen.SETTINGS }
                     )
                 }

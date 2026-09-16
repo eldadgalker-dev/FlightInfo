@@ -295,6 +295,10 @@ fun MapScreen(
 
         // -- Scale bar: above the panel, start side --
         val density = androidx.compose.ui.platform.LocalDensity.current
+        // The aircraft is centred in the part of the map that is actually visible.
+        LaunchedEffect(controller, panelHeightPx) {
+            controller?.setViewportPadding(with(density) { 120.dp.roundToPx() }, panelHeightPx + with(density) { 16.dp.roundToPx() })
+        }
         if (metersPerPx > 0) ScaleBar(metersPerPx, settings.distanceUnit,
             Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 12.dp, bottom = with(density) { panelHeightPx.toDp() } + 12.dp))
 

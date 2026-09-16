@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 3.7
+// Version 3.8
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -75,8 +75,11 @@ fun LogsScreen(
     onReport: (File) -> Unit,
     onImport: () -> Unit,
     importTick: Int,
+    onRepair: suspend (File) -> File?,
     onBack: () -> Unit
 ) {
+    var checkResult by remember { mutableStateOf<Pair<LogSummary, org.skytrack.service.LogCheck>?>(null) }
+    var repairMsg by remember { mutableStateOf<String?>(null) }
     var summaries by remember { mutableStateOf<List<LogSummary>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var reload by remember { mutableStateOf(0) }
@@ -112,6 +115,30 @@ fun LogsScreen(
                     OutlinedButton(onClick = { mergeAsk = g }) { Text(stringResource(R.string.logs_merge_review)) }
                 }
             }
+        }
+        checkResult?.let { (sum, c) ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { checkResult = null },
+                title = { Text(stringResource(R.string.logs_check_title)) },
+                text = {
+                    Text(stringResource(R.string.logs_check_report, c.rows, c.fixes, Format.durationHms(c.durationS), c.gaps, Format.durationHms(c.longestGapS),
+                        c.staleRows, c.jumps, c.duplicateSeconds, c.phases.joinToString(" \u2192 ")) +
+                        "\n\n" + stringResource(if (c.alreadyClean) R.string.logs_check_clean else if (c.needsRepair) R.string.logs_check_needs_repair else R.string.logs_check_ok),
+                        style = MaterialTheme.typography.bodySmall)
+                },
+                confirmButton = {
+                    if (c.needsRepair) TextButton(onClick = {
+                        checkResult = null
+                        scope.launch { val out = onRepair(sum.file); repairMsg = if (out != null) out.name else "failed"; reload++ }
+                    }) { Text(stringResource(R.string.logs_repair)) }
+                },
+                dismissButton = { TextButton(onClick = { checkResult = null }) { Text(stringResource(R.string.replay_close)) } }
+            )
+        }
+        repairMsg?.let { name ->
+            androidx.compose.material3.AlertDialog(onDismissRequest = { repairMsg = null }, title = { Text(stringResource(R.string.logs_repair)) },
+                text = { Text(stringResource(R.string.logs_repaired, name)) },
+                confirmButton = { TextButton(onClick = { repairMsg = null }) { Text(stringResource(R.string.replay_close)) } })
         }
         mergeAsk?.let { g ->
             androidx.compose.material3.AlertDialog(
@@ -165,6 +192,10 @@ fun LogsScreen(
                     OutlinedButton(onClick = { onReport(sel.first().file) }, enabled = sel.size == 1, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_report)) }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = {
+                        val one = sel.first()
+                        scope.launch { val c = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { org.skytrack.service.FlightLogRepair.check(one.file) }; if (c != null) checkResult = Pair(one, c) }
+                    }, enabled = sel.size == 1, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_check)) }
                     OutlinedButton(onClick = { mergeAsk = sel }, enabled = sel.size >= 2, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_merge_selected, sel.size)) }
                     OutlinedButton(onClick = { sel.forEach { onDelete(it.file); it.snapshot?.delete() }; selected.value = emptySet(); reload++ },
                         modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_delete)) }

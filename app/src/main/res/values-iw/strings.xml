@@ -304,6 +304,14 @@
     <string name="manual_location_set">קבע</string>
     <string name="zoom_in_max">קירוב מרבי</string>
     <string name="zoom_out_max">הרחקה מרבית</string>
+    <string name="logs_check">בדוק / תקן</string>
+    <string name="logs_check_title">בדיקת יומן</string>
+    <string name="logs_check_report">שורות: %1$d\nתיקונים: %2$d\nמשך: %3$s\nפערי רישום (>10 ש׳): %4$d, הארוך %5$s\nתיקונים מיושנים חוזרים: %6$d שורות\nקפיצות לא סבירות: %7$d\nשניות כפולות: %8$d\nשלבים: %9$s</string>
+    <string name="logs_check_clean">הקובץ כבר נוקה.</string>
+    <string name="logs_check_needs_repair">התיקון כותב קובץ רציף חדש ב־1 Hz לצד המקורי (המקורי נשמר): פערים מושלמים בין התיקונים האמיתיים, תיקונים מיושנים מוסרים, שלבים מתוייגים מחדש.</string>
+    <string name="logs_check_ok">לא נמצאו בעיות.</string>
+    <string name="logs_repair">תקן</string>
+    <string name="logs_repaired">נוצר קובץ מתוקן: %1$s</string>
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

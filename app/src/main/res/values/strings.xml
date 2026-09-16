@@ -319,6 +319,14 @@
     <string name="manual_location_set">Set</string>
     <string name="zoom_in_max">Zoom all the way in</string>
     <string name="zoom_out_max">Zoom all the way out</string>
+    <string name="logs_check">Check / repair</string>
+    <string name="logs_check_title">Log check</string>
+    <string name="logs_check_report">Rows: %1$d\nFixes: %2$d\nDuration: %3$s\nRecording gaps (>10 s): %4$d, longest %5$s\nStale repeated fixes: %6$d rows\nImplausible jumps: %7$d\nDuplicate seconds: %8$d\nPhases: %9$s</string>
+    <string name="logs_check_clean">This file was already cleaned.</string>
+    <string name="logs_check_needs_repair">Repair writes a new continuous 1 Hz file next to the original (the original is kept): holes interpolated between the real fixes, stale fixes dropped, phases relabelled.</string>
+    <string name="logs_check_ok">No problems found.</string>
+    <string name="logs_repair">Repair</string>
+    <string name="logs_repaired">Repaired file created: %1$s</string>
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>
