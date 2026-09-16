@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 5.2
+// Version 5.3
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -131,15 +131,26 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
             dst = airports.byCode(p.destinationIata) ?: return false
         }
         stop()
+        // Every per-flight memory is reset here, so nothing of a previous flight (fixes, ADS-B position,
+        // country, ground calibration, warnings) can appear in the new one.
+        lastGnss = null; lastBaro = null; lastGyro = null; groundRef = null; lastCountry = null; lastCountryCheckMs = 0L
+        lastExternalFixMs = 0L; lastAnyFixMs = 0L; lastGnssVRate = 0.0; lastGnssAltMs = 0L; lastGnssAlt = 0.0
+        lastPersistMs = 0L; lastTrackSizeSaved = -1
         plan = p; origin = o; destination = dst
         val est = Estimator(Route(o.point, dst.point))
         estimator = est
         phaseDetector = FlightPhaseDetector()
 
+        val prev = stores.plan.value
         val saved = stores.loadEstimate()
-        val samePlanAsBefore = stores.plan.value?.let { it.originIata == p.originIata && it.destinationIata == p.destinationIata } ?: false
-        if (!samePlanAsBefore) stores.clearTrack()
-        if (!p.estimateOnly && saved != null && System.currentTimeMillis() - saved.timeMs < 12 * 3600_000L && p.takeoffMs != null) {
+        // Same flight = same route, same flight number, same scheduled departure and not estimate-only.
+        // Anything else is a new flight: saved estimate and track are discarded.
+        val samePlanAsBefore = prev != null && prev.originIata == p.originIata && prev.destinationIata == p.destinationIata &&
+                prev.flightNumber == p.flightNumber && prev.scheduledDepartureMs == p.scheduledDepartureMs && !prev.estimateOnly && !p.estimateOnly
+        if (!samePlanAsBefore) { stores.clearEstimate(); stores.clearTrack() }
+        val savedUsable = samePlanAsBefore && saved != null && System.currentTimeMillis() - saved.timeMs < 12 * 3600_000L &&
+                (p.scheduledDepartureMs == null || saved.timeMs > p.scheduledDepartureMs - 3 * 3600_000L)
+        if (savedUsable && saved != null && p.takeoffMs != null) {
             est.restore(saved.alongM, saved.speedMps, saved.trackDeg, saved.altM, saved.timeMs)
             if (samePlanAsBefore) stores.loadTrack()?.let { (pts, flown) -> est.restoreTrack(pts, flown, saved.timeMs) }
             val ph = try { FlightPhase.valueOf(saved.phase) } catch (e: Exception) { FlightPhase.CRUISE }
@@ -189,10 +200,19 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
             try {
                 val s = stores.settings.value
                 val gnssStale = System.currentTimeMillis() - lastAnyFixMs > Parameters.LIVE_ONLY_WHEN_GNSS_OLDER_MS
-                if (s.useNetwork && isOnline() && (p.estimateOnly || gnssStale)) {
+                // A daily flight number belongs to a different aircraft each day: accept an ADS-B position only
+                // inside this flight's own time window (30 min before the scheduled departure until 6 h after it).
+                val now = System.currentTimeMillis()
+                val dep = p.scheduledDepartureMs
+                val inWindow = dep == null || (now >= dep - 30 * 60_000L && now <= dep + 6 * 3600_000L)
+                if (s.useNetwork && isOnline() && inWindow && (p.estimateOnly || gnssStale)) {
                     val fix = LiveFlightSource.fetch(p.flightNumber)
-                    if (fix != null) {
-                        lastExternalFixMs = System.currentTimeMillis()
+                    // and it must be plausible for this route: within 300 km of the great circle
+                    val o = origin; val d = destination
+                    val plausible = fix != null && o != null && d != null &&
+                            kotlin.math.abs(Route(o.point, d.point).project(GeoPoint(fix.lat, fix.lon)).crossM) < 300_000.0
+                    if (fix != null && plausible) {
+                        lastExternalFixMs = now
                         ingestFix(fix)
                     }
                 }
