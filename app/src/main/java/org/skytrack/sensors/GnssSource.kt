@@ -41,7 +41,9 @@ data class GnssSample(
     val vAccM: Double,
     val satsUsed: Int,
     val satsVisible: Int,
-    val quality: GnssQuality
+    val quality: GnssQuality,
+    /** Replay only: a trusted position from the log's estimate columns, not a receiver fix. */
+    val virtual: Boolean = false
 )
 
 class GnssSource(private val context: Context) {

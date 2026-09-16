@@ -185,7 +185,7 @@ private fun Root(app: SkyTrackApp) {
                     onConfirmGround = { app.engine.confirmOnGround() },
                     groundStatus = metrics?.groundReference?.let { gr ->
                         androidx.compose.ui.res.stringResource(R.string.ground_ref_done2,
-                            gr.gnssBiasM?.let { org.skytrack.ui.Format.altitude(it, settings.altitudeUnit) } ?: "--", gr.satsUsed, gr.hAccM?.toInt() ?: 0)
+                            gr.gnssBiasM?.let { org.skytrack.ui.Format.altitude(it, settings.altitudeUnit) } ?: "--", gr.satsUsed, gr.hAccM?.toInt() ?: 0, gr.satsVisible)
                     }
                 )
                 Screen.SCAN -> {

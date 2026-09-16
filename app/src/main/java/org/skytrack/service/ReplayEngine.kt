@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - ReplayEngine
-// Version 1.3
+// Version 1.4
 // Purpose : Play a recorded flight log back through a fresh Estimator at
 //           30x .. 600x real time, publishing FlightMetrics exactly like the
 //           live engine so the normal map screen can display it. Because the
@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.skytrack.Parameters
 import org.skytrack.data.Airport
 import org.skytrack.data.AirportRepository
 import org.skytrack.fusion.Estimator
@@ -133,6 +134,9 @@ class ReplayEngine(private val airports: AirportRepository) {
             while (t < r.timeMs - 1000) { e.tick(t, prev.phase, takeoffMs, prev.liveTracking); t += 1000 }
         }
         r.gnss?.let { e.onGnss(it, r.phase) }
+        // No receiver fix in this row: a trusted log (4.x app or cleaned file) supplies its estimate as a
+        // virtual fix, so the replay follows the recorded/interpolated path instead of the straight route.
+        if (r.gnss == null && summary?.estTrusted == true) r.est?.let { e.onGnss(it, r.phase) }
         r.gyro?.let { e.onGyro(it) }
         if (takeoffMs == null && r.phase != org.skytrack.sensors.FlightPhase.GROUND) takeoffMs = r.timeMs
         val pe = e.tick(r.timeMs, r.phase, takeoffMs, r.liveTracking)

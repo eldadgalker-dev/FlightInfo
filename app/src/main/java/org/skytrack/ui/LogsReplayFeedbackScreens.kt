@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 3.4
+// Version 3.5
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -91,6 +91,8 @@ fun LogsScreen(
         loading = false
     }
     val sel = summaries.filter { it.file.name in selected.value }
+    val groups = remember(summaries) { summaries.groupBy { FlightLogReader.groupKey(it) }.filter { it.value.size > 1 } }
+    var mergeAsk by remember { mutableStateOf<List<LogSummary>?>(null) }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -101,6 +103,28 @@ fun LogsScreen(
             }
         }
         Text(stringResource(R.string.logs_select_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Recommendation only - nothing is merged without confirmation.
+        for ((_, g) in groups) {
+            Card(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.logs_merge_suggest, g.size, "${g.first().originIata} \u2192 ${g.first().destinationIata}"),
+                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    OutlinedButton(onClick = { mergeAsk = g }) { Text(stringResource(R.string.logs_merge_review)) }
+                }
+            }
+        }
+        mergeAsk?.let { g ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { mergeAsk = null },
+                title = { Text(stringResource(R.string.logs_merge_confirm_title)) },
+                text = { Text(stringResource(R.string.logs_merge_confirm_text, g.size) + "\n" + g.joinToString("\n") { "\u2022 " + Format.dateTime(Instant.ofEpochMilli(it.startMs).atZone(ZoneId.systemDefault())) + "  " + Format.durationHms(it.durationS) }) },
+                confirmButton = { TextButton(onClick = {
+                    mergeAsk = null
+                    scope.launch { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { FlightLogReader.merge(g.map { it.file }) }; selected.value = emptySet(); reload++ }
+                }) { Text(stringResource(R.string.logs_merge_selected, g.size)) } },
+                dismissButton = { TextButton(onClick = { mergeAsk = null }) { Text(stringResource(R.string.replay_close)) } }
+            )
+        }
         if (loading) {
             androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 16.dp))
             Text(stringResource(R.string.logs_loading), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
@@ -141,15 +165,7 @@ fun LogsScreen(
                     OutlinedButton(onClick = { onReport(sel.first().file) }, enabled = sel.size == 1, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_report)) }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { FlightLogReader.merge(sel.map { it.file }) }
-                                selected.value = emptySet(); reload++
-                            }
-                        },
-                        enabled = sel.size >= 2, modifier = Modifier.weight(1f)
-                    ) { Text(stringResource(R.string.logs_merge_selected, sel.size)) }
+                    OutlinedButton(onClick = { mergeAsk = sel }, enabled = sel.size >= 2, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_merge_selected, sel.size)) }
                     OutlinedButton(onClick = { sel.forEach { onDelete(it.file); it.snapshot?.delete() }; selected.value = emptySet(); reload++ },
                         modifier = Modifier.weight(1f)) { Text(stringResource(R.string.logs_delete)) }
                 }
@@ -199,7 +215,7 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
                 val badgeColor = if (good) androidx.compose.ui.graphics.Color(0xFF2E7D32) else if (fresh) androidx.compose.ui.graphics.Color(0xFFF57C00) else androidx.compose.ui.graphics.Color(0xFFC62828)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
                     LabeledValue(en.getString(R.string.phase), en.getString(when (e.phase) { org.skytrack.sensors.FlightPhase.GROUND -> R.string.phase_ground; org.skytrack.sensors.FlightPhase.TAKEOFF -> R.string.phase_takeoff; org.skytrack.sensors.FlightPhase.CLIMB -> R.string.phase_climb; org.skytrack.sensors.FlightPhase.CRUISE -> R.string.phase_cruise; org.skytrack.sensors.FlightPhase.DESCENT -> R.string.phase_descent; org.skytrack.sensors.FlightPhase.LANDED -> R.string.phase_landed }), modifier = Modifier.weight(1f))
-                    LabeledValue(en.getString(R.string.satellites), if (fresh) "${e.satsUsed}" else "--", modifier = Modifier.weight(1f), accent = Accent.motion)
+                    LabeledValue(en.getString(R.string.satellites), if (fresh) "${e.satsUsed}/${e.satsVisible}" else "--", modifier = Modifier.weight(1f), accent = Accent.motion)
                     LabeledValue(en.getString(R.string.gnss_accuracy_short), if (e.sigmaAlongM < 1000) "\u00B1${e.sigmaAlongM.toInt()} m" else "\u00B1${String.format(java.util.Locale.US, "%.1f", e.sigmaAlongM / 1000)} km", modifier = Modifier.weight(1f), accent = Accent.motion)
                     Column(Modifier.weight(1f)) {
                         Text(en.getString(R.string.position), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -208,7 +224,7 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
                     }
                 }
                 // Labelled, two lines: phase / country / GPS, then elapsed log time.
-                val gps = if (e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING) en.getString(R.string.gps_short, e.satsUsed, e.sigmaAlongM.toInt()) else en.getString(R.string.gnss_none)
+                val gps = if (e.mode == org.skytrack.fusion.FusionMode.GNSS_TRACKING) en.getString(R.string.gps_short, e.satsUsed, e.satsVisible, e.sigmaAlongM.toInt()) else en.getString(R.string.gnss_none)
                 Text("${en.getString(R.string.phase)}: ${en.getString(when (e.phase) { org.skytrack.sensors.FlightPhase.GROUND -> R.string.phase_ground; org.skytrack.sensors.FlightPhase.TAKEOFF -> R.string.phase_takeoff; org.skytrack.sensors.FlightPhase.CLIMB -> R.string.phase_climb; org.skytrack.sensors.FlightPhase.CRUISE -> R.string.phase_cruise; org.skytrack.sensors.FlightPhase.DESCENT -> R.string.phase_descent; org.skytrack.sensors.FlightPhase.LANDED -> R.string.phase_landed })}" + (fm.overflownCountry?.let { "  \u00B7  $it" } ?: "") + "  \u00B7  GPS: $gps",
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 engine.summary?.let { sum ->

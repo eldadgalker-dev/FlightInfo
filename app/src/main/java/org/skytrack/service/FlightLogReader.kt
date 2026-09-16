@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightLogReader
-// Version 1.1
+// Version 1.2
 // Purpose : Parse the CSV flight logs written by FlightLogger, tolerant of
 //           column sets from older versions (columns are looked up by name)
 //           and of the duplicated header rows older versions produced.
@@ -27,19 +27,23 @@ data class LogSummary(
     val rows: Int,
     val fixes: Int,
     val appVersion: String?,
-    val snapshot: File?
+    val snapshot: File?,
+    /** Estimate columns are measured-first (app 4.x+) or produced by clean_log.py: usable for replay. */
+    val estTrusted: Boolean = false
 ) {
     val durationS: Long get() = (endMs - startMs) / 1000
 }
 
 /** One second of the recorded flight. */
-data class ReplayRow(val timeMs: Long, val phase: FlightPhase, val gnss: GnssSample?, val gyro: GyroSample?, val liveTracking: Boolean)
+data class ReplayRow(val timeMs: Long, val phase: FlightPhase, val gnss: GnssSample?, val gyro: GyroSample?, val liveTracking: Boolean,
+                     /** The log's own estimate for rows without a fix (used only when the log is trusted: app >= 4 or cleaned). */
+                     val est: GnssSample? = null)
 
 object FlightLogReader {
 
     /** Header-only pass: cheap enough for a list of 20 files. */
     fun summarize(f: File): LogSummary? = try {
-        var origin: String? = null; var dest: String? = null; var fn: String? = null; var ver: String? = null
+        var origin: String? = null; var dest: String? = null; var fn: String? = null; var ver: String? = null; var cleaned = false
         var header: List<String>? = null
         var first = -1L; var last = -1L; var rows = 0; var fixes = 0; var lastGnss = ""
         f.bufferedReader().useLines { lines ->
@@ -49,6 +53,7 @@ object FlightLogReader {
                     Regex("destination=(\\w+)").find(ln)?.let { dest = it.groupValues[1] }
                     Regex("flight=(\\S+)").find(ln)?.let { fn = it.groupValues[1] }
                     Regex("app_version=(\\S+)").find(ln)?.let { ver = it.groupValues[1] }
+                    if (ln.contains("cleaned", ignoreCase = true) || ln.contains("clean_log")) cleaned = true
                     continue
                 }
                 if (ln.startsWith("time_utc")) { header = ln.split(','); continue }
@@ -67,7 +72,8 @@ object FlightLogReader {
             if (parts.size >= 4) { origin = origin ?: parts[2]; dest = dest ?: parts[3]; fn = fn ?: parts.getOrNull(4) }
         }
         val snap = File(f.parentFile, f.nameWithoutExtension + "_map.png").takeIf { it.exists() }
-        if (rows == 0) null else LogSummary(f, origin, dest, fn, first, last, rows, fixes, ver, snap)
+        val major = ver?.substringBefore('.')?.toIntOrNull() ?: 0
+        if (rows == 0) null else LogSummary(f, origin, dest, fn, first, last, rows, fixes, ver, snap, cleaned || major >= 4)
     } catch (e: Exception) { null }
 
     /** Grouping key for logs of the same flight on the same day. */
@@ -149,7 +155,14 @@ object FlightLogReader {
                     }
                 }
                 val gyro = d("gyro_yaw_dps")?.let { GyroSample(t, it) }
-                out.add(ReplayRow(t, phase, gnss, gyro, s("tracking") != "ESTIMATE"))
+                var est: GnssSample? = null
+                if (gnss == null) {
+                    val el = d("est_lat"); val eo = d("est_lon")
+                    if (el != null && eo != null && s("mode") != "PREDICTED_ONLY")
+                        est = GnssSample(t, el, eo, d("alt_m") ?: 0.0, s("alt_m").isNotEmpty(), d("speed_mps") ?: 0.0, s("speed_mps").isNotEmpty(),
+                            d("track_deg") ?: 0.0, s("track_deg").isNotEmpty(), (d("sigma_s_m") ?: 500.0).coerceAtLeast(50.0), 100.0, 0, 0, GnssQuality.DEGRADED, virtual = true)
+                }
+                out.add(ReplayRow(t, phase, gnss, gyro, s("tracking") != "ESTIMATE", est))
             }
         }
         return out

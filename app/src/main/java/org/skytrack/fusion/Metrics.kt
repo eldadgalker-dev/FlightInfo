@@ -63,7 +63,7 @@ data class FlightMetrics(
 
 /** Result of the user's "on the ground now" confirmation. */
 data class GroundReference(val timeMs: Long, val fieldElevM: Int, val gnssAltM: Double?, val pressureHpa: Double?,
-                           val satsUsed: Int = 0, val hAccM: Double? = null) {
+                           val satsUsed: Int = 0, val hAccM: Double? = null, val satsVisible: Int = 0) {
     val gnssBiasM: Double? get() = gnssAltM?.let { it - fieldElevM }
 }
 

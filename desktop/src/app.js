@@ -16,7 +16,7 @@
   "use strict";
 
   // ---------------- Parameters ----------------
-  const APP_VERSION = "2.8";
+  const APP_VERSION = "2.9";
   const PAGE_URL = "https://eldadgalker-dev.github.io/FlightInfo/";
   const P = {
     SPEEDS: [30, 120, 600],           // x real time
@@ -117,7 +117,7 @@
         lat: Number(g("est_lat")), lon: Number(g("est_lon")), remaining: Number(g("remaining_m")), speed: Number(g("speed_mps")), alt: Number(g("alt_m")), track: Number(g("track_deg")),
         ete: g("ete_s") === "" ? null : Number(g("ete_s")), level: g("sensor_level") === "" ? null : Number(g("sensor_level")),
         fix: newFix ? { lat: Number(g("gnss_lat")), lon: Number(g("gnss_lon")), hacc: Number(g("gnss_hacc_m")), sats: Number(g("gnss_sats_used")), q: g("gnss_quality") } : null,
-        fixAge: gt ? (t - Number(gt)) / 1000 : null, sats: Number(g("gnss_sats_used")), hacc: Number(g("gnss_hacc_m")), q: g("gnss_quality"),
+        fixAge: gt ? (t - Number(gt)) / 1000 : null, sats: Number(g("gnss_sats_used")), vis: Number(g("gnss_sats_visible")), hacc: Number(g("gnss_hacc_m")), q: g("gnss_quality"),
       });
     }
     // Logs written by app 4.x or later (measured-first) and cleaned files carry a trustworthy estimate;
@@ -406,7 +406,7 @@
     $("vAlt").textContent = Number.isNaN(r.alt) ? "--" : fmt.alt(r.alt);
     const fresh = r.fixAge !== null && r.fixAge < 10;
     $("vPhase").textContent = PH[r.phase] || r.phase.toLowerCase();
-    $("vSats").textContent = fresh && !Number.isNaN(r.sats) ? String(r.sats).padStart(2, " ") : "--";
+    $("vSats").textContent = fresh && !Number.isNaN(r.sats) ? String(r.sats).padStart(2, " ") + "/" + (Number.isNaN(r.vis) ? "--" : String(r.vis).padStart(2, " ")) : "--";
     // Accuracy in both states: measured = fix accuracy; estimated = last accuracy + 6 % of the distance flown without a fix.
     $("vAcc").textContent = Number.isNaN(sig) ? "--" : sig < 1000 ? `\u00B1${String(Math.round(sig)).padStart(3, " ")} m` : `\u00B1${(sig / 1000).toFixed(sig < 10000 ? 1 : 0)} km`;
     const src = $("vSrc");

@@ -271,7 +271,7 @@ private fun StatusStrip(m: FlightMetrics?, modifier: Modifier) {
             val line1 = when {
                 m.estimateOnly -> stringResource(R.string.strip_time_only)
                 m.positionSource != null -> stringResource(R.string.source_adsb)
-                e.mode == FusionMode.GNSS_TRACKING -> stringResource(R.string.strip_gnss, e.satsUsed, e.sigmaAlongM.toInt())
+                e.mode == FusionMode.GNSS_TRACKING -> stringResource(R.string.strip_gnss, e.satsUsed, e.satsVisible, e.sigmaAlongM.toInt())
                 e.mode == FusionMode.ROUTE_CONSTRAINED -> if (m.gnssNoFixS > 0) stringResource(R.string.strip_no_gnss_for, Format.duration(m.gnssNoFixS)) else stringResource(R.string.gnss_none)
                 else -> stringResource(R.string.gnss_none)
             }
@@ -321,7 +321,7 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onCo
                     LabeledValue(stringResource(R.string.ground_speed), Format.speed(e.groundSpeedMps, s.speedUnit), e.speedConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
                     LabeledValue(stringResource(R.string.altitude), Format.altitude(e.altM, s.altitudeUnit), e.altitudeConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
                     LabeledValue(stringResource(R.string.track), Format.heading(e.trackDeg), e.trackConfidence, modifier = Modifier.weight(1f), accent = Accent.motion)
-                    LabeledValue(stringResource(R.string.satellites), "${e.satsUsed}", null, modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.satellites), "${e.satsUsed}/${e.satsVisible}", null, modifier = Modifier.weight(1f))
                 }
                 Row(Modifier.fillMaxWidth()) {
                     LabeledValue(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
@@ -345,7 +345,7 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onCo
                     androidx.compose.material3.OutlinedButton(onClick = onConfirmGround) { Text(stringResource(R.string.confirm_ground)) }
                     Text(
                         m.groundReference?.let { gr -> stringResource(R.string.ground_ref_done2,
-                            gr.gnssBiasM?.let { Format.altitude(it, s.altitudeUnit) } ?: "--", gr.satsUsed, gr.hAccM?.toInt() ?: 0) }
+                            gr.gnssBiasM?.let { Format.altitude(it, s.altitudeUnit) } ?: "--", gr.satsUsed, gr.hAccM?.toInt() ?: 0, gr.satsVisible) }
                             ?: stringResource(R.string.ground_ref_hint),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }

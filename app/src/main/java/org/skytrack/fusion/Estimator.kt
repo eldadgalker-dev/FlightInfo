@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Estimator
-// Version 5.0
+// Version 5.1
 // Purpose : Measured-first position estimator.
 //
 //           With a usable fix (any accuracy up to WEAK_FIX_MAX_HACC_M) the
@@ -112,6 +112,7 @@ class Estimator(val plannedRoute: Route) {
     private var satsUsed = 0
     private var satsVisible = 0
     private var lastQuality = GnssQuality.NONE
+    private var lastVirtual = false          // last "fix" came from a trusted log estimate (replay), not a receiver
     private var lastHAcc = 0.0
     private var vRef = 0.0
     private val speedWin = ArrayDeque<Pair<Long, Double>>()
@@ -199,7 +200,7 @@ class Estimator(val plannedRoute: Route) {
 
     fun onGnss(g: GnssSample, phase: FlightPhase) {
         satsUsed = g.satsUsed; satsVisible = g.satsVisible; lastQuality = g.quality
-        if (g.quality == GnssQuality.NONE || g.hAccM > Parameters.WEAK_FIX_MAX_HACC_M) return
+        if (g.quality == GnssQuality.NONE || (!g.virtual && g.hAccM > Parameters.WEAK_FIX_MAX_HACC_M)) return
         val p = GeoPoint(g.lat, g.lon)
         lastHAcc = g.hAccM
 
@@ -215,17 +216,24 @@ class Estimator(val plannedRoute: Route) {
             val step = Geodesy.distance(prev, p)
             if (step < 50_000.0) flownMeasured += step        // ignore impossible jumps
         }
-        // Track vertices: every TRACK_DECIMATION_M, and at every heading change so the line follows the real path.
-        val n = actualTrack.size
-        val far = n == 0 || Geodesy.distance(actualTrack[n - 1], p) >= Parameters.TRACK_DECIMATION_M
-        val turned = n >= 2 && Geodesy.distance(actualTrack[n - 1], p) > 25.0 &&
-                abs(Geodesy.bearingDiff(Geodesy.bearing(actualTrack[n - 2], actualTrack[n - 1]), Geodesy.bearing(actualTrack[n - 1], p))) > Parameters.TRACK_TURN_DEG
-        if (far || turned) {
-            actualTrack.add(p)
-            if (actualTrack.size > Parameters.TRACK_MAX_POINTS) actualTrack.removeAt(0)
+        lastVirtual = g.virtual
+        if (g.virtual) {
+            // Trusted estimate from a log (replay): drawn as an estimated (dashed) point, never as a measured one.
+            val seg = openSegment ?: ArrayList<GeoPoint>().also { o -> lastFixPos?.let { lp -> o.add(lp) }; openSegment = o }
+            if (seg.isEmpty() || Geodesy.distance(seg.last(), p) >= Parameters.TRACK_DECIMATION_M) seg.add(p)
+        } else {
+            // Track vertices: every TRACK_DECIMATION_M, and at every heading change so the line follows the real path.
+            val n = actualTrack.size
+            val far = n == 0 || Geodesy.distance(actualTrack[n - 1], p) >= Parameters.TRACK_DECIMATION_M
+            val turned = n >= 2 && Geodesy.distance(actualTrack[n - 1], p) > 25.0 &&
+                    abs(Geodesy.bearingDiff(Geodesy.bearing(actualTrack[n - 2], actualTrack[n - 1]), Geodesy.bearing(actualTrack[n - 1], p))) > Parameters.TRACK_TURN_DEG
+            if (far || turned) {
+                actualTrack.add(p)
+                if (actualTrack.size > Parameters.TRACK_MAX_POINTS) actualTrack.removeAt(0)
+            }
+            // Re-acquisition after estimated points: the estimated stretch is closed at this fix.
+            openSegment?.let { seg -> seg.add(p); if (seg.size >= 2) estimatedSegments.add(seg); openSegment = null }
         }
-        // Re-acquisition: in hindsight the path across the gap is the direct line between the two fixes.
-        openSegment?.let { seg -> if (seg.isNotEmpty()) estimatedSegments.add(mutableListOf(seg.first(), p)); openSegment = null }
         flownSinceFix = 0.0
 
         // Governing route: anchor at the measured position when we left the current one.
@@ -344,7 +352,8 @@ class Estimator(val plannedRoute: Route) {
 
         val fresh = sensorsLive && everFixed && age < Parameters.GNSS_STALE_MS * 2
         val altFresh = sensorsLive && lastAltMs != 0L && now - lastAltMs < Parameters.GNSS_STALE_MS * 2
-        val goodNow = fresh && lastQuality == GnssQuality.GOOD
+        val goodNow = fresh && lastQuality == GnssQuality.GOOD && !lastVirtual
+        val virtualNow = fresh && lastVirtual
 
         val posConf = when (mode) {
             FusionMode.GNSS_TRACKING -> if (!fresh) Confidence.FUSED else if (goodNow) Confidence.MEASURED else Confidence.FUSED
@@ -360,10 +369,12 @@ class Estimator(val plannedRoute: Route) {
         val altConf = if (altFresh) Confidence.MEASURED else if (lastAltMs != 0L && sensorsLive) Confidence.STALE else Confidence.PREDICTED
         val sensorLevel = when {
             goodNow -> 3
+            virtualNow -> 1
             fresh -> 2
             mode == FusionMode.ROUTE_CONSTRAINED -> 1   // last fix + inertial / baro / visual propagation
             else -> 0
         }
+        val shownMode = if (virtualNow) FusionMode.ROUTE_CONSTRAINED else mode
 
         return PositionEstimate(
             timeMs = now, lat = pos.lat, lon = pos.lon,
@@ -375,9 +386,9 @@ class Estimator(val plannedRoute: Route) {
             groundReferenced = groundReferenced,
             originMismatchM = if (sensorsLive && phase == FlightPhase.GROUND) originMismatch else null,
             sensorLevel = sensorLevel,
-            mode = mode, phase = phase, lastFixAgeMs = if (everFixed && sensorsLive) age else -1L,
-            satsUsed = satsUsed, satsVisible = satsVisible, gnssQuality = if (sensorsLive) lastQuality else GnssQuality.NONE,
-            positionConfidence = posConf, altitudeConfidence = altConf,
+            mode = shownMode, phase = phase, lastFixAgeMs = if (everFixed && sensorsLive) age else -1L,
+            satsUsed = if (virtualNow) 0 else satsUsed, satsVisible = if (virtualNow) 0 else satsVisible, gnssQuality = if (sensorsLive) lastQuality else GnssQuality.NONE,
+            positionConfidence = if (virtualNow) Confidence.PREDICTED else posConf, altitudeConfidence = altConf,
             speedConfidence = speedConf, trackConfidence = trackConf
         )
     }

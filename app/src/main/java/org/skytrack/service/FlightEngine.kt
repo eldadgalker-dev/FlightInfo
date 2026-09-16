@@ -151,7 +151,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         startMs = System.currentTimeMillis(); lastWarnLevel = 0; reliefUntilMs = 0L; landedSinceMs = 0L; loggingStopped = false
         if (!geoReady) scope.launch { geo.warmUp(); geoReady = true }
         // Recording does not start by itself: the REC button decides. Keep it running across a
-        // restart of the same live flight (re-uses the file), stop it when the plan changes.
+        // restart of the same live flight (a new file; the log manager offers to merge), stop it when the plan changes.
         val keepRecording = _recording.value && samePlanAsBefore && !p.estimateOnly
         if (keepRecording) logger.start(p.originIata, p.destinationIata, p.flightNumber) else { logger.stop(); _recording.value = false }
         _active.value = true
@@ -292,7 +292,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         if (p.takeoffMs != null) { plan = p.copy(takeoffMs = null); stores.savePlan(plan) }
         val g = lastGnss?.takeIf { it.quality != GnssQuality.NONE && it.hasAlt && System.currentTimeMillis() - it.timeMs < 30_000 }
         est.setGroundReference(g?.altM, o.elevM.toDouble())
-        groundRef = GroundReference(System.currentTimeMillis(), o.elevM, g?.altM, lastBaro?.pressureHpa, g?.satsUsed ?: 0, g?.hAccM)
+        groundRef = GroundReference(System.currentTimeMillis(), o.elevM, g?.altM, lastBaro?.pressureHpa, g?.satsUsed ?: 0, g?.hAccM, g?.satsVisible ?: 0)
         publish(System.currentTimeMillis())
     }
 
