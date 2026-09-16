@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - ReplayEngine
-// Version 1.4
+// Version 1.5
 // Purpose : Play a recorded flight log back through a fresh Estimator at
 //           30x .. 600x real time, publishing FlightMetrics exactly like the
 //           live engine so the normal map screen can display it. Because the
@@ -142,7 +142,8 @@ class ReplayEngine(private val airports: AirportRepository) {
         val pe = e.tick(r.timeMs, r.phase, takeoffMs, r.liveTracking)
         if (!publish) return
         _metrics.value = Metrics.compute(pe, e.route, e.plannedRoute, e.actualTrack.toList(), !r.liveTracking, o, d, takeoffMs)
-            .copy(estimatedTrack = e.estimatedSegments.map { it.toList() })
+            .copy(estimatedTrack = e.estimatedSegments.map { it.toList() },
+                  freeRecording = summary?.originIata == org.skytrack.data.FlightPlan.FREE_CODE || d.iata == "END")
         _progress.value = if (rows.size > 1) i.toFloat() / (rows.size - 1) else 1f
     }
 }

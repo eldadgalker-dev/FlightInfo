@@ -49,7 +49,7 @@
     <string name="ete">Time to go</string>
     <string name="eta">Arrival (ETA)</string>
     <string name="eta_local">ETA %1$s</string>
-    <string name="ground_speed">Ground speed</string>
+    <string name="ground_speed">Speed</string>
     <string name="altitude">Altitude</string>
     <string name="track">Track</string>
     <string name="vertical_rate">Vertical rate</string>
@@ -311,6 +311,8 @@
     <string name="logs_merge_review">Review</string>
     <string name="logs_merge_confirm_title">Merge logs?</string>
     <string name="logs_merge_confirm_text">%1$d files will be combined into one, sorted by time, duplicates removed. The originals are deleted. Continue?</string>
+    <string name="exit_question_recording">A recording is running. Keep recording and tracking in the background (notification stays), or stop everything?</string>
+    <string name="exit_keep_recording">Keep recording</string>
     <string name="notif_channel">Flight tracking</string>
     <string name="notif_starting">Starting sensors\u2026</string>
     <string name="notif_body">%1$s remaining \u00B7 %2$s to go</string>

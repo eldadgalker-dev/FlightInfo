@@ -208,9 +208,19 @@ private fun Root(app: SkyTrackApp) {
                             org.skytrack.sensors.GnssSource(context).requestSingleFix { initialLoc = Pair(it.latitude, it.longitude) }
                         else locPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                     }
+                    // Relaunch with an active live flight or recording: the foreground service must be running.
+                    LaunchedEffect(plan?.originIata, plan?.free) {
+                        val p = plan
+                        if (p != null && !p.estimateOnly && ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+                            TrackingService.start(context)
+                    }
                     MapScreen(
                         recording = recording,
                         initialLocation = initialLoc,
+                        onExit = { keep ->
+                            if (!keep) { TrackingService.stop(context); app.engine.stop() }
+                            (context as? android.app.Activity)?.finishAffinity()
+                        },
                         onToggleRecording = {
                             if (recording) app.engine.setRecording(false)
                             else if (plan == null) {

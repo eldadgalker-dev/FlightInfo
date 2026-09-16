@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 5.2
+// Version 5.3
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -59,7 +59,7 @@ class MapController(private val context: Context, private val map: MapLibreMap,
     private var lastGestureMs = 0L
     private var lastRouteHash = 0
     private var pendingMetrics: FlightMetrics? = null
-    private var startZoom: Double? = initialZoom
+    private var startZoom: Double? = Parameters.MAP_MAX_ZOOM   // app start: aircraft at maximum zoom (initialZoom kept for API compatibility)
     private var lastEstimateMs = 0L
     private var lastUpdateWallMs = 0L
 
@@ -118,8 +118,16 @@ class MapController(private val context: Context, private val map: MapLibreMap,
 
         // Planned route and airports change only with the plan; the governing route
         // changes on every re-plan. The hash covers both.
+        // No real destination (free recording, or a replay whose airports are stand-ins, or a 0/0 placeholder):
+        // no planned, governing or flown line and no along-route uncertainty band.
+        val noDest = m.freeRecording || (m.destination.lat == 0.0 && m.destination.lon == 0.0) || m.destination.iata == "FREE" || m.destination.iata == "END"
+        if (noDest) {
+            for (id in listOf(MapStyle.SRC_ROUTE_PLANNED, MapStyle.SRC_ROUTE_ORIGINAL, MapStyle.SRC_ROUTE_FLOWN, MapStyle.SRC_UNCERTAINTY)) src(st, id)?.setGeoJson(emptyCollection())
+            src(st, MapStyle.SRC_AIRPORTS)?.setGeoJson(emptyCollection())
+            lastRouteHash = 0
+        }
         val routeHash = (m.origin.iata + m.destination.iata + m.estimate.replanCount).hashCode()
-        if (routeHash != lastRouteHash) {
+        if (!noDest && routeHash != lastRouteHash) {
             lastRouteHash = routeHash
             src(st, MapStyle.SRC_ROUTE_PLANNED)?.setGeoJson(lineFeature(route.points))
             src(st, MapStyle.SRC_ROUTE_ORIGINAL)?.setGeoJson(
@@ -129,13 +137,13 @@ class MapController(private val context: Context, private val map: MapLibreMap,
                 pointFeature(m.destination.lat, m.destination.lon).apply { addStringProperty("code", m.destination.iata) }
             )))
         }
-        src(st, MapStyle.SRC_ROUTE_FLOWN)?.setGeoJson(lineFeature(route.polylineUpTo(m.estimate.alongTrackM)))
+        if (!noDest) src(st, MapStyle.SRC_ROUTE_FLOWN)?.setGeoJson(lineFeature(route.polylineUpTo(m.estimate.alongTrackM)))
         // Measured track (solid) and estimated continuation (dashed).
         src(st, MapStyle.SRC_TRACK_ACTUAL)?.setGeoJson(
             if (m.actualTrack.size >= 2) FeatureCollection.fromFeature(lineFeature(m.actualTrack)) else emptyCollection())
         src(st, MapStyle.SRC_TRACK_EST)?.setGeoJson(FeatureCollection.fromFeatures(
             m.estimatedTrack.filter { it.size >= 2 }.map { lineFeature(it) }))
-        src(st, MapStyle.SRC_UNCERTAINTY)?.setGeoJson(uncertaintyFeature(m, route))
+        if (!noDest) src(st, MapStyle.SRC_UNCERTAINTY)?.setGeoJson(uncertaintyFeature(m, route))
 
         val e = m.estimate
         val icon = MapStyle.IMG_AIRCRAFT_LEVEL[e.sensorLevel.coerceIn(0, 3)]
@@ -169,8 +177,15 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), Parameters.MAP_MAX_ZOOM), 800)
     }
 
-    fun zoomIn() = map.animateCamera(CameraUpdateFactory.zoomIn())
-    fun zoomOut() = map.animateCamera(CameraUpdateFactory.zoomOut())
+    /** Zoom buttons: change the zoom around the followed point and resume following immediately. */
+    fun zoomIn() { followEnabled = true; lastGestureMs = 0L; startZoom = null; zoomBy(1.0) }
+    fun zoomOut() { followEnabled = true; lastGestureMs = 0L; startZoom = null; zoomBy(-1.0) }
+    private fun zoomBy(delta: Double) {
+        val cp = map.cameraPosition
+        val target = if (hasShown) LatLng(shownLat, shownLon) else cp.target ?: return
+        val z = (cp.zoom + delta).coerceIn(Parameters.MAP_MIN_ZOOM, Parameters.MAP_MAX_ZOOM)
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(target).zoom(z).bearing(cp.bearing).build()), 300)
+    }
 
     fun fitRoute() {
         val m = pendingMetrics ?: return
@@ -202,7 +217,7 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         if (System.currentTimeMillis() - lastGestureMs < Parameters.FOLLOW_RESUME_S * 1000L) return
         val cp = map.cameraPosition
         val zoom = startZoom ?: cp.zoom
-        startZoom = null   // the remembered zoom applies to the first camera move only
+        startZoom = null   // the first camera move goes to the aircraft at maximum zoom
         map.easeCamera(CameraUpdateFactory.newCameraPosition(
             CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom)
                 .bearing(if (trackUp) bearing else 0.0).build()), Parameters.UI_INTERPOLATION_MS)

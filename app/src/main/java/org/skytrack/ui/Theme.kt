@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Theme
-// Version 3.1
+// Version 3.2
 // Purpose : Material 3 colour schemes (night default) and small shared
 //           composables: confidence marker, labelled value.
 // =============================================================
@@ -97,7 +97,7 @@ fun LabeledValue(label: String, value: String, confidence: Confidence? = null, b
             label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -105,15 +105,18 @@ fun LabeledValue(label: String, value: String, confidence: Confidence? = null, b
                 Text(confidenceGlyph(confidence), color = confidenceColor(confidence), fontSize = if (big) 11.sp else 9.sp)
                 Spacer(Modifier.width(3.dp))
             }
+            // Long values use a smaller size instead of being clipped (Compose 1.7: no auto-size yet).
+            val base = if (big) 20 else 14
+            val size = when { value.length > 12 -> base - 4; value.length > 9 -> base - 2; else -> base }
             Text(
                 value,
-                fontSize = if (big) 20.sp else 14.sp,
+                fontSize = size.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = accent ?: MaterialTheme.colorScheme.onSurface,
                 style = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr, fontFeatureSettings = "tnum"),
                 softWrap = false,
                 maxLines = 1,
-                overflow = TextOverflow.Clip
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

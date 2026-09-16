@@ -45,7 +45,7 @@
     <string name="ete">זמן ליעד</string>
     <string name="eta">הגעה משוערת</string>
     <string name="eta_local">הגעה %1$s</string>
-    <string name="ground_speed">מהירות קרקע</string>
+    <string name="ground_speed">מהירות</string>
     <string name="altitude">גובה</string>
     <string name="track">כיוון</string>
     <string name="vertical_rate">קצב אנכי</string>
@@ -296,6 +296,8 @@
     <string name="logs_merge_review">בדוק</string>
     <string name="logs_merge_confirm_title">לאחד יומנים?</string>
     <string name="logs_merge_confirm_text">%1$d קבצים יאוחדו לאחד, מסודרים לפי זמן וללא כפילויות. המקוריים יימחקו. להמשיך?</string>
+    <string name="exit_question_recording">מתבצעת הקלטה. להמשיך להקליט ולעקוב ברקע (ההתרעה נשארת), או לעצור הכול?</string>
+    <string name="exit_keep_recording">המשך להקליט</string>
     <string name="notif_channel">מעקב טיסה</string>
     <string name="notif_starting">מפעיל חיישנים\u2026</string>
     <string name="notif_body">נותרו %1$s \u00B7 %2$s ליעד</string>

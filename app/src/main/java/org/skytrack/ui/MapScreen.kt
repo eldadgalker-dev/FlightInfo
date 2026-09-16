@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Explore
@@ -103,6 +104,8 @@ fun MapScreen(
     onToggleRecording: (() -> Unit)? = null,
     /** Last known device location (lat, lon) for the "zoom to where I am" camera at app start. */
     initialLocation: Pair<Double, Double>? = null,
+    /** Exit: true = keep tracking/recording in the background, false = stop everything. */
+    onExit: ((keepTracking: Boolean) -> Unit)? = null,
     /** Replay mode: this content replaces the bottom panel and the top status strip is hidden. */
     replayPanel: (@Composable () -> Unit)? = null
 ) {
@@ -186,6 +189,7 @@ fun MapScreen(
             Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 64.dp, end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            // + / - keep following the moving aircraft (they do not count as a pan gesture).
             SmallFloatingActionButton(onClick = { controller?.zoomIn() }) { Icon(Icons.Filled.Add, stringResource(R.string.zoom_in)) }
             SmallFloatingActionButton(onClick = { controller?.zoomOut() }) { Icon(Icons.Filled.Remove, stringResource(R.string.zoom_out)) }
             SmallFloatingActionButton(onClick = { controller?.fitRoute() }) { Icon(Icons.Filled.ZoomOutMap, stringResource(R.string.fit_route)) }
@@ -204,6 +208,19 @@ fun MapScreen(
             SmallFloatingActionButton(onClick = onOpenMetrics) { Icon(Icons.Filled.TableChart, stringResource(R.string.metrics)) }
             SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
             SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Help, stringResource(R.string.help)) }
+            if (onExit != null) {
+                var exitDialog by remember { mutableStateOf(false) }
+                SmallFloatingActionButton(onClick = { exitDialog = true }) { Icon(Icons.Filled.PowerSettingsNew, stringResource(R.string.exit_app)) }
+                if (exitDialog) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { exitDialog = false },
+                        title = { Text(stringResource(R.string.exit_app)) },
+                        text = { Text(stringResource(if (recording) R.string.exit_question_recording else R.string.exit_question)) },
+                        confirmButton = { androidx.compose.material3.TextButton(onClick = { exitDialog = false; onExit(true) }) { Text(stringResource(if (recording) R.string.exit_keep_recording else R.string.exit_keep_tracking)) } },
+                        dismissButton = { androidx.compose.material3.TextButton(onClick = { exitDialog = false; onExit(false) }) { Text(stringResource(R.string.exit_close_all)) } }
+                    )
+                }
+            }
             if (onToggleRecording != null && metrics?.estimateOnly != true) {
                 // Flight-log recording: only this button starts or stops it (with or without a flight plan).
                 // Recording: slow red pulse; idle: red dot on a neutral button.

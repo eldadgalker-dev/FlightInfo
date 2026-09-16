@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MetricsAndSettingsScreens
-// Version 5.0
+// Version 5.2
 // Purpose : Full-page metrics view (Origin / Now / Destination columns)
 //           and the settings page (units, clock, theme, follow, gestures).
 // =============================================================
@@ -407,6 +407,12 @@ private fun TesterSection() {
     var nick by remember { mutableStateOf(app.stores.testerNickname ?: "") }
     var email by remember { mutableStateOf(app.stores.testerEmail ?: "") }
     var consent by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf(false) }
+    // Collapsed by default: one line with the state; tap to open.
+    OutlinedButton(onClick = { open = !open }, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.tester_title) + (if (joined) "  \u2713 $nick" else "") + (if (open) "  \u25B4" else "  \u25BE"))
+    }
+    if (!open) return
     Section(stringResource(R.string.tester_title), Accent.status) {
         Text(stringResource(R.string.tester_explain), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(6.dp))

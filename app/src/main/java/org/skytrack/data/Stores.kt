@@ -147,6 +147,11 @@ class Stores(private val context: Context) {
         )
     }
 
+    /** Recording was on when the app last ran (restored on restart). */
+    var recordingActive: Boolean
+        get() = prefs.getBoolean("rec_active", false)
+        set(v) = prefs.edit().putBoolean("rec_active", v).apply()
+
     // -- Tester programme (opt-in) --
     var testerId: String?
         get() = prefs.getString("tester_id", null)
