@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - LogsReplayFeedbackScreens
-// Version 3.8
+// Version 3.9
 // Purpose : Flight-log manager (list, replay, share, delete, report), the
 //           replay overlay (play / pause / speed / seek over the normal map
 //           screen), and the in-app feedback form (bug / improvement /
@@ -256,7 +256,8 @@ fun ReplayPanel(engine: ReplayEngine, settings: Settings, onClose: () -> Unit) {
                         Text(if (good) "GPS good" else if (fresh) "GPS weak" else "estimated", style = MaterialTheme.typography.labelMedium, color = badgeColor,
                             modifier = Modifier.background(badgeColor.copy(alpha = 0.15f), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
                     }
-                    Spacer(Modifier.weight(1f))
+                    // Coordinates of the shown position - measured or estimated alike.
+                    LabeledValue("Lat, Lon", String.format(java.util.Locale.US, "%.3f, %.3f", e.lat, e.lon), e.positionConfidence, modifier = Modifier.weight(1f))
                 }
                 // Elapsed log time.
                 engine.summary?.let { sum ->

@@ -379,7 +379,7 @@ private fun MetricsPanel(m: FlightMetrics?, s: Settings, expanded: Boolean, onCo
                 }
                 Row(Modifier.fillMaxWidth()) {
                     LabeledValue(stringResource(R.string.utc_time), Format.time(m.nowUtc.atZone(java.time.ZoneOffset.UTC), s.use24h), modifier = Modifier.weight(1f), accent = Accent.time)
-                    LabeledValue(stringResource(R.string.gnss_accuracy), if (e.mode == FusionMode.GNSS_TRACKING) Format.altitude(e.sigmaAlongM, s.altitudeUnit) else "--", modifier = Modifier.weight(1f))
+                    LabeledValue(stringResource(R.string.gnss_accuracy_short), if (e.mode == FusionMode.GNSS_TRACKING) Format.altitude(e.sigmaAlongM, s.altitudeUnit) else "--", modifier = Modifier.weight(1f))
                     LabeledValue(stringResource(R.string.position), if (e.lastFixAgeMs < 0) "--" else String.format(java.util.Locale.US, "%.4f, %.4f", e.lat, e.lon), e.positionConfidence, modifier = Modifier.weight(2f))
                 }
                 androidx.compose.material3.OutlinedButton(onClick = onStartFlight, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.start_flight)) }
