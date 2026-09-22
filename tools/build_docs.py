@@ -4,7 +4,7 @@
 # See the LICENSE.txt file in the project root for full license information.
 # =============================================================
 # FlightInfo - build_docs.py
-# Version 2.0
+# Version 2.1
 # Purpose : Keep the companion documents in sync with the product:
 #           - regenerate docs/HELP.md from the Hebrew help strings
 #           - stamp the current versionName into README, BETA.md, TOOLS.md,
@@ -30,6 +30,9 @@ HELP_OUT_HE = os.path.join(ROOT, "docs/HELP.he.md")     # Hebrew
 VERSION_FILES = ["README.md", "BETA.md", "TOOLS.md", "docs/HELP.md", "docs/HELP.he.md"]
 HELP_ORDER  = ["what", "setup", "map", "aerial", "lines", "modes", "confidence", "deviation",
                "estimate", "gnss", "values", "terms", "logs", "limits"]
+# Screenshot shown under a help section (docs/screenshots/<file>)
+HELP_IMAGES = {"what": "01_free_recording.jpg", "setup": "04_flight_setup.jpg", "lines": "02_replay.jpg",
+               "gnss": "01_free_recording.jpg", "logs": "07_settings_logs_update.jpg", "values": "03_settings.jpg"}
 VERSION_RE  = re.compile(r"\b\d+\.\d+(?:-beta\d+)?\b")
 MARKERS     = ("Status:", "\u05d2\u05e8\u05e1\u05d4", "version", "Version", "FlightInfo ")
 
@@ -71,6 +74,9 @@ def build_help(ver):
             title, body = get("help_%s_title" % key), get("help_%s_body" % key)
             if title:
                 out_lines += ["## " + title, "", body.replace("\n", "  \n"), ""]
+                img = HELP_IMAGES.get(key)
+                if img:
+                    out_lines += ['<img src="screenshots/%s" alt="%s" width="270">' % (img, key), ""]
         if lang == "he":
             out_lines.append("</div>")
         text = "\n".join(out_lines) + "\n"

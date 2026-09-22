@@ -2,12 +2,14 @@
 
 **English** · [עברית](SCREENSHOTS.he.md)
 
+Version 5.5-beta41.
+
 | | |
 |---|---|
-| ![At the gate in Munich](screenshots/01_gate_muc.jpg) | **At the gate in Munich** — Blue Marble imagery, the planned route to TLV, open data panel: distance, time to destination (including the wait for takeoff), clocks at origin / UTC / destination |
-| ![Cruise over Croatia](screenshots/02_cruise_croatia.jpg) | **Cruise over Croatia** — flown part (orange), planned continuation (dashed), status strip with phase and country |
-| ![Full panel](screenshots/03_cruise_turkey_panel.jpg) | **Over Turkey, full panel** — the screenshot that exposed the v2 failure (aircraft drawn on the plan instead of at its position) and led to v4 |
-| ![Estimate mode](screenshots/04_estimate_mode_europe.jpg) | **Estimate mode** — following a flight you are not on, from the departure time |
-| ![Settings](screenshots/05_settings.jpg) | **Settings** — units, theme, language, network, imagery, logs, update |
-
-Screenshots are from beta versions 2.x–4.x; interface details change between versions.
+| ![Free recording](screenshots/01_free_recording.jpg) | **Free recording (no flight plan)** — the REC button records sensors and a log without origin or destination. The status strip shows what the position rests on; the red banner is the escalating "no GPS" warning (30 s / 3 min / 10 min) asking to hold the phone to the window. Graduated scale bar above the panel |
+| ![Replay](screenshots/02_replay.jpg) | **Replay of a logged flight (MUC → TLV)** — the measured track is solid turquoise, the estimated stretch across a GPS gap is dashed, the aircraft ring and the *Position* badge are red while estimated; *Accuracy* grows with the distance flown without a fix. Fixed English panel, 30/120/600× |
+| ![Flight setup](screenshots/04_flight_setup.jpg) | **Flight setup** — boarding-pass scan, or IATA code / city name; scheduled departure and actual takeoff (measured by the sensors when they detect it); estimate-only mode for a flight you are not on |
+| ![Settings](screenshots/03_settings.jpg) | **Settings** — distance / altitude / speed units, theme (AUTO default), language (system default), 24-hour clock, follow, track-up, two-finger rotation |
+| ![Logs and update](screenshots/07_settings_logs_update.jpg) | **Logs, feedback, tester programme, update** — flight-log manager (replay, check / repair, merge with confirmation, share, import), report by e-mail or GitHub issue, opt-in tester programme, update from GitHub Releases inside the app |
+| ![Exit](screenshots/05_exit_dialog.jpg) | **Exit** — keep tracking / recording in the background (notification stays), or stop everything: service, engine and process |
+| ![Help](screenshots/06_help.jpg) | **Help** — all sections inside the app, English or Hebrew, with the version and release date in the title |

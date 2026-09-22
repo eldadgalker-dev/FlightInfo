@@ -2,15 +2,19 @@
 
 **English** · [עברית](HELP.he.md)
 
-Generated automatically from the app's help screens (version 5.6-beta42).
+Generated automatically from the app's help screens (version 5.6-beta43).
 
 ## What FlightInfo does
 
 Shows your aircraft on an offline world map during a flight, with distance flown and remaining, speed, altitude, time to go and arrival time. It needs no network, no account and no server. Position comes from the phone's GPS when it can see satellites; otherwise the aircraft is moved along the planned route by time and speed.
 
+<img src="screenshots/01_free_recording.jpg" alt="what" width="270">
+
 ## Entering a flight
 
 Choose origin and destination by IATA code (TLV, LHR) or by city / airport name in English. Fastest: tap "Scan boarding pass" and point the camera at the barcode, or pick a screenshot of the pass; origin, destination and flight number are read from it. The scheduled departure time is optional and is used only when no GPS fix is available. Tap "Start flight". Return here any time with the aircraft button to correct the plan or end the flight.
+
+<img src="screenshots/04_flight_setup.jpg" alt="setup" width="270">
 
 ## Map controls
 
@@ -41,6 +45,8 @@ Orange solid line: the part already flown.
 Faint dotted line: the original plan, shown only after a re-plan.  
 Turquoise line: the measured track (solid); dashed turquoise: the estimated continuation while no fix was available, so the track has no holes and the aircraft keeps moving.  
 Shaded band: along-route uncertainty of the position.
+
+<img src="screenshots/02_replay.jpg" alt="lines" width="270">
 
 ## Tracking modes
 
@@ -77,6 +83,8 @@ Hold the phone against the window or on the tray table next to it. The first fix
   
 If the phone has internet (gate, onboard Wi-Fi, or when following a flight from home) and the option is on in Settings, the real position of the flight is fetched from community ADS-B data (adsb.lol) using the flight number, and shown as source "ADS-B".
 
+<img src="screenshots/01_free_recording.jpg" alt="gnss" width="270">
+
 ## The values
 
 "I am on the ground now" (panel, before takeoff): resets the phase, calibrates GPS altitude against the field elevation and fixes the reference pressure for cabin altitude.  
@@ -86,6 +94,8 @@ Time to destination: airborne = remaining distance at cruise speed + 20 min desc
 Arrival is shown in the destination's local time; the panel also shows local time at origin, UTC and destination.  
 Altitude comes from GPS only; the barometer measures cabin pressure and only detects climb and descent.  
 Heading after GPS loss follows the gyroscope for 90 seconds, then the route course.
+
+<img src="screenshots/03_settings.jpg" alt="values" width="270">
 
 ## Terms in the metrics screen
 
@@ -104,6 +114,8 @@ Replaying a flight:
 1. In the app: Settings > Flight logs > tap a log > Replay. The map plays it back at 30/120/600x through the current estimator.  
 2. On any computer, online: open https://eldadgalker-dev.github.io/FlightInfo/replay/ and drop the CSV (share it from the app by e-mail or Drive first).  
 3. On a computer offline: download docs/replay/index.html once from the project page ("Desktop replay" > save the file) and open it by double-click; drop the CSV. Same screen as the phone; imagery needs a network, everything else works offline.
+
+<img src="screenshots/07_settings_logs_update.jpg" alt="logs" width="270">
 
 ## Limitations
 
