@@ -3,8 +3,8 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - GnssSource
-// Version 1.4
-// Purpose : Wrap android.location.LocationManager (GPS_PROVIDER) and
+// Version 1.5
+// Purpose : Wrap android.location.LocationManager (GPS, network and fused providers) and
 //           GnssStatus into a cold Flow of classified GNSS samples.
 //           LocationManager is used directly, not Fused Location, because
 //           satellite counts and raw status are required and there is no
@@ -75,7 +75,12 @@ class GnssSource(private val context: Context) {
         }
 
         lm.registerGnssStatusCallback(statusCb, handler)
-        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, intervalMs, 0f, listener, thread.looper)
+        // Every available source: GPS for the flight, and network / fused (Wi-Fi, cell, Bluetooth - what
+        // Google Maps uses indoors) for the gate and for the aircraft on the ground. Each position is
+        // classified by its own accuracy, so a coarse network fix is a "weak" fix, never a "good" one.
+        for (prov in providers()) {
+            try { lm.requestLocationUpdates(prov, intervalMs, 0f, listener, thread.looper) } catch (e: Exception) { }
+        }
 
         awaitClose {
             lm.removeUpdates(listener)
@@ -154,21 +159,24 @@ class GnssSource(private val context: Context) {
 
     private fun classify(loc: Location): GnssSample {
         rememberThrottled(loc)
+        val fromGps = loc.provider == LocationManager.GPS_PROVIDER
         val hAcc = if (loc.hasAccuracy()) loc.accuracy.toDouble() else 9999.0
         val vAcc = if (loc.hasVerticalAccuracy()) loc.verticalAccuracyMeters.toDouble() else 9999.0
+        // GOOD needs a GPS-provider fix with enough satellites; network / fused positions are at best DEGRADED
+        // (they have no satellites and their altitude / speed are unreliable, so those are dropped).
         val q = when {
-            hAcc <= Parameters.GNSS_GOOD_HACC_M && satsUsed >= Parameters.GNSS_GOOD_MIN_SATS -> GnssQuality.GOOD
+            fromGps && hAcc <= Parameters.GNSS_GOOD_HACC_M && satsUsed >= Parameters.GNSS_GOOD_MIN_SATS -> GnssQuality.GOOD
             hAcc <= Parameters.GNSS_DEGRADED_HACC_M -> GnssQuality.DEGRADED
             else -> GnssQuality.NONE
         }
         return GnssSample(
             timeMs = System.currentTimeMillis(),
             lat = loc.latitude, lon = loc.longitude,
-            altM = loc.altitude, hasAlt = loc.hasAltitude(),
-            speedMps = loc.speed.toDouble(), hasSpeed = loc.hasSpeed(),
-            bearingDeg = loc.bearing.toDouble(), hasBearing = loc.hasBearing(),
+            altM = loc.altitude, hasAlt = fromGps && loc.hasAltitude(),
+            speedMps = loc.speed.toDouble(), hasSpeed = fromGps && loc.hasSpeed(),
+            bearingDeg = loc.bearing.toDouble(), hasBearing = fromGps && loc.hasBearing(),
             hAccM = hAcc, vAccM = vAcc,
-            satsUsed = satsUsed, satsVisible = satsVisible,
+            satsUsed = if (fromGps) satsUsed else 0, satsVisible = satsVisible,
             quality = q
         )
     }

@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - FlightEngine
-// Version 5.3
+// Version 5.4
 // Purpose : Application-scoped coordinator. Owns the Route, Estimator and
 //           FlightPhaseDetector for the active flight, consumes sensor
 //           flows (started by TrackingService), ticks the estimator at
@@ -73,7 +73,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
     @Synchronized
     fun setRecording(on: Boolean) {
         val p = plan
-        if (on && p != null && !p.estimateOnly) {
+        if (on && p != null) {
             logger.enabled = true
             logger.start(p.originIata, p.destinationIata, if (p.free) "free" else p.flightNumber)
             loggingStopped = false
@@ -141,12 +141,19 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         estimator = est
         phaseDetector = FlightPhaseDetector()
 
+        // Continuity from the ground: the last known device position (network / fused / stored, with its
+        // time) seeds the estimator as a weak fix, so without GPS the propagation - and the inertial
+        // heading - start from where the phone really is, not from the airport reference point.
+        if (!p.estimateOnly) stores.lastDeviceLocationWithTime()?.let { (lat, lon, tMs) ->
+            if (System.currentTimeMillis() - tMs < 6 * 3600_000L)
+                est.onGnss(GnssSample(tMs, lat, lon, 0.0, false, 0.0, false, 0.0, false, 500.0, 9999.0, 0, 0, GnssQuality.DEGRADED), FlightPhase.GROUND)
+        }
         val prev = stores.plan.value
         val saved = stores.loadEstimate()
         // Same flight = same route, same flight number, same scheduled departure and not estimate-only.
         // Anything else is a new flight: saved estimate and track are discarded.
         val samePlanAsBefore = prev != null && prev.originIata == p.originIata && prev.destinationIata == p.destinationIata &&
-                prev.flightNumber == p.flightNumber && prev.scheduledDepartureMs == p.scheduledDepartureMs && !prev.estimateOnly && !p.estimateOnly
+                prev.flightNumber == p.flightNumber && prev.scheduledDepartureMs == p.scheduledDepartureMs && prev.estimateOnly == p.estimateOnly
         if (!samePlanAsBefore) { stores.clearEstimate(); stores.clearTrack() }
         val savedUsable = samePlanAsBefore && saved != null && System.currentTimeMillis() - saved.timeMs < 12 * 3600_000L &&
                 (p.scheduledDepartureMs == null || saved.timeMs > p.scheduledDepartureMs - 3 * 3600_000L)
@@ -166,7 +173,7 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         // Recording does not start by itself: the REC button decides. Keep it running across a
         // restart of the same live flight (a new file; the log manager offers to merge), stop it when the plan changes.
         // Restart of the app while recording: the recording resumes (a new file; the log manager offers a merge).
-        val keepRecording = (_recording.value || stores.recordingActive) && samePlanAsBefore && !p.estimateOnly
+        val keepRecording = (_recording.value || stores.recordingActive) && samePlanAsBefore
         if (keepRecording) { logger.enabled = true; logger.start(p.originIata, p.destinationIata, if (p.free) "free" else p.flightNumber); _recording.value = true }
         else { logger.stop(); _recording.value = false }
         stores.recordingActive = _recording.value
@@ -388,7 +395,8 @@ class FlightEngine(private val airports: AirportRepository, private val stores: 
         val groundTooLong = !p.free && e.phase == FlightPhase.GROUND && p.takeoffMs == null && now - startMs > Parameters.LOG_MAX_GROUND_MS
         val landedLong = landedSinceMs != 0L && now - landedSinceMs > Parameters.LOG_AFTER_LANDING_MS
         if (!loggingStopped && _recording.value && (groundTooLong || landedLong)) { loggingStopped = true; logger.stop(); _recording.value = false; stores.recordingActive = false }
-        if (live && _recording.value && !loggingStopped) logger.log(fm, lastGnss, lastBaro, lastGyro)
+        // Recording is independent of the mode: estimate-only flights are logged too (est columns, no fixes).
+        if (_recording.value && !loggingStopped) logger.log(fm, lastGnss, lastBaro, lastGyro)
         if (live && now - lastPersistMs > Parameters.PERSIST_INTERVAL_MS) {
             lastPersistMs = now
             stores.saveEstimate(SavedEstimate(now, e.alongTrackM, e.groundSpeedMps, e.trackDeg, e.altM, e.phase.name))

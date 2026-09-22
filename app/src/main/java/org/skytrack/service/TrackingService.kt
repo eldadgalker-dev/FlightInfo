@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - TrackingService
-// Version 3.1
+// Version 3.2
 // Purpose : Foreground service (type location) that keeps GNSS, barometer
 //           and gyro flowing into the FlightEngine while the screen is off,
 //           and shows remaining distance / ETE in a persistent notification.
@@ -86,6 +86,8 @@ class TrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            // Full stop: notification removed, sensor collectors cancelled (onDestroy), not restarted by the system.
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
         }

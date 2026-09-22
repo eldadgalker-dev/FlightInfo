@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 5.8
+// Version 5.9
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -169,9 +169,17 @@ class MapController(private val context: Context, private val map: MapLibreMap,
      * Visible-area padding in pixels (status strip at the top, data panel at the bottom): the camera
      * centre and all camera moves refer to the uncovered part of the map, not to the screen centre.
      */
+    private var padTop = 0
+    private var padBottom = 0
     fun setViewportPadding(topPx: Int, bottomPx: Int) {
+        padTop = topPx; padBottom = bottomPx
         map.setPadding(0, topPx, 0, bottomPx)
+        // Re-centre the followed point in the new visible area at once.
+        if (hasShown && followEnabled) map.easeCamera(CameraUpdateFactory.newCameraPosition(cam(LatLng(shownLat, shownLon), map.cameraPosition.zoom, map.cameraPosition.bearing)), 250)
     }
+    /** Camera position whose centre is the centre of the visible (unpadded) part of the map. */
+    private fun cam(target: LatLng, zoom: Double, bearing: Double): CameraPosition =
+        CameraPosition.Builder().target(target).zoom(zoom).bearing(bearing).padding(0.0, padTop.toDouble(), 0.0, padBottom.toDouble()).build()
 
     /** Current map centre (lat, lon). */
     fun centerLatLon(): Pair<Double, Double>? = map.cameraPosition.target?.let { Pair(it.latitude, it.longitude) }
@@ -190,7 +198,7 @@ class MapController(private val context: Context, private val map: MapLibreMap,
     /** Camera to a point at the start zoom (recording start, replay start, app start at the current location). */
     fun zoomMaxTo(lat: Double, lon: Double) {
         lastGestureMs = 0L; startZoom = null
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), Parameters.MAP_START_ZOOM), 800)
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(cam(LatLng(lat, lon), Parameters.MAP_START_ZOOM, 0.0)), 800)
     }
 
     /** Zoom buttons: change the zoom around the followed point and resume following immediately. */
@@ -201,7 +209,7 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         followEnabled = true; lastGestureMs = 0L; startZoom = null
         val cp = map.cameraPosition
         val target = if (hasShown) LatLng(shownLat, shownLon) else cp.target ?: return
-        map.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(target).zoom(Parameters.MAP_MAX_ZOOM).bearing(cp.bearing).build()), 500)
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(cam(target, Parameters.MAP_MAX_ZOOM, cp.bearing)), 500)
     }
     /** All the way out: the whole route when there is one, else minimum zoom around the followed point. */
     fun zoomMaxOut() {
@@ -209,13 +217,13 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         if (pendingMetrics != null && pendingMetrics?.freeRecording != true) { fitRoute(); return }
         val cp = map.cameraPosition
         val target = if (hasShown) LatLng(shownLat, shownLon) else cp.target ?: return
-        map.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(target).zoom(Parameters.MAP_MIN_ZOOM + 1.0).bearing(0.0).build()), 500)
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(cam(target, Parameters.MAP_MIN_ZOOM + 1.0, 0.0)), 500)
     }
     private fun zoomBy(delta: Double) {
         val cp = map.cameraPosition
         val target = if (hasShown) LatLng(shownLat, shownLon) else cp.target ?: return
         val z = (cp.zoom + delta).coerceIn(Parameters.MAP_MIN_ZOOM, Parameters.MAP_MAX_ZOOM)
-        map.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(target).zoom(z).bearing(cp.bearing).build()), 300)
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(cam(target, z, cp.bearing)), 300)
     }
 
     fun fitRoute() {
@@ -238,9 +246,8 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         val m = pendingMetrics ?: return
         lastGestureMs = 0L
         val zoom = max(map.cameraPosition.zoom, Parameters.MAP_DEFAULT_ZOOM)
-        map.animateCamera(CameraUpdateFactory.newCameraPosition(
-            CameraPosition.Builder().target(LatLng(m.estimate.lat, m.estimate.lon)).zoom(zoom)
-                .bearing(if (trackUp) m.estimate.trackDeg else 0.0).build()), 600)
+        followEnabled = true
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(cam(LatLng(m.estimate.lat, m.estimate.lon), zoom, if (trackUp) m.estimate.trackDeg else 0.0)), 600)
     }
 
     private fun maybeFollow(lat: Double, lon: Double, bearing: Double) {
@@ -249,9 +256,7 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         val cp = map.cameraPosition
         val zoom = startZoom ?: cp.zoom
         startZoom = null   // the first camera move goes to the aircraft at maximum zoom
-        map.easeCamera(CameraUpdateFactory.newCameraPosition(
-            CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom)
-                .bearing(if (trackUp) bearing else 0.0).build()), Parameters.UI_INTERPOLATION_MS)
+        map.easeCamera(CameraUpdateFactory.newCameraPosition(cam(LatLng(lat, lon), zoom, if (trackUp) bearing else 0.0)), Parameters.UI_INTERPOLATION_MS)
     }
 
     private fun animateAircraft(lat: Double, lon: Double, bearing: Double, icon: String, st: Style, instant: Boolean = false) {

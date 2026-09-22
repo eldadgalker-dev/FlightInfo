@@ -259,7 +259,7 @@ fun MapScreen(
             SmallFloatingActionButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
             SmallFloatingActionButton(onClick = onOpenHelp) { Icon(Icons.Filled.Help, stringResource(R.string.help)) }
             }
-            if (onToggleRecording != null && metrics?.estimateOnly != true) {
+            if (onToggleRecording != null) {
                 // Flight-log recording: only this button starts or stops it (with or without a flight plan).
                 // Recording: slow red pulse; idle: red dot on a neutral button.
                 val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "rec")

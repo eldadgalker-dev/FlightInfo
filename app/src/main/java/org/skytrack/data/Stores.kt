@@ -147,6 +147,10 @@ class Stores(private val context: Context) {
         )
     }
 
+    /** Last device position with its time (lat, lon, epoch ms), or null. */
+    fun lastDeviceLocationWithTime(): Triple<Double, Double, Long>? =
+        if (prefs.contains("last_loc_lat")) Triple(prefs.getFloat("last_loc_lat", 0f).toDouble(), prefs.getFloat("last_loc_lon", 0f).toDouble(), prefs.getLong("last_loc_time", 0L)) else null
+
     /** Last device position stored by GnssSource (lat, lon), or null. */
     fun lastDeviceLocation(): Pair<Double, Double>? =
         if (prefs.contains("last_loc_lat")) Pair(prefs.getFloat("last_loc_lat", 0f).toDouble(), prefs.getFloat("last_loc_lon", 0f).toDouble()) else null
