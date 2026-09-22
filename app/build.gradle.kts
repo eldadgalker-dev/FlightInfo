@@ -19,8 +19,8 @@ android {
         applicationId = "com.galker.flightinfo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 55
-        versionName = "5.5-beta40"
+        versionCode = 56
+        versionName = "5.5-beta41"
         vectorDrawables.useSupportLibrary = true
         // Release (build) date shown in the help title; UTC, set at build time.
         buildConfigField("String", "BUILD_DATE", "\"" + LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "\"")

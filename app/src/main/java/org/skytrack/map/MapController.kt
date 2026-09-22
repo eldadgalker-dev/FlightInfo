@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - MapController
-// Version 5.7
+// Version 5.8
 // Purpose : Non-Compose controller around a MapLibreMap: installs the
 //           style, pushes route / aircraft / uncertainty geometry, animates
 //           the aircraft marker between engine ticks, and implements
@@ -59,7 +59,7 @@ class MapController(private val context: Context, private val map: MapLibreMap,
     private var lastGestureMs = 0L
     private var lastRouteHash = 0
     private var pendingMetrics: FlightMetrics? = null
-    private var startZoom: Double? = Parameters.MAP_MAX_ZOOM   // app start: aircraft at maximum zoom (initialZoom kept for API compatibility)
+    private var startZoom: Double? = Parameters.MAP_START_ZOOM   // app start: aircraft at the start zoom (initialZoom kept for API compatibility)
     private var lastEstimateMs = 0L
     private var lastUpdateWallMs = 0L
 
@@ -187,16 +187,16 @@ class MapController(private val context: Context, private val map: MapLibreMap,
         src(st, MapStyle.SRC_DEVICE)?.setGeoJson(FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(lon, lat))))
     }
 
-    /** Camera to a point at maximum zoom (recording start, replay start, app start at the current location). */
+    /** Camera to a point at the start zoom (recording start, replay start, app start at the current location). */
     fun zoomMaxTo(lat: Double, lon: Double) {
         lastGestureMs = 0L; startZoom = null
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), Parameters.MAP_MAX_ZOOM), 800)
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), Parameters.MAP_START_ZOOM), 800)
     }
 
     /** Zoom buttons: change the zoom around the followed point and resume following immediately. */
     fun zoomIn() { followEnabled = true; lastGestureMs = 0L; startZoom = null; zoomBy(1.0) }
     fun zoomOut() { followEnabled = true; lastGestureMs = 0L; startZoom = null; zoomBy(-1.0) }
-    /** All the way in: maximum zoom on the followed point. */
+    /** All the way in: the map's hard maximum zoom on the followed point (nothing more can be enlarged). */
     fun zoomMaxIn() {
         followEnabled = true; lastGestureMs = 0L; startZoom = null
         val cp = map.cameraPosition

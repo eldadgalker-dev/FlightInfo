@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the project root for full license information.
 // =============================================================
 // FlightInfo - Parameters
-// Version 5.1
+// Version 5.2
 // Purpose : Every tunable constant of the application. This is the
 //           only file that should need editing to re-tune behaviour.
 // Units   : SI throughout (metres, seconds, m/s, degrees, hPa).
@@ -153,7 +153,8 @@ object Parameters {
 
     // -- Map --
     const val MAP_MIN_ZOOM              = 1.5
-    const val MAP_MAX_ZOOM              = 10.0
+    const val MAP_MAX_ZOOM              = 16.0      // hard limit of the map (vector data is 1:10m: beyond ~12 lines only, no more detail)
+    const val MAP_START_ZOOM            = 10.0      // app start, recording start, replay start: aircraft with its surroundings
     const val MAP_DEFAULT_ZOOM          = 5.0
     const val FOLLOW_RESUME_S           = 20        // s, follow mode auto-resume after user gesture
     const val FIT_PADDING_PX            = 80        // px, padding for fit-route camera
